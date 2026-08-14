@@ -61,21 +61,26 @@ edit. Adding a genuinely new *verb* is one decorated function.
 ### 2.1 GameState — a plain, snapshot-able data structure
 
 ```python
-@dataclass
+@dataclass(slots=True)
 class GameState:
-    rules: RuleSet  # from data, immutable
-    players: dict[PlayerId, PlayerState]
+    content: ContentRegistry  # cards + rules, immutable; `state.rules` is the shorthand
+    players: dict[PlayerId, PlayerState]  # each holds its own action_points
     turn_order: list[PlayerId]
     active_player: PlayerId
-    phase: Phase
-    action_points: int
-    zones: dict[ZoneId, Zone]  # shared: main_deck, discard, monster_deck, monster_row
+    zones: dict[ZoneId, Zone]  # shared *and* player-scoped: "discard", "hand:p1"
     cards: dict[CardId, CardInstance]  # the single registry of every instance
-    flags: dict[str, Any]  # scratch space for mods; never read by the engine
     rng: DeterministicRng
+    phase: str
     turn_number: int
+    flags: dict[str, Any]  # scratch space for mods; never read by the engine
     winner: PlayerId | None
 ```
+
+Two shapes moved during Phase 2, for reasons worth keeping: the state holds the whole
+`ContentRegistry` rather than just its `RuleSet` (a `CardInstance` is a def id plus a location, so
+anything reasoning about one needs its `CardDef`; the registry is immutable, so clones share it),
+and `action_points` lives on `PlayerState` (a variant may hand AP to a non-active player;
+`state.action_points` still reads the active seat, which is what `$action_points` resolves to).
 
 Design points:
 
@@ -96,6 +101,7 @@ Design points:
 | `discard` | shared | public | yes |
 | `monster_deck` | shared | hidden | yes |
 | `monster_row` | shared | public | yes (capacity 3) |
+| `leader_pool` | shared | hidden | yes (undealt Party Leaders) |
 | `hand:<p>` | player | owner-only | no |
 | `party:<p>` | player | public | no |
 | `leader:<p>` | player | public | no |
@@ -109,7 +115,7 @@ two zones at once.
 ### 2.3 CardInstance vs CardDef
 
 ```python
-@dataclass
+@dataclass(slots=True)
 class CardInstance:
     id: CardId  # unique per instance ("base.hero.dodgy_dealer#2")
     def_id: str  # -> CardDef in the content registry
@@ -117,12 +123,16 @@ class CardInstance:
     owner: PlayerId | None  # who it belongs to
     controller: PlayerId | None  # who currently uses it (theft!)
     attachments: list[CardId]  # Items equipped onto a Hero
+    attached_to: CardId | None  # the inverse link, so the checker can prove both ends
     tapped: bool  # "used this turn" marker
     state: dict[str, Any]  # per-instance mod scratch (counters etc.)
 ```
 
 `owner` vs `controller` is deliberate: Here to Slay has Hero-stealing, and a variant might have
 "borrow until end of turn". Splitting them now costs nothing and saves a refactor later.
+`GameState.move_card` is the single write path and encodes the split mechanically: **control
+follows location** (a card in a player-scoped zone is controlled by that player), while `owner` is
+set once, on first acquisition, and never moves again unless an effect says so.
 
 ---
 
@@ -281,8 +291,12 @@ Consequences we get for free:
 - **Bug reports** — a seed + log is a reproducible test case.
 - **Regression tests** — golden logs assert card behaviour end to end.
 
-Rule: `random` is banned in `core/`; only `state.rng` (an explicit `DeterministicRng` wrapping
-`random.Random(seed)`) may be used, and every draw from it is logged.
+Rule: `random` is banned in `core/`; only `state.rng` may be used, and every draw from it is
+logged. `DeterministicRng` implements splitmix64 itself rather than wrapping `random.Random`,
+because the standard library makes no promise that `shuffle` produces the same permutation in a
+future Python — and a replay log that stops reproducing is worse than no replay log. Seeds may be
+strings (`--seed dragons`), hashed with sha256 rather than `hash()`, whose salt changes per
+process.
 
 ---
 

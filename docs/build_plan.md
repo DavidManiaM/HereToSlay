@@ -62,21 +62,50 @@ on each broken one. `uv run pytest` → 53 passed.
 
 ---
 
-## Phase 2 — Core State Model
+## Phase 2 — Core State Model `[x]`
 
 **Deliverable:** a `GameState` you can build, mutate through zone primitives, snapshot, and diff.
 
-- [ ] `core/ids.py` — `NewType` ids (`PlayerId`, `CardId`, `ZoneId`)
-- [ ] `core/zones.py` — generic `Zone` (ordered/unordered, visibility, capacity)
-- [ ] `core/state.py` — `GameState`, `PlayerState`, `CardInstance`
-- [ ] `core/rng.py` — `DeterministicRng` (seeded, every call logged)
-- [ ] `core/setup.py` — build a game from `RuleSet` + player list + seed
-- [ ] `core/view.py` — `GameView` redaction per seat
-- [ ] Invariant checker (`rules_engine.md §8`)
+- [x] `core/ids.py` — `NewType` ids (`PlayerId`, `CardId`, `ZoneId`) + the composition helpers
+      (`hand:p1`, `base.hero.x#2`) that keep id shapes in one place
+- [x] `core/zones.py` — generic `Zone` (ordered/unordered, visibility, capacity)
+- [x] `core/state.py` — `GameState`, `PlayerState`, `CardInstance`, `clone`/`snapshot`/`diff`
+- [x] `core/rng.py` — `DeterministicRng` (seeded, every call logged)
+- [x] `core/setup.py` — build a game from `RuleSet` + player list + seed
+- [x] `core/view.py` — `GameView` redaction per seat
+- [x] `core/invariants.py` — the invariant checker (`rules_engine.md §8`), `HTS_STRICT`-gated
+- [x] `core/errors.py` — `SetupError`, `ZoneError`, `EngineInvariantError`
+- [x] Fixture pack `tests/fixtures/table` — base rules + enough dull cards to deal a real table
 
-**Acceptance:** setup produces the right deck sizes/hands from base data; two setups with the
-same seed are identical; `view()` never leaks a hidden card id.
+**Acceptance:** ✅ 4 players on the base rule set deal 5-card hands, one leader each, a 3-monster
+row, and 12 cards left in the deck; two setups with the same seed produce byte-identical
+snapshots; every seat's serialised view is searched for every hidden card id and finds none.
+`uv run pytest` → 136 passed.
 **Not yet:** events, turns.
+
+### Decisions taken during Phase 2
+
+1. **`core/` implements its own PRNG.** `tests/test_layering.py` bans `random` in the engine, and
+   that ban is worth keeping — ambient randomness is exactly how replay quietly breaks. `rng.py`
+   is ~20 lines of splitmix64 with rejection sampling, which also buys a guarantee `random.Random`
+   cannot: a log recorded today still replays on a future Python whose `shuffle` changed.
+2. **`GameState` holds the whole `ContentRegistry`, not just the `RuleSet`.** A `CardInstance` is
+   a def id plus a location, so anything reasoning about one needs its `CardDef`. The registry is
+   immutable, so clones share it; `state.rules` is a property and reads the same everywhere else.
+3. **Control follows location; ownership does not.** `move_card` sets `controller` to the
+   destination zone's owner and fills in `owner` only on first acquisition. That is what makes
+   "steal a Hero" and "return stolen Heroes at end of turn" both expressible without engine edits.
+   `CardInstance.attached_to` was added as the inverse of `attachments` so the invariant checker
+   can prove equipment links point both ways.
+4. **The setup RNG order is part of the replay contract** and is written down in `setup.py`'s
+   docstring: shuffle hidden shared zones (sorted by zone id) → leaders → hands → monster row.
+   Cards are minted in sorted definition-id order, so renaming a YAML file cannot reshuffle an
+   existing seed's game.
+5. **Setup refuses rather than improvises.** Too few cards to deal hands is a `SetupError` naming
+   the shortfall; a monster deck that runs short is *not* (a row refills lazily in a normal game).
+   `leader_selection: draft|choice` raises until the decision system exists — it cannot be faked.
+6. **Base data has no cards until Phase 6**, so `tests/fixtures/table` supplies deliberately dull
+   cards against the *real* base rules. Phase 2's numbers are the shipping numbers.
 
 ---
 
@@ -236,11 +265,13 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0 and 1 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs 53
-tests (one skipped: the `core/` layering check, which activates when `core/` exists).
+**Phases 0, 1 and 2 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs
+136 tests, and the layering check now actually walks `core/` (it no longer skips).
 
-Next up is **Phase 2 — Core State Model**: `core/ids.py`, `zones.py`, `state.py`, `rng.py`,
-`setup.py`, `view.py` and the invariant checker.
+Next up is **Phase 3 — Event Bus & Effect Interpreter**, the critical phase: `core/events.py`,
+`bus.py`, `interpreter.py`, `context.py`, `registry.py`, the `effects/` and `conditions/`
+catalogues, and `log.py`. The three open design questions in `architecture_notes.md §10` that are
+marked "decide before Phase 3" are now due.
 
 Open questions blocking later phases are collected in `rules_reference.md §5`. Only Phase 6 (base
 card content) is actually blocked by them.

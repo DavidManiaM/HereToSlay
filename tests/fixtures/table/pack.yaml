@@ -1,0 +1,9 @@
+id: table
+name: "Enough cards to deal a table"
+version: "1.0.0"
+# Uses the *real* base rules (5-card hands, 3 monsters face up, up to 6 players)
+# so Phase 2's setup tests measure the shipping numbers. The cards themselves
+# stay deliberately dull — base content is Phase 6's job, not a test's.
+requires: [base]
+provides:
+  cards: ["cards/*.yaml"]

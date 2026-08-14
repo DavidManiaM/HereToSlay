@@ -1,0 +1,105 @@
+# Deck arithmetic these fixtures are built for:
+#   main_deck    6 heroes x 4 copies + 1 modifier x 8 = 32
+#   monster_deck 3 monsters x 2 copies               =  6
+#   leader_pool  6 leaders x 1 copy                  =  6
+
+- id: table.hero.bard
+  kind: hero
+  name: "Fixture Bard"
+  card_class: bard
+  copies: 4
+- id: table.hero.fighter
+  kind: hero
+  name: "Fixture Fighter"
+  card_class: fighter
+  copies: 4
+- id: table.hero.guardian
+  kind: hero
+  name: "Fixture Guardian"
+  card_class: guardian
+  copies: 4
+- id: table.hero.ranger
+  kind: hero
+  name: "Fixture Ranger"
+  card_class: ranger
+  copies: 4
+- id: table.hero.thief
+  kind: hero
+  name: "Fixture Thief"
+  card_class: thief
+  copies: 4
+- id: table.hero.wizard
+  kind: hero
+  name: "Fixture Wizard"
+  card_class: wizard
+  copies: 4
+
+- id: table.modifier.plus_one
+  kind: modifier
+  name: "+1"
+  copies: 8
+  reaction:
+    window: roll_modification
+    effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: table.monster.gnome
+  kind: monster
+  name: "Fixture Gnome"
+  copies: 2
+  requirement: { op: party_has_class, player: $self, class: fighter, min: 1 }
+  requirement_text: "Requires 1 Fighter"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 7, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 6, effect: { op: noop } }
+- id: table.monster.troll
+  kind: monster
+  name: "Fixture Troll"
+  copies: 2
+  requirement: { op: party_has_class, player: $self, class: guardian, min: 1 }
+  requirement_text: "Requires 1 Guardian"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 8, effect: { op: noop } }
+- id: table.monster.wyrm
+  kind: monster
+  name: "Fixture Wyrm"
+  copies: 2
+  requirement: { op: party_has_class, player: $self, class: wizard, min: 1 }
+  requirement_text: "Requires 1 Wizard"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 11, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 10, effect: { op: noop } }
+
+- id: table.leader.bard
+  kind: party_leader
+  name: "Fixture Bard Leader"
+  card_class: bard
+- id: table.leader.fighter
+  kind: party_leader
+  name: "Fixture Fighter Leader"
+  card_class: fighter
+- id: table.leader.guardian
+  kind: party_leader
+  name: "Fixture Guardian Leader"
+  card_class: guardian
+- id: table.leader.ranger
+  kind: party_leader
+  name: "Fixture Ranger Leader"
+  card_class: ranger
+- id: table.leader.thief
+  kind: party_leader
+  name: "Fixture Thief Leader"
+  card_class: thief
+- id: table.leader.wizard
+  kind: party_leader
+  name: "Fixture Wizard Leader"
+  card_class: wizard
