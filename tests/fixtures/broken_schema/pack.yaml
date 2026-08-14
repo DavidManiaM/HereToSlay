@@ -1,0 +1,5 @@
+id: broken_schema
+name: "Broken: missing required field and an unknown key"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

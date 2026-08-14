@@ -1,0 +1,5 @@
+id: broken_unknown_op
+name: "Broken: an op that does not exist"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

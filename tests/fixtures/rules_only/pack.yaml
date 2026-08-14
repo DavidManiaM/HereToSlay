@@ -1,0 +1,6 @@
+id: fixture_rules
+name: "Test rules only"
+version: "1.0.0"
+provides:
+  rules: rules.yaml
+  cards: []

@@ -1,0 +1,8 @@
+- id: broken_unknown_op.hero.typo
+  kind: hero
+  name: "Typo"
+  card_class: bard
+  copies: 1
+  ability:
+    activation: action
+    effect: { op: drawww, target: $self, count: 1 }

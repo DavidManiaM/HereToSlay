@@ -1,0 +1,45 @@
+# A minimal but complete rule set, so card fixtures can stay tiny.
+id: fixture
+
+classes: [bard, fighter, guardian, ranger, thief, wizard]
+
+setup:
+  starting_hand: 2
+  monster_row_size: 1
+  min_players: 2
+  max_players: 2
+
+turn:
+  action_points_per_turn: 3
+
+zones:
+  - { id: main_deck, scope: shared, visibility: hidden, ordered: true }
+  - { id: discard, scope: shared, visibility: public, ordered: true }
+  - { id: monster_deck, scope: shared, visibility: hidden, ordered: true }
+  - { id: monster_row, scope: shared, visibility: public, ordered: true, capacity: 1 }
+  - { id: leader_pool, scope: shared, visibility: hidden, ordered: true }
+  - { id: limbo, scope: shared, visibility: public, ordered: false }
+  - { id: hand, scope: player, visibility: owner, ordered: false }
+  - { id: party, scope: player, visibility: public, ordered: false }
+  - { id: leader, scope: player, visibility: public, ordered: false }
+  - { id: slain, scope: player, visibility: public, ordered: false }
+
+actions:
+  - id: draw
+    label: "Draw a card"
+    cost: { action_points: 1 }
+    effect: { op: draw, target: $self, count: 1 }
+
+phases:
+  - id: main
+    loop_while: { op: compare, left: $action_points, cmp: ">", right: 0 }
+    allows: [draw]
+
+windows:
+  card_played: { order: seat_left_of_active, reopen_on_action: true }
+  roll_modification: { order: seat_left_of_active, reopen_on_action: true }
+
+victory:
+  - id: slay_three
+    text: "Slay 3 Monsters"
+    condition: { op: slain_count, player: $player, cmp: ">=", value: 3 }

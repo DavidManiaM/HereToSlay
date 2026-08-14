@@ -1,0 +1,5 @@
+id: broken_unbound_ref
+name: "Broken: $victim used before it is bound"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

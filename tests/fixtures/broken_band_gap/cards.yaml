@@ -1,0 +1,11 @@
+# 2d6 rolls 2..12, but nothing matches 2, 3 or 7.
+- id: broken_band_gap.monster.gapper
+  kind: monster
+  name: "Gapper"
+  copies: 1
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 4, max: 6, effect: { op: noop } }

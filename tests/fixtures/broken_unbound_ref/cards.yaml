@@ -1,0 +1,19 @@
+# The 'choose' that binds $victim comes *after* the step that uses it.
+- id: broken_unbound_ref.hero.premature
+  kind: hero
+  name: "Premature"
+  card_class: thief
+  copies: 1
+  ability:
+    activation: action
+    effect:
+      op: seq
+      steps:
+        - op: steal_card
+          from: $victim
+          to: $self
+          count: 1
+        - op: choose
+          bind: victim
+          chooser: $self
+          from: { selector: opponents, of: $self }

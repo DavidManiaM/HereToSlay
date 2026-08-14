@@ -1,0 +1,6 @@
+- id: broken_schema.hero.nameless
+  kind: hero
+  name: "Nameless"
+  copies: 1
+  # card_class is required for a hero, and 'power' is not a field at all
+  power: 3

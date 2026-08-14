@@ -1,0 +1,12 @@
+id: base
+name: "Here to Slay — Base Game"
+version: "0.1.0"
+schema_version: 1
+requires: []
+load_after: []
+plugin: null
+
+provides:
+  rules: rules.yaml
+  # Phase 6 adds cards/*.yaml here. The engine phases below it only need rules.
+  cards: []

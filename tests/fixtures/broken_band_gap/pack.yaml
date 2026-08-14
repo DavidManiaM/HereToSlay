@@ -1,0 +1,5 @@
+id: broken_band_gap
+name: "Broken: outcome bands leave totals unmatched"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

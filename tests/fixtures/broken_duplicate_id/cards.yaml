@@ -1,0 +1,11 @@
+- id: broken_duplicate_id.hero.twin
+  kind: hero
+  name: "Twin"
+  card_class: bard
+  copies: 1
+
+- id: broken_duplicate_id.hero.twin
+  kind: hero
+  name: "Twin (again)"
+  card_class: fighter
+  copies: 1

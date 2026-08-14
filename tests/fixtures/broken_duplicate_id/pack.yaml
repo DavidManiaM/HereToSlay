@@ -1,0 +1,5 @@
+id: broken_duplicate_id
+name: "Broken: two cards claim the same id"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

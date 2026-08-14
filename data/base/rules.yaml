@@ -1,0 +1,149 @@
+# The base game, as data.
+#
+# This is the file a variant most wants to fork. Every number here is policy,
+# not mechanism: the Python engine only knows how to *walk* these tables.
+# A later pack can override any of it (deep merge, list entries merged by id).
+
+id: base
+
+classes: [bard, fighter, guardian, ranger, thief, wizard]
+
+setup:
+  starting_hand: 5
+  monster_row_size: 3
+  leader_selection: random
+  min_players: 2
+  max_players: 6
+
+turn:
+  action_points_per_turn: 3
+  hand_limit: null # null = no limit
+
+# --------------------------------------------------------------------------
+# Zones — cards live in exactly one of these, always.
+# --------------------------------------------------------------------------
+zones:
+  - { id: main_deck, scope: shared, visibility: hidden, ordered: true }
+  - { id: discard, scope: shared, visibility: public, ordered: true }
+  - { id: monster_deck, scope: shared, visibility: hidden, ordered: true }
+  - { id: monster_row, scope: shared, visibility: public, ordered: true, capacity: 3 }
+  - { id: leader_pool, scope: shared, visibility: hidden, ordered: true }
+  # in-flight cards, mid-resolution: a Challenge must know where to send them
+  - { id: limbo, scope: shared, visibility: public, ordered: false }
+  - { id: hand, scope: player, visibility: owner, ordered: false }
+  - { id: party, scope: player, visibility: public, ordered: false }
+  - { id: leader, scope: player, visibility: public, ordered: false }
+  - { id: slain, scope: player, visibility: public, ordered: false }
+
+# --------------------------------------------------------------------------
+# The action menu. Add, remove or re-cost freely; both UIs follow.
+# --------------------------------------------------------------------------
+actions:
+  - id: draw
+    label: "Draw a card"
+    cost: { action_points: 1 }
+    effect: { op: draw, target: $self, count: 1 }
+
+  - id: play_hero
+    label: "Play a Hero"
+    cost: { action_points: 1 }
+    requires:
+      op: has_card
+      player: $self
+      zone: { player: $self, zone: hand }
+      filter: { op: card_kind_is, kind: hero }
+    effect:
+      op: play_card_from_hand
+      card: $intent.card
+      kind: hero
+      challengeable: true
+
+  - id: use_hero_ability
+    label: "Use a Hero's ability"
+    cost: { action_points: 1 }
+    requires:
+      op: has_card
+      player: $self
+      zone: { player: $self, zone: party }
+      filter: { op: card_kind_is, kind: hero }
+    effect: { op: use_ability, card: $intent.card }
+
+  - id: attack_monster
+    label: "Attack a Monster"
+    cost: { action_points: 2 }
+    effect: { op: attack_monster, monster: $intent.target, attacker: $self }
+
+  - id: equip_item
+    label: "Equip an Item"
+    cost: { action_points: 1 }
+    requires:
+      op: has_card
+      player: $self
+      zone: { player: $self, zone: hand }
+      filter: { op: card_kind_is, kind: item }
+    effect: { op: equip_item, item: $intent.card, hero: $intent.target }
+
+  - id: cast_magic
+    label: "Cast a Magic card"
+    cost: { action_points: 1 }
+    requires:
+      op: has_card
+      player: $self
+      zone: { player: $self, zone: hand }
+      filter: { op: card_kind_is, kind: magic }
+    effect:
+      op: play_card_from_hand
+      card: $intent.card
+      kind: magic
+      challengeable: true
+
+  # Shipped off. A variant flips this to true — no Python involved.
+  - id: discard_and_draw
+    label: "Discard your hand, draw that many plus one"
+    cost: { action_points: 3 }
+    enabled: false
+    effect: { op: noop }
+
+# --------------------------------------------------------------------------
+# Turn structure. TurnMachine only knows how to walk this table.
+# --------------------------------------------------------------------------
+phases:
+  - id: turn_start
+    auto_advance: true
+    on_enter:
+      - op: set_action_points
+        target: $active_player
+        value: { expr: "$rules.turn.action_points_per_turn" }
+
+  - id: main
+    loop_while: { op: compare, left: $action_points, cmp: ">", right: 0 }
+    allows:
+      [draw, play_hero, use_hero_ability, attack_monster, equip_item, cast_magic]
+
+  - id: turn_end
+    auto_advance: true
+    on_enter:
+      - { op: enforce_hand_limit, target: $active_player }
+
+# --------------------------------------------------------------------------
+# Reaction windows. A variant may add its own and a card that reacts to it.
+# --------------------------------------------------------------------------
+windows:
+  card_played: { order: seat_left_of_active, reopen_on_action: true }
+  roll_modification: { order: seat_left_of_active, reopen_on_action: true }
+
+max_reaction_depth: 8
+
+# --------------------------------------------------------------------------
+# Victory — checked after every event resolution, not just at end of turn.
+# --------------------------------------------------------------------------
+victory:
+  - id: slay_three
+    text: "Slay 3 Monsters"
+    condition: { op: slain_count, player: $player, cmp: ">=", value: 3 }
+
+  - id: full_party
+    text: "Have a Hero of each class in your party"
+    condition: { op: party_covers_all_classes, player: $player }
+
+tiebreak: active_player

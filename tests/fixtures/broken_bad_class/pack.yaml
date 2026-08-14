@@ -1,0 +1,5 @@
+id: broken_bad_class
+name: "Broken: a class that rules.yaml does not declare"
+requires: [fixture_rules]
+provides:
+  cards: ["cards.yaml"]

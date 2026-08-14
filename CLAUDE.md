@@ -1,0 +1,1 @@
+Always generate a commit message after implementing something big / important. The commit message should be a concise summary of the change and should not contain any double quotes.

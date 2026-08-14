@@ -1,0 +1,8 @@
+- id: broken_bad_class.hero.paladin
+  kind: hero
+  name: "Paladin"
+  card_class: paladin # not in rules.classes
+  copies: 1
+  ability:
+    activation: action
+    effect: { op: draw, target: $self, count: 1 }

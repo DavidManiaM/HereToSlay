@@ -1,0 +1,76 @@
+# Four hand-written cards that exercise the interesting seams:
+# binding scope, roll bands, reactions, and leader triggers.
+
+- id: good.hero.pickpocket
+  kind: hero
+  name: "Pickpocket"
+  card_class: thief
+  copies: 2
+  text: "Roll 7 or better to steal a card at random."
+  ability:
+    activation: action
+    cost: { action_points: 1 }
+    once_per_turn: true
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: players, exclude: [$self] }
+                prompt: "Steal from whom?"
+              - op: if
+                condition: { op: hand_size, player: $victim, cmp: ">", value: 0 }
+                then:
+                  { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+                else: { op: draw, target: $self, count: 1 }
+        - max: 6
+          effect: { op: noop }
+
+- id: good.monster.slime
+  kind: monster
+  name: "Slime"
+  copies: 1
+  requirement: { op: party_has_class, player: $self, class: fighter, min: 1 }
+  requirement_text: "Requires 1 Fighter"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 4, max: 7, effect: { op: noop } }
+      - { max: 3, effect: { op: discard, target: $self, count: 1, chooser: $self } }
+  on_slay: { op: gain_action_points, target: $self, amount: 1 }
+
+- id: good.modifier.plus_two
+  kind: modifier
+  name: "+2"
+  copies: 4
+  text: "Add 2 to any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    condition: { op: always }
+    effect: { op: modify_roll, amount: 2, source: $card }
+
+- id: good.leader.song
+  kind: party_leader
+  name: "The Charismatic Song"
+  card_class: bard
+  copies: 2
+  text: "Each time you roll to use a Hero's ability, add 1."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }

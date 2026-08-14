@@ -1,0 +1,6 @@
+id: good
+name: "Well-formed fixture pack"
+version: "1.0.0"
+requires: [fixture_rules]
+provides:
+  cards: ["cards/*.yaml"]
