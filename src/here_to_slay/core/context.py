@@ -107,6 +107,10 @@ class Execution:
     #: what the step that just finished exported as a ``$binding`` (see
     #: :meth:`EffectContext.run_sequence`)
     pending_binding: tuple[str, Any] | None = None
+    #: every :class:`~here_to_slay.core.rolls.Roll` made in this run, oldest
+    #: first. Typed loosely because ``rolls`` builds contexts, so it may not be
+    #: imported here — and because it is a *record*, not a mechanism.
+    rolls: list[Any] = field(default_factory=list)
 
     def push(self, frame: EventFrame) -> EventFrame:
         frame.depth = len(self.stack)

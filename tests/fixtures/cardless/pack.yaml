@@ -1,0 +1,9 @@
+id: cardless
+name: "Draw-only rules over the table pack"
+version: "1.0.0"
+# Phase 4's acceptance test: a legal game with nothing but 'draw' on the menu,
+# so the turn machine, the cost system and the victory loop are the only things
+# under test. The cards come from 'table'; only the action list changes.
+requires: [table]
+provides:
+  rules: rules.yaml

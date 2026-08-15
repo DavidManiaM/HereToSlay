@@ -18,6 +18,10 @@ setup:
 turn:
   action_points_per_turn: 3
   hand_limit: null # null = no limit
+  # Run after every resolved action. *When* a new Monster turns up is policy,
+  # so it lives here rather than inside slay_monster.
+  after_action:
+    - { op: refill_monster_row }
 
 # --------------------------------------------------------------------------
 # Zones — cards live in exactly one of these, always.
@@ -37,6 +41,11 @@ zones:
 
 # --------------------------------------------------------------------------
 # The action menu. Add, remove or re-cost freely; both UIs follow.
+#
+# `targets:` is what makes the menu itself data: the engine expands each action
+# into one intent per legal combination, so "which Heroes may I play?" is a
+# selector plus a filter, never a Python branch. An action whose target has no
+# candidates is not offered at all.
 # --------------------------------------------------------------------------
 actions:
   - id: draw
@@ -47,11 +56,11 @@ actions:
   - id: play_hero
     label: "Play a Hero"
     cost: { action_points: 1 }
-    requires:
-      op: has_card
-      player: $self
-      zone: { player: $self, zone: hand }
-      filter: { op: card_kind_is, kind: hero }
+    targets:
+      - param: card
+        from: { selector: cards, of: { player: $self, zone: hand } }
+        where: { op: card_kind_is, kind: hero }
+        prompt: "Play which Hero?"
     effect:
       op: play_card_from_hand
       card: $intent.card
@@ -61,36 +70,51 @@ actions:
   - id: use_hero_ability
     label: "Use a Hero's ability"
     cost: { action_points: 1 }
-    requires:
-      op: has_card
-      player: $self
-      zone: { player: $self, zone: party }
-      filter: { op: card_kind_is, kind: hero }
+    targets:
+      - param: card
+        from: { selector: heroes, of: $self }
+        where:
+          op: all
+          of:
+            - { op: card_has_ability, activation: action }
+            - { op: not, of: { op: card_tapped } }
+        prompt: "Use which Hero's ability?"
     effect: { op: use_ability, card: $intent.card }
 
   - id: attack_monster
     label: "Attack a Monster"
     cost: { action_points: 2 }
+    targets:
+      - param: target
+        from: { selector: monster_row }
+        where: { op: requirement_met, player: $self }
+        prompt: "Attack which Monster?"
     effect: { op: attack_monster, monster: $intent.target, attacker: $self }
 
   - id: equip_item
     label: "Equip an Item"
     cost: { action_points: 1 }
-    requires:
-      op: has_card
-      player: $self
-      zone: { player: $self, zone: hand }
-      filter: { op: card_kind_is, kind: item }
-    effect: { op: equip_item, item: $intent.card, hero: $intent.target }
+    targets:
+      - param: card
+        from: { selector: cards, of: { player: $self, zone: hand } }
+        where: { op: card_kind_is, kind: item }
+        prompt: "Equip which Item?"
+    # Which Hero it may go to is the Item's own business (`equip.to`), so the
+    # op asks rather than the menu enumerating heroes it might not allow.
+    effect:
+      op: play_card_from_hand
+      card: $intent.card
+      kind: item
+      challengeable: true
 
   - id: cast_magic
     label: "Cast a Magic card"
     cost: { action_points: 1 }
-    requires:
-      op: has_card
-      player: $self
-      zone: { player: $self, zone: hand }
-      filter: { op: card_kind_is, kind: magic }
+    targets:
+      - param: card
+        from: { selector: cards, of: { player: $self, zone: hand } }
+        where: { op: card_kind_is, kind: magic }
+        prompt: "Cast which Magic card?"
     effect:
       op: play_card_from_hand
       card: $intent.card
@@ -127,10 +151,28 @@ phases:
 
 # --------------------------------------------------------------------------
 # Reaction windows. A variant may add its own and a card that reacts to it.
+#
+# `on:` + `timing:` say when a window opens; the bus opens it *inside* that
+# event's dispatch, which is what lets a Challenge cancel the very play it is
+# challenging. A window declared with no `on:` never opens by itself.
 # --------------------------------------------------------------------------
 windows:
-  card_played: { order: seat_left_of_active, reopen_on_action: true }
-  roll_modification: { order: seat_left_of_active, reopen_on_action: true }
+  card_played:
+    on: card.played
+    timing: pre
+    order: seat_left_of_active
+    reopen_on_action: true
+    # `challengeable: false` (a reaction card, or an action that says so) keeps
+    # the window shut without the engine knowing the word.
+    condition: { op: compare, left: $event.challengeable, cmp: "==", right: true }
+
+  roll_modification:
+    # Opens after the dice have landed and before the band is chosen, so a
+    # Modifier played here changes which outcome happens.
+    on: roll.resolved
+    timing: pre
+    order: seat_left_of_active
+    reopen_on_action: true
 
 max_reaction_depth: 8
 

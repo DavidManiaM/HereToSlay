@@ -32,7 +32,9 @@ from here_to_slay.content.schema import (
     ReactionDef,
     RollDef,
     RuleSet,
+    TargetDef,
     TriggerDef,
+    WindowDef,
 )
 from here_to_slay.content.vocabulary import (
     BASE_VOCABULARY,
@@ -40,6 +42,7 @@ from here_to_slay.content.vocabulary import (
     FILTER_REF,
     VALID_CMP,
     VALID_SCOPES,
+    WINDOW_ORDERS,
     OpKind,
     OpSpec,
     Role,
@@ -128,8 +131,16 @@ class _Validator:
             base = f"{path}.actions[{index}]"
             if action.requires is not None:
                 self.condition(action.requires, f"{base}.requires", scope)
+            for target_index, target in enumerate(action.targets):
+                self.check_target(target, f"{base}.targets[{target_index}]", scope)
             if action.effect is not None:
                 self.effect(action.effect, f"{base}.effect", scope)
+
+        for index, step in enumerate(self.rules.turn.after_action):
+            self.effect(step, f"{path}.turn.after_action[{index}]", scope)
+
+        for name, window in sorted(self.rules.windows.items()):
+            self.check_window(name, window, f"{path}.windows.{name}", scope)
 
         for index, phase in enumerate(self.rules.phases):
             base = f"{path}.phases[{index}]"
@@ -216,6 +227,38 @@ class _Validator:
         on_slay = getattr(card, "on_slay", None)
         if on_slay is not None:
             self.effect(on_slay, f"{base}.on_slay", scope)
+
+    def check_target(self, target: TargetDef, path: str, scope: Scope) -> None:
+        """An action's target list is what ``legal_intents()`` expands, so a
+        broken selector here is a menu that silently loses a legal move."""
+        self.selector(target.source, f"{path}.from", scope)
+        if target.where is not None:
+            self.condition(target.where, f"{path}.where", scope | {FILTER_REF})
+
+    def check_window(self, name: str, window: WindowDef, path: str, scope: Scope) -> None:
+        if window.order not in WINDOW_ORDERS:
+            self.error(
+                f"{path}.order",
+                f"unknown window order '{window.order}'",
+                _did_you_mean(window.order, WINDOW_ORDERS) or f"one of {sorted(WINDOW_ORDERS)}",
+            )
+        if window.on is None:
+            if window.condition is not None:
+                self.warn(
+                    f"{path}.condition",
+                    "a window with no 'on' event never opens by itself, so its "
+                    "condition is never evaluated",
+                )
+            return
+        if not self.vocab.knows_event(window.on) and window.on not in self.emitted_events:
+            self.error(
+                f"{path}.on",
+                f"unknown event '{window.on}'",
+                _did_you_mean(window.on, self.vocab.events)
+                or "no loaded card emits it either — see architecture_notes.md §3.3",
+            )
+        if window.condition is not None:
+            self.condition(window.condition, f"{path}.condition", scope)
 
     def check_trigger(self, trigger: TriggerDef, path: str, scope: Scope) -> None:
         if not self.vocab.knows_event(trigger.on) and trigger.on not in self.emitted_events:

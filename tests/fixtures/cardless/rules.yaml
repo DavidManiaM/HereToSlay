@@ -1,0 +1,6 @@
+# A one-line variant, which is the whole point: this file deep-merges over the
+# base rule set, and phase entries merge by id, so re-listing what 'main' allows
+# does not mean restating the phase table.
+phases:
+  - id: main
+    allows: [draw]

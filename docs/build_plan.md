@@ -185,20 +185,62 @@ silently doing nothing: `roll`, `modify_roll`, `reroll`, `contest_roll`, `set_ro
 
 ---
 
-## Phase 4 — Turn Machine, Rolls, Victory
+## Phase 4 — Turn Machine, Rolls, Victory `[x]`
 
 **Deliverable:** a legal but cardless game — draw, pass, end turn, detect a win.
 
-- [ ] `core/turn_machine.py` — walks the `phases` table from `rules.yaml`
-- [ ] `core/actions.py` — intent validation, `legal_intents()`, cost payment
-- [ ] `core/rolls.py` — the full roll pipeline (`rules_engine.md §4`), dice-string parser
-- [ ] `core/windows.py` — reaction windows, seat ordering, re-entrancy, depth cap
-- [ ] `core/victory.py` — condition loop, checked after every resolution
-- [ ] `core/engine.py` — `Engine` facade: `start`/`submit`/`view`/`legal_intents`
+- [x] `core/turn_machine.py` — walks the `phases` table from `rules.yaml`
+- [x] `core/actions.py` — intent validation, `legal_intents()`, cost payment
+- [x] `core/rolls.py` — the full roll pipeline (`rules_engine.md §4`), dice-string parser
+- [x] `core/windows.py` — reaction windows, seat ordering, re-entrancy, depth cap
+- [x] `core/victory.py` — condition loop, checked after every resolution
+- [x] `core/engine.py` — `Engine` facade: `start`/`submit`/`view`/`legal_intents`
+- [x] `core/effects/rolls.py` + `core/effects/actions.py` — the ops carried over from Phase 3
+- [x] Fixture packs `tests/fixtures/{play,cardless,deadlock}`
 
-**Acceptance:** 4 players, `draw` only, 20 turns, no invariant violations; forcing a victory
-condition ends the game at the right moment.
+**Acceptance:** ✅ 4 players on a draw-only rule set play 20 turns and 60 actions with zero
+invariant violations; a game seeded so the third Monster dies ends *on that attack*, mid-turn,
+not at end of turn; a whole game replays from its log to a byte-identical state.
+`uv run pytest` → 468 passed, and again under `HTS_STRICT=1`.
 **Not yet:** UI beyond a test harness.
+
+### Decisions taken during Phase 4
+
+1. **The action menu is data too.** `legal_intents()` cannot enumerate "which Heroes may I play?"
+   from a `requires:` condition — a predicate answers yes/no, it does not produce a list. So
+   `ActionDef` gained `targets: [{param, from, where, prompt}]`, and the engine expands an action
+   into one `Intent` per legal combination. An action whose target has no candidates is simply not
+   offered, which is why "you may only play a Hero if you're holding one" now needs no `requires:`
+   at all. This is the seam that keeps the CLI, pygame and the AI from each re-deriving legality.
+2. **Windows declare when they open** (`on:`, `timing:`, `condition:` on `WindowDef`), and the
+   *bus* opens them. A Challenge has to cancel the `card.played` it is challenging, so the window
+   must run inside that dispatch's PRE phase — opening it around the emit would leave the Challenge
+   nothing to cancel. Putting the trigger in data rather than in `play_card_from_hand` is also what
+   makes `rules_engine.md §5`'s claim true: a variant adds a `damage_prevention` window on its own
+   event with zero engine edits. `challengeable: false` reaches the bus as a window `condition`
+   over `$event.challengeable`, so the bus never learns the word.
+3. **`roll_modification` opens on `roll.resolved` PRE**, between the dice landing and the band
+   being chosen. That ordering is the whole reason a Modifier changes *which outcome happens*
+   rather than just a number, and it is one line of YAML.
+4. **Rolls are objects passed by reference.** `Roll` is mutable and travels in `ctx.roll` and in
+   the event payload, because a Modifier played three frames deep has to reach *this* roll.
+   `Event.__getattr__` was added so `$event.roll.total` and `$event.challengeable` work — content
+   invents payload keys, and a window condition has to be able to read one.
+5. **One step at a time.** `TurnMachine.step()` performs exactly one atomic piece of a turn and
+   returns, so between steps the game is *quiescent* and therefore saveable (`rules_engine.md §6`).
+   One long generator for the whole game would have been simpler and never saveable.
+6. **Two termination guards, both found by tests rather than reasoned about.** A phase that loops
+   while nothing is legal ends (`tests/fixtures/deadlock`), and a phase whose actions keep being
+   *cancelled before they pay for anything* ends after three refusals — the fixture leader "you may
+   not draw" turned an infinite menu loop into an infinite game before that guard existed.
+7. **Costs answer twice.** `@cost` handlers take `check_only`, so `can_afford()` (a plain function
+   the UI may call every frame) shares one implementation with payment. A cost that tries to ask a
+   question during an affordability check raises rather than half-suspending.
+8. **Victory is checked after every action and at every phase boundary**, not inside a dispatch.
+   Mid-Challenge the board is provisional — a Modifier still to be played can undo the slay that
+   would have won — so the check lands at the first point where the board is settled again.
+9. **`turn.after_action`** in `rules.yaml` is where `refill_monster_row` finally got wired,
+   honouring Phase 3's decision 9: *when* a new Monster turns up is policy.
 
 ---
 
@@ -319,17 +361,21 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–3 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs 352 tests,
+**Phases 0–4 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs 468 tests,
 and the whole suite also passes under `HTS_STRICT=1` (invariants checked after every mutation).
 
-The engine can now execute an arbitrary effect tree: it suspends for decisions, dispatches events
-through PRE/RESOLVE/POST, lets cards cancel each other, and replays a decision log to a
-byte-identical state. What it cannot do yet is *start a turn* — nothing calls the interpreter on
-its own.
+**The game is playable by an agent, end to end.** `Engine.new(content, players, seed=...)` deals a
+table, starts turns, offers each seat a legal menu computed from `rules.yaml`, pays costs, rolls
+dice through the modifier pipeline, opens reaction windows in seat order, checks victory after
+every action, and replays the whole thing from its decision log to a byte-identical state. Every
+op the vocabulary declares now has a handler.
 
-Next up is **Phase 4 — Turn Machine, Rolls, Victory**: `turn_machine.py`, `actions.py`, `rolls.py`,
-`windows.py`, `victory.py` and the `Engine` facade, plus the roll and action ops listed under
-"Carried into Phase 4" above.
+What is missing is a *human* in that loop, and cards worth playing.
+
+Next up is **Phase 5 — CLI: Playable Head-to-Head**: `ui/cli/render.py` and `ui/cli/presenter.py`
+over the `Engine` facade, plus `hts play --seed` and `hts replay <log>`. The engine side is
+already shaped for it — `legal_intents()` is the numbered menu, `Request.requester` is who to
+prompt, `GameView` is what to draw, and `Roll.describe()` is the dice line.
 
 Open questions blocking later phases are collected in `rules_reference.md §5`. Only Phase 6 (base
 card content) is actually blocked by them.

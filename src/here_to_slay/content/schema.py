@@ -316,11 +316,39 @@ class ZoneDef(Frozen):
     capacity: int | None = None
 
 
+class TargetDef(Frozen):
+    """One thing an action must be pointed at before it can be declared.
+
+    This is what makes ``legal_intents()`` data-driven: the engine expands an
+    action into one concrete :class:`~here_to_slay.core.interpreter.Intent` per
+    legal combination of targets, so a CLI menu and a pygame highlight both come
+    from the same table and neither re-implements "which Heroes may I play?".
+
+    ``param`` names where the choice lands on the intent: ``card`` and ``target``
+    are the intent's own fields, anything else goes in ``params``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    param: str = "card"
+    source: SelectorNode = Field(alias="from")
+    where: ConditionNode | None = None
+    prompt: str = ""
+
+    @field_validator("param")
+    @classmethod
+    def _param_is_a_slug(cls, value: str) -> str:
+        if not SLUG_PATTERN.match(value):
+            raise ValueError(f"target param names are lower_snake_case slugs, got {value!r}")
+        return value
+
+
 class ActionDef(Frozen):
     id: str
     label: str = ""
     cost: Cost = Field(default_factory=dict)
     requires: ConditionNode | None = None
+    targets: list[TargetDef] = Field(default_factory=list)
     effect: EffectNode | None = None
     enabled: bool = True
 
@@ -341,8 +369,23 @@ class PhaseDef(Frozen):
 
 
 class WindowDef(Frozen):
+    """A reaction window, and *when it opens*.
+
+    ``on``/``timing`` are what keep windows data (``rules_engine.md §5``): the
+    bus opens a declared window during that event's phase, so a variant can add
+    a ``damage_prevention`` window on its own event with no engine edit. A
+    window with no ``on`` never opens by itself and must be opened by an op.
+
+    ``condition`` gates it — the base game uses it for "…unless this card was
+    played uncontestably", which is how ``challengeable: false`` reaches the bus
+    without the bus knowing the word.
+    """
+
     order: str = "seat_left_of_active"
     reopen_on_action: bool = True
+    on: str | None = None
+    timing: Timing = "pre"
+    condition: ConditionNode | None = None
 
 
 class VictoryDef(Frozen):
@@ -362,6 +405,9 @@ class SetupRules(Frozen):
 class TurnRules(Frozen):
     action_points_per_turn: int = 3
     hand_limit: int | None = None
+    #: run after every resolved action — where "the Monster row refills" lives,
+    #: because *when* a new Monster turns up is policy, not mechanism
+    after_action: list[EffectNode] = Field(default_factory=list)
 
 
 class RuleSet(Frozen):

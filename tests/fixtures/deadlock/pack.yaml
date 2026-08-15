@@ -1,0 +1,9 @@
+id: deadlock
+name: "A main phase that never ends and allows nothing"
+version: "1.0.0"
+# A deliberately broken variant: the phase says "loop forever" and offers no
+# actions. The engine has to notice that a menu with nothing in it is a
+# deadlock, not a turn, and end the phase anyway.
+requires: [table]
+provides:
+  rules: rules.yaml

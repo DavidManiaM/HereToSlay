@@ -65,6 +65,42 @@ def _card_has_tag(ctx: EffectContext, params: Params) -> bool:
     return bool(wanted & set(definition.tags))
 
 
+@condition("card_tapped")
+def _card_tapped(ctx: EffectContext, params: Params) -> bool:
+    """"Already used this turn" — what keeps a once-per-turn Hero out of the menu."""
+    return bool(ctx.state.card(subject(ctx, params)).tapped)
+
+
+@condition("card_has_ability")
+def _card_has_ability(ctx: EffectContext, params: Params) -> bool:
+    """Does this card declare an activated ability?
+
+    Without it, ``use_hero_ability`` would offer every Hero in the party and then
+    fail on the ones that are just a body — the menu has to be honest.
+    """
+    ability = getattr(ctx.definition(subject(ctx, params)), "ability", None)
+    if ability is None:
+        return False
+    wanted = _values(ctx.resolve(params.get("activation")))
+    return not wanted or ability.activation in wanted
+
+
+@condition("requirement_met")
+def _requirement_met(ctx: EffectContext, params: Params) -> bool:
+    """Evaluate a card's *own* ``requirement`` block for a player.
+
+    This is the Monster gate ("Requires 2 Fighters"), asked from outside the
+    card: the action menu needs to know which Monsters a seat may attack, and
+    only the Monster knows what it demands.
+    """
+    card = subject(ctx, params)
+    requirement = getattr(ctx.definition(card), "requirement", None)
+    if requirement is None:
+        return True
+    player = ctx.resolve_player(params.get("player"))
+    return ctx.derive(self_player=player, source=card).test(requirement)
+
+
 @condition("event_actor_is")
 def _event_actor_is(ctx: EffectContext, params: Params) -> bool:
     if ctx.event is None:

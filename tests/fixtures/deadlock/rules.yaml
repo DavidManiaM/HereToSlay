@@ -1,0 +1,4 @@
+phases:
+  - id: main
+    loop_while: { op: always }
+    allows: []

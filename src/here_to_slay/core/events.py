@@ -95,6 +95,21 @@ class Event:
     def target(self) -> Any:
         return self.payload.get("target")
 
+    def __getattr__(self, name: str) -> Any:
+        """``$event.challengeable`` — any payload key, addressable as a path.
+
+        The documented refs (``$event.player``, ``$event.card``) are properties;
+        content invents payload keys freely, and a window's ``condition`` has to
+        be able to read one. Dunder lookups are excluded so copying, pickling
+        and dataclass machinery still behave.
+        """
+        if name.startswith("_"):
+            raise AttributeError(name)
+        payload = object.__getattribute__(self, "payload")
+        if name in payload:
+            return payload[name]
+        raise AttributeError(f"event '{self.name}' has no '{name}' in its payload")
+
     @property
     def noun(self) -> str:
         """``card`` in ``card.drawn`` — what the event is *about*."""

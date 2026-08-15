@@ -190,6 +190,9 @@ condition:
 | `has_card` | `player`, `zone`, `filter` |
 | `slain_count` | `player`, `cmp`, `value` |
 | `card_has_tag` | `card`, `tag` |
+| `card_tapped` | `card` — already used this turn |
+| `card_has_ability` | `card`, `activation?` — does it declare an activated ability? |
+| `requirement_met` | `card`, `player` — evaluate that card's own `requirement` block |
 | `event_actor_is` | `player` |
 | `event_matches` | `kind_in?`, `class_in?`, `tag_in?`, `played_by?` |
 | `roll_is` | `kind`, `roller?` |
@@ -235,6 +238,10 @@ from: {selector: heroes, of: $opponents, where: {op: card_class_is, class: fight
 | `monster_row` | — | the face-up monsters |
 
 **Zone refs**: `{player: $self, zone: hand}` or a shared name: `{zone: discard}`.
+
+**Action targets** (`rules.actions[].targets`) use the same selector + filter pair, and are what
+turn an action into concrete menu entries — see §7. `$intent.card` and `$intent.target` read the
+choice back inside the action's effect; any other `param` name lands in `$intent.params.<name>`.
 
 ---
 
@@ -402,6 +409,8 @@ setup:
 turn:
   action_points_per_turn: 3
   hand_limit: null              # null = no limit
+  after_action:                 # runs after every resolved action
+    - {op: refill_monster_row}
 
 actions:                        # THE action menu; add/remove/re-cost freely
   - id: draw
@@ -411,8 +420,12 @@ actions:                        # THE action menu; add/remove/re-cost freely
   - id: play_hero
     label: "Play a Hero"
     cost: {action_points: 1}
-    requires: {op: has_card, player: $self, zone: hand, filter: {op: card_kind_is, kind: hero}}
-    effect: {op: play_card_from_hand, kind: hero, challengeable: true}
+    targets:                    # -> one menu entry per Hero in hand
+      - param: card             # fills Intent.card, readable as $intent.card
+        from: {selector: cards, of: {player: $self, zone: hand}}
+        where: {op: card_kind_is, kind: hero}
+        prompt: "Play which Hero?"
+    effect: {op: play_card_from_hand, card: $intent.card, kind: hero, challengeable: true}
   - id: use_hero_ability
     cost: {action_points: 1}
   - id: attack_monster
@@ -426,8 +439,17 @@ actions:                        # THE action menu; add/remove/re-cost freely
     enabled: false              # shipped off; flip to true in a variant
 
 windows:
-  card_played:      {order: seat_left_of_active, reopen_on_action: true}
-  roll_modification: {order: seat_left_of_active, reopen_on_action: true}
+  card_played:
+    on: card.played             # the bus opens it during this event...
+    timing: pre                 # ...in this phase, so a Challenge can cancel it
+    condition: {op: compare, left: $event.challengeable, cmp: "==", right: true}
+    order: seat_left_of_active
+    reopen_on_action: true
+  roll_modification:
+    on: roll.resolved           # after the dice land, before the band is chosen
+    timing: pre
+    order: seat_left_of_active
+    reopen_on_action: true
 max_reaction_depth: 8
 
 victory:

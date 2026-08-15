@@ -23,6 +23,11 @@ legal**, the CLI prints it as a numbered menu and pygame highlights the correspo
 Neither ever re-implements a rule. When your variant changes what's legal, both UIs follow with
 zero edits.
 
+For that to hold, legality has to be data. An action declares its `targets:` (a selector plus a
+filter, `card_schemas.md §7`) and the engine expands it into one `Intent` per legal combination —
+so "which Heroes may I play?" is a YAML question. An action whose target has no candidates is not
+offered at all.
+
 ---
 
 ## 2. The Main Loop
@@ -115,17 +120,20 @@ roll.started  ─── PRE ───►  passives inject Modifiers (leaders, it
       ▼
    dice rolled from state.rng  (logged)
       ▼
-roll_modification WINDOW  ──► each player, in seat order left of the roller,
-      ▲         │              may play Modifier cards (free). Any play
-      └─ reopen ┘              re-opens the window (a Modifier can be
-                               countered by another Modifier).
+roll.resolved ─── PRE ───►  the `roll_modification` WINDOW opens here: each
+      │     ▲         │      player, in seat order, may play Modifier cards
+      │     └─ reopen ┘      (free). Any play re-opens the window, so a
+      │                      Modifier can be countered by another Modifier.
+      │                      Each one emits `roll.modified`; other cards react.
       ▼
-roll.modified  ─── each played Modifier emits this; other cards may react
-      ▼
-roll.resolved  ─── total computed, matching Band selected
+   total read, matching Band selected
       ▼
    band effect executed
 ```
+
+The window hangs off `roll.resolved` rather than off a line of Python: `rules.yaml` says
+`roll_modification: {on: roll.resolved, timing: pre}`. Landing there — after the dice, before the
+total is read — is what makes a Modifier change *which outcome happens*.
 
 **Key decisions:**
 - Modifiers are *additive integers with a source*, so "ignore Modifiers played by your opponents"
@@ -166,8 +174,16 @@ Properties that matter:
   card can't hang the engine.
 - **Skipped automatically** when nobody holds a legal reaction — so a 2-player game with no
   Challenge cards in hand costs zero prompts. The CLI and pygame never see a window they can't act in.
-- **Windows are data.** `rules.windows` declares them; a variant can add a `damage_prevention`
-  window and a card that reacts to it, with no engine edit.
+- **Windows are data, including *when* they open.** A window declares `on:` (an event name) and
+  `timing:`, and the **bus** opens it during that event's dispatch — which is exactly why a
+  Challenge's `cancel_event` reaches the `card.played` it is challenging. An optional `condition:`
+  gates it; that is how `challengeable: false` keeps the window shut without the bus ever learning
+  the word. So a variant can add a `damage_prevention` window on its own event, and a card that
+  reacts to it, with no engine edit.
+- **Reaction cards are played from hand**, moved through `limbo`, announced as a `card.played`
+  like any other card, and spent to the discard once resolved. A variant whose Challenges are
+  themselves challengeable sets `challengeable: true` in the card's `reaction` block and gets
+  challenge-a-challenge for free — the depth cap bounds it.
 
 ---
 
@@ -206,6 +222,9 @@ The test of the design: for each rule, which file changes if the variant changes
 |---|---|
 | "3 action points per turn" | `rules.yaml → turn.action_points_per_turn` |
 | "attacking costs 2" | `rules.yaml → actions[attack_monster].cost` |
+| "you may only play Heroes from your hand" | `rules.yaml → actions[play_hero].targets` |
+| "the Monster row refills after each action" | `rules.yaml → turn.after_action` |
+| "a Challenge may interrupt a play" | `rules.yaml → windows[card_played].on` |
 | "slay 3 monsters to win" | `rules.yaml → victory[]` |
 | "6 classes exist" | `rules.yaml → classes` |
 | "Challenge beats Hero on a higher roll" | `cards/challenges.yaml` |

@@ -1,0 +1,10 @@
+id: play
+name: "Cards with something to point at"
+version: "1.0.0"
+# The real base rules, plus one card of every kind the Phase 4 action menu can
+# reach: a Hero with a rolling ability, a Hero with none, an Item, a Magic card,
+# a Modifier, a Challenge, a Monster that always dies and one that never does.
+# Values are chosen to be assertable, not balanced.
+requires: [base]
+provides:
+  cards: ["cards/*.yaml"]

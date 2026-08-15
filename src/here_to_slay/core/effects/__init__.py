@@ -16,10 +16,12 @@ Importing this package registers every op in it.
 """
 
 from here_to_slay.core.effects import (
+    actions,
     cards,
     control,
     meta,
     party,
+    rolls,
 )
 
-__all__ = ["cards", "control", "meta", "party"]
+__all__ = ["actions", "cards", "control", "meta", "party", "rolls"]

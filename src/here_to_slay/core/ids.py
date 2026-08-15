@@ -22,6 +22,7 @@ from typing import NewType
 PlayerId = NewType("PlayerId", str)
 CardId = NewType("CardId", str)
 ZoneId = NewType("ZoneId", str)
+RollId = NewType("RollId", str)
 
 #: separates a zone's kind from its owner: ``hand:p1``
 ZONE_SEPARATOR = ":"
@@ -61,6 +62,12 @@ def card_id(def_id: str, copy_number: int) -> CardId:
 def def_id_of(value: CardId | str) -> str:
     """The definition id a card instance was minted from."""
     return str(value).partition(COPY_SEPARATOR)[0]
+
+
+def roll_id(number: int) -> RollId:
+    """``roll#1`` — numbered within one top-level execution, so a decision log
+    and an invariant report can both name the roll they mean."""
+    return RollId(f"roll{COPY_SEPARATOR}{number}")
 
 
 def copy_number_of(value: CardId | str) -> int:

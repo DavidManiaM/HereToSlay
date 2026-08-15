@@ -18,8 +18,10 @@ from here_to_slay.core import (  # noqa: F401  (imported for registration)
     mutators,
     selectors,
 )
+from here_to_slay.core.actions import legal_intents, perform_action
 from here_to_slay.core.bus import dispatch, subscriptions_for
 from here_to_slay.core.context import EffectContext, Execution
+from here_to_slay.core.engine import Engine
 from here_to_slay.core.errors import (
     EffectError,
     EngineError,
@@ -75,9 +77,13 @@ from here_to_slay.core.registry import (
     selector,
 )
 from here_to_slay.core.rng import DeterministicRng
+from here_to_slay.core.rolls import Modifier, Roll, perform_roll
 from here_to_slay.core.setup import new_game
 from here_to_slay.core.state import CardInstance, GameState, PlayerState, diff_snapshots
+from here_to_slay.core.turn_machine import TurnMachine
+from here_to_slay.core.victory import Victory, check_victory, find_winner
 from here_to_slay.core.view import GameView, build_view
+from here_to_slay.core.windows import open_window, playable_reactions
 from here_to_slay.core.zones import Zone
 
 __all__ = [
@@ -102,6 +108,7 @@ __all__ = [
     "DeterministicRng",
     "EffectContext",
     "EffectError",
+    "Engine",
     "EngineError",
     "EngineInvariantError",
     "Event",
@@ -116,6 +123,7 @@ __all__ = [
     "Interpreter",
     "LogSource",
     "LoggedDecision",
+    "Modifier",
     "Option",
     "OptionChosen",
     "Outcome",
@@ -128,11 +136,14 @@ __all__ = [
     "ReactionPrompt",
     "ReplayError",
     "Request",
+    "Roll",
     "ScriptedSource",
     "SetupError",
     "Status",
+    "TurnMachine",
     "UnknownOpError",
     "Verdict",
+    "Victory",
     "Zone",
     "ZoneCapacityError",
     "ZoneError",
@@ -140,6 +151,7 @@ __all__ = [
     "build_view",
     "card_id",
     "check_state",
+    "check_victory",
     "condition",
     "cost",
     "diff_snapshots",
@@ -147,8 +159,14 @@ __all__ = [
     "drive",
     "effect",
     "find_violations",
+    "find_winner",
+    "legal_intents",
     "mutator",
     "new_game",
+    "open_window",
+    "perform_action",
+    "perform_roll",
+    "playable_reactions",
     "player_id",
     "registered_ops",
     "replay",

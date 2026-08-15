@@ -205,7 +205,10 @@ _EFFECTS: tuple[OpSpec, ...] = (
     OpSpec("reveal", OpKind.EFFECT, _p(card=R.REF, zone=R.ZONE, count=R.VALUE, to=R.REF)),
     OpSpec("shuffle", OpKind.EFFECT, _p(zone=(R.ZONE, REQ))),
     OpSpec(
-        "play_card_from_hand", OpKind.EFFECT, _p(kind=R.VALUE, card=R.REF, challengeable=R.VALUE)
+        "play_card_from_hand",
+        OpKind.EFFECT,
+        _p(kind=R.VALUE, card=R.REF, challengeable=R.VALUE, hero=R.REF),
+        doc="hand -> limbo -> wherever the card's own kind says it goes",
     ),
     # -- party & board --
     OpSpec(
@@ -301,6 +304,24 @@ _CONDITIONS: tuple[OpSpec, ...] = (
     ),
     OpSpec("card_has_tag", OpKind.CONDITION, _p(card=R.REF, tag=(R.VALUE, REQ))),
     OpSpec("card_kind_is", OpKind.CONDITION, _p(card=R.REF, kind=(R.VALUE, REQ))),
+    OpSpec(
+        "card_tapped",
+        OpKind.CONDITION,
+        _p(card=R.REF),
+        doc="has this card already been used this turn?",
+    ),
+    OpSpec(
+        "card_has_ability",
+        OpKind.CONDITION,
+        _p(card=R.REF, activation=R.VALUE),
+        doc="does this card declare an activated ability?",
+    ),
+    OpSpec(
+        "requirement_met",
+        OpKind.CONDITION,
+        _p(card=R.REF, player=R.REF),
+        doc="does this card's own 'requirement' hold for a player? (the Monster gate)",
+    ),
     OpSpec("card_class_is", OpKind.CONDITION, _p(card=R.REF, **{"class": ParamSpec(R.VALUE, REQ)})),  # type: ignore[arg-type]
     OpSpec("event_actor_is", OpKind.CONDITION, _p(player=(R.REF, REQ))),
     OpSpec(
@@ -389,6 +410,13 @@ FILTER_REF = "candidate"
 
 VALID_CMP: frozenset[str] = frozenset({"==", "!=", "<", "<=", ">", ">="})
 VALID_SCOPES: frozenset[str] = frozenset({"game", "player", "card"})
+
+#: seat orders a reaction window may poll in (``rules.windows[...].order``).
+#: Declared here, next to the rest of the language, so ``hts validate`` catches
+#: a typo in a variant's window rather than the engine raising mid-game.
+WINDOW_ORDERS: frozenset[str] = frozenset(
+    {"seat_left_of_active", "seat_left_of_actor", "active_first", "turn_order"}
+)
 
 
 # ---------------------------------------------------------------------------

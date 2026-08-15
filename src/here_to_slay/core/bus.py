@@ -20,6 +20,12 @@ list cannot: an ability cannot leak after its card leaves play, save/load needs
 no bookkeeping, and an AI rollout that clones the state clones the subscriptions
 with it for free.
 
+**Reaction windows open inside the frame.** ``rules.yaml`` declares which event
+and phase a window opens on; :func:`_open_windows` polls it after that phase's
+card subscribers have run. That is what lets a Challenge played into
+``card_played`` cancel the very event it is challenging — the alternative,
+opening the window around the dispatch, would leave it nothing to cancel.
+
 **Ordering is total and deterministic.** Subscribers sort by
 ``(-priority, zone_kind, seat_distance, card_id, trigger_index)`` — never a dict
 or set iteration order. Replay depends on it, so the sort key is written out in
@@ -40,6 +46,7 @@ from here_to_slay.core.ids import CardId, PlayerId, zone_kind
 from here_to_slay.core.invariants import check_if_strict
 from here_to_slay.core.registry import MUTATORS
 from here_to_slay.core.state import GameState
+from here_to_slay.core.windows import open_window
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from here_to_slay.core.context import EffectContext, Execution
@@ -196,6 +203,32 @@ def _run_phase(ctx: EffectContext, frame: EventFrame, phase: Phase) -> Flow:
         _mark_fired(state, subscription)
         frame.handled_by.append(subscription.card)
         yield from child.run(subscription.trigger.effect)
+    yield from _open_windows(ctx, frame, phase)
+
+
+def _open_windows(ctx: EffectContext, frame: EventFrame, phase: Phase) -> Flow:
+    """Open every reaction window ``rules.yaml`` declares for this event+phase.
+
+    Windows run *after* this phase's card subscribers, so a passive that says
+    "this cannot be challenged" gets to cancel or modify before anyone is asked.
+
+    They run *inside* the frame, which is the point: a Challenge's
+    ``cancel_event`` reaches the event it is challenging. Nothing here knows
+    what a Challenge is — only that ``rules.windows`` said to ask.
+    """
+    if frame.cancelled:
+        return
+    windows = ctx.execution.state.rules.windows
+    for name in sorted(windows):
+        window = windows[name]
+        if window.on != frame.event.name or window.timing != phase.value:
+            continue
+        child = ctx.derive(event=frame.event, intent=None, bindings={})
+        if not child.test(window.condition):
+            continue
+        yield from open_window(child, name, frame.event)
+        if frame.cancelled:
+            return
 
 
 def _still_live(state: GameState, subscription: Subscription) -> bool:

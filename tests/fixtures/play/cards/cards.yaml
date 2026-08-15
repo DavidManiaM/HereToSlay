@@ -1,0 +1,186 @@
+# Deck arithmetic:
+#   main_deck    4+4+3+3+6+6 = 26  (enough to deal four 5-card hands)
+#   monster_deck 3+3         =  6
+#   leader_pool  1+1+1+1     =  4
+
+# --------------------------------------------------------------------------
+# Heroes
+# --------------------------------------------------------------------------
+
+# An ability that rolls. 7+ draws, anything lower does nothing — so a +2
+# Modifier played into the roll window is visible in the hand size afterwards.
+- id: play.hero.striker
+  kind: hero
+  name: "Striker"
+  card_class: fighter
+  copies: 4
+  text: "Roll 2d6. 7+: draw a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - { min: 7, effect: { op: draw, target: $self, count: 1 } }
+        - { max: 6, effect: { op: noop } }
+
+# No ability at all: it must never appear in the use_hero_ability menu.
+- id: play.hero.lump
+  kind: hero
+  name: "Lump"
+  card_class: guardian
+  copies: 4
+  text: "Just a body."
+
+# --------------------------------------------------------------------------
+# Item, Magic
+# --------------------------------------------------------------------------
+
+- id: play.item.charm
+  kind: item
+  name: "Charm"
+  copies: 3
+  text: "Equip to one of your Heroes."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+
+- id: play.magic.bolt
+  kind: magic
+  name: "Bolt"
+  copies: 3
+  text: "Draw a card."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect: { op: draw, target: $self, count: 1 }
+
+# --------------------------------------------------------------------------
+# Reaction cards
+# --------------------------------------------------------------------------
+
+- id: play.modifier.plus_two
+  kind: modifier
+  name: "+2"
+  copies: 6
+  text: "Add 2 to any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect: { op: modify_roll, amount: 2, source: $card }
+
+- id: play.challenge.challenge
+  kind: challenge
+  name: "Challenge"
+  copies: 6
+  text: "Contest a card somebody else is playing."
+  reaction:
+    window: card_played
+    challengeable: false
+    condition:
+      op: event_matches
+      kind_in: [hero, item, magic]
+      played_by: { op: not_self }
+    effect:
+      op: contest_roll
+      a: { roller: $self, dice: "2d6", kind: challenge }
+      b: { roller: $event.player, dice: "2d6", kind: challenge }
+      on_a_wins: { op: cancel_event, and_discard: true, reason: "Challenged" }
+      on_b_wins: { op: noop }
+      on_tie: { op: noop } # base rule: a tie goes to the defender
+
+# A Challenge with no contest in it: it simply wins. Real Challenges roll, and a
+# test that wants to assert what a *won* challenge does should not have to hunt
+# for a seed where the dice cooperate.
+- id: play.challenge.veto
+  kind: challenge
+  name: "Veto"
+  copies: 2
+  text: "Cancel a card somebody else is playing."
+  reaction:
+    window: card_played
+    challengeable: false
+    condition:
+      op: event_matches
+      kind_in: [hero, item, magic]
+      played_by: { op: not_self }
+    effect: { op: cancel_event, and_discard: true, reason: "Vetoed" }
+
+# --------------------------------------------------------------------------
+# Monsters
+# --------------------------------------------------------------------------
+
+# No requirement, and every total slays it: the assertable win condition.
+- id: play.monster.pushover
+  kind: monster
+  name: "Pushover"
+  copies: 3
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 2, effect: { op: slay_monster, monster: $card, by: $self } }
+  on_slay: { op: gain_action_points, target: $self, amount: 1 }
+
+# Needs a Fighter in the party, and survives whatever you roll.
+- id: play.monster.wall
+  kind: monster
+  name: "Wall"
+  copies: 3
+  requirement: { op: party_has_class, player: $self, class: fighter, min: 1 }
+  requirement_text: "Requires 1 Fighter"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { max: 12, effect: { op: noop } }
+
+# --------------------------------------------------------------------------
+# Party Leaders
+# --------------------------------------------------------------------------
+
+# A passive that injects a Modifier before the dice are even read — the shape
+# every "+1 to your rolls" leader has.
+- id: play.leader.lucky
+  kind: party_leader
+  name: "The Lucky Charm"
+  card_class: bard
+  text: "Add 1 to each of your rolls."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition: { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+# Cancels an action before it is paid for: the PRE hook every "you may not X
+# this turn" card hangs off.
+- id: play.leader.pacifist
+  kind: party_leader
+  name: "The Pacifist"
+  card_class: guardian
+  text: "You may not draw."
+  triggers:
+    - on: action.declared
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: compare, left: $event.action, cmp: "==", right: draw }
+          - { op: event_actor_is, player: $self }
+      effect: { op: cancel_event, reason: "The Pacifist" }
+
+- id: play.leader.plain_one
+  kind: party_leader
+  name: "The Plain One"
+  card_class: fighter
+- id: play.leader.plain_two
+  kind: party_leader
+  name: "The Plain Two"
+  card_class: guardian
+- id: play.leader.plain_three
+  kind: party_leader
+  name: "The Plain Three"
+  card_class: wizard
