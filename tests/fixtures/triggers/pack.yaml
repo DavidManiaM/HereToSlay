@@ -1,0 +1,10 @@
+id: triggers
+name: "Cards that exist to be reacted to"
+version: "1.0.0"
+# The base rules again (so windows, zones and the depth cap are the shipping
+# ones), plus Heroes whose only purpose is to subscribe to something. Every
+# card here is a probe for one bus property: PRE cancellation, POST reaction,
+# once_per_turn, ordering by priority, and runaway recursion.
+requires: [base]
+provides:
+  cards: ["cards/*.yaml"]

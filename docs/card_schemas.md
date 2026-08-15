@@ -117,11 +117,11 @@ effect:
 **Cards & zones**
 | op | params |
 |---|---|
-| `draw` | `target`, `count` |
-| `discard` | `target`, `count`, `random?`, `chooser?`, `filter?` |
+| `draw` | `target`, `count`, `from?` (zone ref; defaults to `main_deck`) |
+| `discard` | `target`, `count`, `random?`, `chooser?`, `filter?`, `zone?` |
 | `move_card` | `card`, `to` (zone ref), `position?` (`top`/`bottom`/`random`) |
-| `steal_card` | `from`, `to`, `count`, `random?` |
-| `search` | `zone`, `filter`, `count`, `then` (effect on found) |
+| `steal_card` | `from`, `to`, `count`, `random?`, `chooser?` |
+| `search` | `zone`, `filter`, `count`, `bind` (names what was found), `then` (effect) |
 | `reveal` | `card`/`zone`, `count`, `to` (audience) |
 | `shuffle` | `zone` |
 

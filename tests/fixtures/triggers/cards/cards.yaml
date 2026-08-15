@@ -1,0 +1,95 @@
+# main_deck: 6 heroes x 2 copies = 12, enough to deal two 5-card hands.
+
+# Reacts *after* a draw: the plainest POST subscriber there is.
+- id: triggers.hero.scribe
+  kind: hero
+  name: "Scribe"
+  card_class: wizard
+  copies: 2
+  text: "Whenever you draw a card, gain an action point."
+  triggers:
+    - on: card.drawn
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: gain_action_points, target: $self, amount: 1 }
+
+# The same, but only the first time each turn.
+- id: triggers.hero.hoarder
+  kind: hero
+  name: "Hoarder"
+  card_class: thief
+  copies: 2
+  text: "The first time you draw each turn, gain 10 action points."
+  triggers:
+    - on: card.drawn
+      timing: post
+      while_in: party
+      once_per_turn: true
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: gain_action_points, target: $self, amount: 10 }
+
+# Cancels in PRE — the shape every "prevent" and every Challenge has.
+- id: triggers.hero.guardian_angel
+  kind: hero
+  name: "Guardian Angel"
+  card_class: guardian
+  copies: 2
+  text: "Your cards cannot be discarded."
+  triggers:
+    - on: card.discarded
+      timing: pre
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: cancel_event, reason: "Guardian Angel" }
+
+# Two cards that want the same event, so ordering has something to decide.
+- id: triggers.hero.herald
+  kind: hero
+  name: "Herald"
+  card_class: bard
+  copies: 2
+  text: "Acts early."
+  triggers:
+    - on: card.drawn
+      timing: post
+      while_in: party
+      priority: 10
+      effect: { op: set_flag, scope: game, key: first_reactor, value: herald }
+
+- id: triggers.hero.latecomer
+  kind: hero
+  name: "Latecomer"
+  card_class: ranger
+  copies: 2
+  text: "Acts late."
+  triggers:
+    - on: card.drawn
+      timing: post
+      while_in: party
+      priority: -10
+      effect: { op: set_flag, scope: game, key: last_reactor, value: latecomer }
+
+# Something to equip, so the attachment ops have a subject.
+- id: triggers.item.charm
+  kind: item
+  name: "Lucky Charm"
+  copies: 2
+  text: "Equip to a Hero."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+
+# Announces its own event and then reacts to it: unbounded recursion, which the
+# depth cap must stop rather than hang on.
+- id: triggers.hero.echo
+  kind: hero
+  name: "Echo"
+  card_class: fighter
+  copies: 2
+  text: "Echoes forever."
+  triggers:
+    - on: triggers.echoed
+      timing: post
+      while_in: party
+      effect: { op: emit, event: triggers.echoed }

@@ -161,7 +161,12 @@ _EFFECTS: tuple[OpSpec, ...] = (
         doc="ask a player to pick; binds the result for later steps",
     ),
     # -- cards & zones --
-    OpSpec("draw", OpKind.EFFECT, _p(target=R.REF, count=R.VALUE)),
+    OpSpec(
+        "draw",
+        OpKind.EFFECT,
+        _p(target=R.REF, count=R.VALUE, **{"from": ParamSpec(R.ZONE)}),  # type: ignore[arg-type]
+        doc="draw from the top of a deck (``main_deck`` unless told otherwise)",
+    ),
     OpSpec(
         "discard",
         OpKind.EFFECT,
@@ -184,8 +189,18 @@ _EFFECTS: tuple[OpSpec, ...] = (
     OpSpec(
         "search",
         OpKind.EFFECT,
-        _p(zone=(R.ZONE, REQ), filter=R.FILTER, count=R.VALUE, then=R.EFFECT, chooser=R.REF),
+        _p(
+            zone=(R.ZONE, REQ),
+            filter=R.FILTER,
+            count=R.VALUE,
+            bind=R.NAME,
+            then=R.EFFECT,
+            chooser=R.REF,
+        ),
+        binds="bind",
+        bind_scope="body",
         body=("then",),
+        doc="look through a zone; 'bind' names what was found so 'then' can use it",
     ),
     OpSpec("reveal", OpKind.EFFECT, _p(card=R.REF, zone=R.ZONE, count=R.VALUE, to=R.REF)),
     OpSpec("shuffle", OpKind.EFFECT, _p(zone=(R.ZONE, REQ))),
@@ -200,7 +215,7 @@ _EFFECTS: tuple[OpSpec, ...] = (
     ),  # type: ignore[arg-type]
     OpSpec("destroy_hero", OpKind.EFFECT, _p(target=R.REF, chooser=R.REF, filter=R.FILTER)),
     OpSpec("sacrifice", OpKind.EFFECT, _p(target=R.REF, filter=R.FILTER)),
-    OpSpec("equip_item", OpKind.EFFECT, _p(item=(R.REF, REQ), hero=R.REF)),
+    OpSpec("equip_item", OpKind.EFFECT, _p(item=(R.REF, REQ), hero=R.REF, filter=R.FILTER)),
     OpSpec("unequip_item", OpKind.EFFECT, _p(item=(R.REF, REQ), to_zone=R.ZONE)),
     OpSpec("return_monster", OpKind.EFFECT, _p(monster=(R.REF, REQ), to=R.ZONE)),
     OpSpec("refill_monster_row", OpKind.EFFECT),

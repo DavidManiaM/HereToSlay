@@ -109,25 +109,79 @@ snapshots; every seat's serialised view is searched for every hidden card id and
 
 ---
 
-## Phase 3 — Event Bus & Effect Interpreter ★ *the critical phase*
+## Phase 3 — Event Bus & Effect Interpreter `[x]` ★ *the critical phase*
 
 **Deliverable:** the generator-driven interpreter. Everything downstream depends on this being
 right, so it gets the most test attention.
 
-- [ ] `core/events.py` — `Event` base, taxonomy, `Verdict` (CONTINUE/MODIFIED/CANCELLED)
-- [ ] `core/bus.py` — 3-phase dispatch, deterministic subscriber ordering, subscriptions
-      *derived from state* (not accumulated)
-- [ ] `core/interpreter.py` — generator driver, `Request`/`Decision` protocol, suspend/resume
-- [ ] `core/context.py` — `EffectContext`: refs, selectors, bindings, `emit`, `ask_*`
-- [ ] `core/registry.py` — `@effect` `@condition` `@selector` `@mutator` `@cost`
-- [ ] `core/effects/` — control flow, cards/zones, party, resources, meta ops
-- [ ] `core/conditions/` — the predicate catalogue
-- [ ] `core/log.py` — `DecisionLog`, replay driver
+- [x] `core/events.py` — `Event`, `Phase`, `Verdict` (CONTINUE/MODIFIED/CANCELLED), `EventFrame`,
+      `Outcome`
+- [x] `core/bus.py` — 3-phase dispatch, deterministic subscriber ordering, subscriptions
+      *derived from state* (not accumulated), depth cap
+- [x] `core/interpreter.py` — generator driver, `Request`/`Decision` protocol, suspend/resume
+- [x] `core/context.py` — `EffectContext`: refs, selectors, bindings, `emit`, `ask_*`
+- [x] `core/refs.py` — `$ref` splitting and the `{expr: ...}` evaluator
+- [x] `core/registry.py` — `@effect` `@condition` `@selector` `@mutator` `@cost`
+- [x] `core/mutators.py` — the RESOLVE handlers: the only writers during a dispatch
+- [x] `core/effects/` — control flow, cards/zones, party, resources, meta ops
+- [x] `core/conditions/` + `core/selectors.py` — the predicate and target-set catalogues
+- [x] `core/log.py` — `DecisionLog`, `LogSource`, replay driver
+- [x] Fixture pack `tests/fixtures/triggers` — Heroes that exist only to subscribe
 
-**Acceptance:** a scripted test executes a nested effect (`seq` → `choose` → `if` → `draw`),
-suspends twice for decisions, and resumes correctly. Replaying the log reproduces the state
-byte-for-byte.
+**Acceptance:** ✅ a scripted test executes a nested effect (`seq` → `choose` → `if` →
+`discard`), suspends twice for decisions, and resumes correctly; replaying the log reproduces the
+state byte-for-byte (`diff_snapshots(...) == []`). `uv run pytest` → 352 passed.
 **Not yet:** turns, rolls, real cards.
+
+### Decisions taken during Phase 3
+
+1. **An event is a name plus a payload, not a class.** A closed `CardDrawnEvent`/`MonsterSlainEvent`
+   hierarchy would mean every new verb in a variant needs a Python type the bus knows about, while
+   cards subscribe with a *string* (`on: monster.slain`). So the bus matches strings, and
+   `@mutator` keys on the event name too, rather than on a type as `architecture_notes.md §5`
+   originally sketched. One vocabulary, shared by content and engine.
+2. **The event is immutable; the mutable part is an `EventFrame`.** `cancel_event` has to reach
+   the dispatch happening around it, and the depth cap has to count nesting — both are properties
+   of *this dispatch*, not of the event. So the bus owns a frame stack, and `Event.replace` /
+   `EventFrame.modify` (the MODIFIED verdict) produce a new event rather than editing history.
+3. **Cancellation propagates through the effect that asked.** An op whose event was cancelled
+   returns `Outcome.CANCELLED`, and `seq` stops there. Without that, a countered discard would
+   still pay out the rest of the card's text.
+4. **Bindings are returned, not written into a shared scope.** `choose` returns a `Binding`, which
+   `EffectContext.run` unwraps into the *immediately* enclosing `seq` and nowhere else — so a
+   `choose` nested in an `if` cannot leak `$victim` to the `if`'s siblings. That is exactly the
+   lexical rule `content/validate.py` already enforces at load time, so the two agree by
+   construction.
+5. **Forced questions are not asked.** `ask_*` resolves a choice with one legal answer itself.
+   It is a pure function of state, so the replay stays exact, and it keeps both UIs from prompting
+   "choose 1 of 1" on every card.
+6. **`{expr: ...}` gets a 40-line recursive-descent parser, not `eval`.** `repeat.times` is
+   documented as "may be an expression"; `eval` over content is both a security hole and
+   non-deterministic. `+ - * / % ( )` over `$refs` and integers is as expressive as card text needs.
+7. **Action points are written directly, not through an event** — the one deliberate exception to
+   "state changes are events". There is nothing to cancel about a number going up, and Phase 4's
+   `action.paid` is the right hook for cost reduction. Everything else in the catalogue emits.
+8. **Selectors yield ids, never objects**, so `exclude:` can compare them, a filter can bind one as
+   `$candidate`, and a decision log can print one.
+9. **`slay_monster` does not refill the row.** *When* a new Monster turns up is policy, so it is a
+   `refill_monster_row` step in `rules.yaml` (wired up in Phase 4), not a line of Python.
+10. **Two vocabulary additions**, both in `content/`: `search` gained a `bind:` (without it the op
+    could only ever be "look, then forget"), and `draw` gained an optional `from:` zone.
+
+### Carried into Phase 4 on purpose
+
+The ops that need the roll pipeline, the turn machine or reaction windows are declared in the
+vocabulary but deliberately have no handler yet, so a pack using one fails loudly rather than
+silently doing nothing: `roll`, `modify_roll`, `reroll`, `contest_roll`, `set_roll_result`,
+`play_card_from_hand`, `attack_monster`, `use_ability`. Also deferred:
+
+* the `@cost` catalogue — the registry seam exists, but its call shape belongs with `core/actions.py`
+* **deck exhaustion**: `draw` stops at an empty deck; reshuffling the discard back in is policy and
+  wants a `rules.yaml` knob, not a hardcoded rule
+* `end_turn` / `extra_turn` leave a game flag for the turn machine to read at the next safe point
+* a *chosen* (not random) pick out of a hidden hand marks the request `hidden: true` so a presenter
+  renders backs, but the ids are still in the request; a genuinely leak-proof blind pick uses
+  `random: true`
 
 ---
 
@@ -265,13 +319,17 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0, 1 and 2 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs
-136 tests, and the layering check now actually walks `core/` (it no longer skips).
+**Phases 0–3 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs 352 tests,
+and the whole suite also passes under `HTS_STRICT=1` (invariants checked after every mutation).
 
-Next up is **Phase 3 — Event Bus & Effect Interpreter**, the critical phase: `core/events.py`,
-`bus.py`, `interpreter.py`, `context.py`, `registry.py`, the `effects/` and `conditions/`
-catalogues, and `log.py`. The three open design questions in `architecture_notes.md §10` that are
-marked "decide before Phase 3" are now due.
+The engine can now execute an arbitrary effect tree: it suspends for decisions, dispatches events
+through PRE/RESOLVE/POST, lets cards cancel each other, and replays a decision log to a
+byte-identical state. What it cannot do yet is *start a turn* — nothing calls the interpreter on
+its own.
+
+Next up is **Phase 4 — Turn Machine, Rolls, Victory**: `turn_machine.py`, `actions.py`, `rolls.py`,
+`windows.py`, `victory.py` and the `Engine` facade, plus the roll and action ops listed under
+"Carried into Phase 4" above.
 
 Open questions blocking later phases are collected in `rules_reference.md §5`. Only Phase 6 (base
 card content) is actually blocked by them.

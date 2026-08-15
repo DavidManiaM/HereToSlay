@@ -26,6 +26,34 @@ class ZoneCapacityError(ZoneError):
     """A zone declared ``capacity: n`` and something tried to exceed it."""
 
 
+class EffectError(EngineError):
+    """An effect tree could not be executed.
+
+    Almost always a *content* bug — a card asked for a card that isn't there, a
+    zone that doesn't exist, or a reference nothing bound. The message names the
+    op so the card points at itself.
+    """
+
+
+class UnknownOpError(EffectError):
+    """No handler is registered for an op name.
+
+    Either a typo, or a pack that ships a ``plugin.py`` which was not imported.
+    """
+
+
+class IllegalDecisionError(EngineError):
+    """A submitted decision is not one the pending request offered.
+
+    The UI is never trusted (``docs/rules_engine.md §6``): a decision that does
+    not re-validate raises here rather than corrupting the state.
+    """
+
+
+class ReplayError(EngineError):
+    """A decision log does not reproduce the game it claims to."""
+
+
 class EngineInvariantError(EngineError):
     """A state invariant broke (``docs/rules_engine.md §8``).
 

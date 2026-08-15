@@ -243,9 +243,15 @@ Five decorator-based registries. Each is the answer to "how do I add a new kind 
 |---|---|---|
 | `@effect("op_name")` | a new **verb** | `(ctx, params) -> Generator` |
 | `@condition("op_name")` | a new **predicate** (Strategy) | `(ctx, params) -> bool` |
-| `@selector("name")` | a new **target set** | `(ctx, params) -> list[Entity]` |
-| `@mutator(EventType)` | how an event **changes state** | `(state, event) -> None` |
+| `@selector("name")` | a new **target set** | `(ctx, params) -> list[EntityId]` |
+| `@mutator("event.name")` | how an event **changes state** | `(state, event) -> None` |
 | `@cost("name")` | a new **payment type** | `(ctx, params) -> Generator[bool]` |
+
+Two shapes settled in Phase 3. **Mutators key on the event *name*, not an event class** — §3.3
+says mods may invent event names freely, so a closed hierarchy of event types would put the bus
+back in the business of knowing every verb; keying on the same strings the cards use keeps one
+vocabulary. And **selectors yield ids** (`CardId`/`PlayerId`), never live objects, so `exclude:`
+can compare them, a filter can bind one as `$candidate`, and a decision log can print one.
 
 A content pack may ship `plugin.py`; the loader imports it, which runs the decorators. So a mod
 that needs a truly new verb is *still* a drop-in directory, not a fork.
@@ -353,14 +359,29 @@ here-to-slay/
 
 ---
 
-## 10. Open Design Questions (decide before Phase 3)
+## 10. Open Design Questions
 
-1. **Simultaneous reaction windows** — real play is "anyone may respond". Sequential polling in
-   seat order is deterministic and simple; a true simultaneous window needs a priority-pass
-   system. *Proposal: sequential in seat order starting left of the active player, with an
-   explicit pass; re-open the window if anyone acts.*
-2. **Nested challenges** — can a Challenge be challenged? In the real game, yes. The recursive
-   reaction window handles it naturally; we just need a depth cap (config: `max_reaction_depth`).
-3. **Undo granularity** — per-action or per-decision? *Proposal: per-action, quiescent points only.*
+Decided in Phase 3:
+
+1. **Simultaneous reaction windows** — *settled: sequential, in seat order starting left of the
+   active player, with an explicit pass; the window re-opens if anyone acts.* True simultaneity
+   needs a priority-pass system and buys nothing a card game notices. The ordering it depends on
+   is already implemented and tested: subscribers sort by
+   `(-priority, zone_kind, seat_distance, card_id, trigger_index)`, with seat distance measured
+   from the active player. The window loop itself is Phase 4.
+2. **Nested challenges** — *settled: yes, and the recursion is the mechanism.* `yield from`
+   composition means "challenging a challenge" needs no special case; `rules.max_reaction_depth`
+   (default 8) stops a pathological card, raising `EngineInvariantError` with the frame stack
+   rather than hanging.
+3. **Undo granularity** — *settled: per-action, at quiescent points only.* `DecisionLog.truncated(n)`
+   plus a replay is the whole implementation, so "undo" and "replay" are one mechanism.
+
+Still open:
+
 4. **Hidden-information AI** — the AI gets `GameView`, so it cannot cheat, but rollout search
    then needs determinisation (sampling hidden cards). Deferred to Phase 8.
+5. **A chosen pick out of a hidden zone** — "choose a card from their hand" (as opposed to "take
+   one at random") puts real card ids in the request so the presenter can offer positions. The
+   request is marked `hidden: true` and a presenter must render backs, but the ids are there.
+   Base content only ever picks at random, so this is not urgent; a positional request kind would
+   close it.
