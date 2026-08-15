@@ -1,8 +1,7 @@
 """``hts`` — the command line entry point.
 
-Phase 1 ships ``hts validate``. ``play``, ``replay`` and ``gui`` arrive with
-their phases; they are declared here so ``--help`` tells the truth about what
-exists and what does not.
+Phase 1 ships ``hts validate``. Phase 5 adds ``hts play`` and ``hts replay``.
+``gui`` arrives with Phase 9; it is declared here so ``--help`` stays truthful.
 """
 
 from __future__ import annotations
@@ -24,6 +23,12 @@ from here_to_slay.content.validate import validate_registry
 EXIT_OK = 0
 EXIT_CONTENT_ERROR = 1
 EXIT_USAGE = 2
+
+
+def _random_seed() -> str:
+    import secrets
+
+    return secrets.token_hex(6)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,6 +61,98 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate.add_argument("-q", "--quiet", action="store_true", help="only print the summary")
     validate.set_defaults(func=cmd_validate)
+
+    # ------------------------------------------------------------------
+    # play
+    # ------------------------------------------------------------------
+    play = subparsers.add_parser(
+        "play",
+        help="start a hot-seat game in the terminal",
+        description=(
+            "Deal a game and play it in the terminal. All players share the same "
+            "keyboard; the screen is cleared between turns for privacy."
+        ),
+    )
+    play.add_argument(
+        "packs",
+        nargs="*",
+        metavar="PACK",
+        default=["data/base"],
+        help="content packs to load (default: data/base)",
+    )
+    play.add_argument(
+        "--search-path",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="extra directory to search for required packs (repeatable)",
+    )
+    play.add_argument(
+        "--names",
+        nargs="+",
+        metavar="NAME",
+        default=[],
+        help="player names (default: Player 1, Player 2, …)",
+    )
+    play.add_argument(
+        "--players",
+        type=int,
+        default=2,
+        metavar="N",
+        help="number of players (default: 2, ignored if --names is given)",
+    )
+    play.add_argument(
+        "--seed",
+        default=None,
+        metavar="SEED",
+        help="RNG seed for a reproducible game",
+    )
+    play.add_argument(
+        "--max-turns",
+        type=int,
+        default=0,
+        metavar="N",
+        help="stop after N turns (0 = no limit)",
+    )
+    play.add_argument(
+        "--no-save",
+        action="store_true",
+        help="do not save the decision log at the end",
+    )
+    play.set_defaults(func=cmd_play)
+
+    # ------------------------------------------------------------------
+    # replay
+    # ------------------------------------------------------------------
+    replay = subparsers.add_parser(
+        "replay",
+        help="replay a saved game log",
+        description=(
+            "Load a decision log (saved by 'hts play') and replay it, printing "
+            "the board after every decision."
+        ),
+    )
+    replay.add_argument("log", metavar="LOG_FILE", help="path to the .json decision log")
+    replay.add_argument(
+        "packs",
+        nargs="*",
+        metavar="PACK",
+        default=["data/base"],
+        help="content packs to load (default: data/base)",
+    )
+    replay.add_argument(
+        "--search-path",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="extra directory to search for required packs (repeatable)",
+    )
+    replay.add_argument(
+        "--step",
+        action="store_true",
+        help="pause after each decision (press Enter to advance)",
+    )
+    replay.set_defaults(func=cmd_replay)
 
     return parser
 
@@ -134,6 +231,191 @@ def _summary_line(
 
 
 # ---------------------------------------------------------------------------
+# play
+# ---------------------------------------------------------------------------
+
+
+def cmd_play(args: argparse.Namespace, console: Console) -> int:
+    import datetime
+    import re
+    from pathlib import Path
+
+    # -- load content ------------------------------------------------------
+    try:
+        registry = load_packs(args.packs, search_paths=args.search_path)
+    except ContentError as exc:
+        console.print(f"[bold red]Content error:[/bold red] {exc}")
+        return EXIT_CONTENT_ERROR
+
+    # -- player names ------------------------------------------------------
+    names: list[str]
+    if args.names:
+        names = list(args.names)
+    else:
+        n = max(2, args.players)
+        names = [f"Player {i}" for i in range(1, n + 1)]
+
+    n_players = len(names)
+    max_p = registry.rules.setup.max_players
+    min_p = registry.rules.setup.min_players
+    if not (min_p <= n_players <= max_p):
+        console.print(
+            f"[red]This rule set requires {min_p}–{max_p} players; "
+            f"got {n_players}.[/red]"
+        )
+        return EXIT_USAGE
+
+    # -- seed --------------------------------------------------------------
+    seed: int | str = args.seed if args.seed is not None else _random_seed()
+
+    # -- build engine ------------------------------------------------------
+    from here_to_slay.core.engine import Engine
+
+    engine = Engine.new(registry, names, seed=seed, max_turns=args.max_turns)
+
+    console.print()
+    console.print(
+        f"[bold bright_green]Here to Slay[/bold bright_green]  "
+        f"[dim]seed={seed!r}  {n_players} players[/dim]"
+    )
+    console.print()
+
+    # -- run ---------------------------------------------------------------
+    from here_to_slay.core.interpreter import GameOver
+    from here_to_slay.ui.cli.presenter import CliPresenter
+
+    presenter = CliPresenter(engine, registry, console=console)
+    try:
+        status = engine.run(presenter)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Game interrupted.[/yellow]")
+        return EXIT_OK
+
+    # -- result ------------------------------------------------------------
+    if isinstance(status, GameOver) and status.winner:
+        winner_name = engine.state.player(status.winner).name
+        console.print(f"\n[bold bright_yellow]🏆 {winner_name} wins![/bold bright_yellow]\n")
+    else:
+        console.print("\n[dim]Game over (no winner / turn cap reached).[/dim]\n")
+
+    # -- save log ----------------------------------------------------------
+    if not args.no_save:
+        log_dir = Path.cwd() / "hts_logs"
+        log_dir.mkdir(exist_ok=True)
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_seed = re.sub(r"[^\w\-]", "_", str(seed))
+        log_path = log_dir / f"{ts}_{safe_seed}.json"
+        engine.log.save(log_path)
+        console.print(f"[dim]Decision log saved → {log_path}[/dim]")
+
+    return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# replay
+# ---------------------------------------------------------------------------
+
+
+def cmd_replay(args: argparse.Namespace, console: Console) -> int:
+    from pathlib import Path
+
+    from here_to_slay.core.engine import Engine
+    from here_to_slay.core.errors import ReplayError
+    from here_to_slay.core.interpreter import GameOver
+    from here_to_slay.core.log import DecisionLog, LogSource
+
+    # -- load log ----------------------------------------------------------
+    log_path = Path(args.log)
+    if not log_path.exists():
+        console.print(f"[red]Log file not found: {log_path}[/red]")
+        return EXIT_USAGE
+    try:
+        log = DecisionLog.load(log_path)
+    except Exception as exc:
+        console.print(f"[red]Could not load log: {exc}[/red]")
+        return EXIT_USAGE
+
+    # -- load content ------------------------------------------------------
+    try:
+        registry = load_packs(args.packs, search_paths=args.search_path)
+    except ContentError as exc:
+        console.print(f"[bold red]Content error:[/bold red] {exc}")
+        return EXIT_CONTENT_ERROR
+
+    # -- build engine ------------------------------------------------------
+    try:
+        engine, log_source = Engine.replaying(registry, log)
+    except ReplayError as exc:
+        console.print(f"[bold red]Replay error:[/bold red] {exc}")
+        return EXIT_USAGE
+
+    console.print()
+    console.print(
+        f"[bold bright_cyan]Replaying[/bold bright_cyan]  "
+        f"[dim]seed={log.seed!r}  {len(log.players)} players  "
+        f"{len(log.entries)} decision(s)[/dim]"
+    )
+    console.print()
+
+    # -- run (with per-step rendering) ------------------------------------
+    from here_to_slay.core.interpreter import Decision, DecisionSource, Request
+    from here_to_slay.ui.cli.render import render_board
+
+    def _step_pause() -> None:
+        if args.step:
+            console.print("[dim]Press Enter to continue…[/dim]")
+            try:
+                input()
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+    class _ReplayEnded(Exception):
+        """Raised internally when we've replayed every decision in the log."""
+
+    class ReplayViewer(DecisionSource):
+        def __init__(self, source: LogSource) -> None:
+            self.source = source
+            self.exhausted = False
+
+        def answer(self, request: Request) -> Decision:
+            seat = request.requester
+            view = engine.view(seat)
+            console.print(render_board(view, registry))
+            console.print()
+            _step_pause()
+            if self.source.index >= len(self.source.log.entries):
+                self.exhausted = True
+                raise _ReplayEnded()
+            return self.source.answer(request)
+
+    viewer = ReplayViewer(log_source)
+    status: object = None
+    try:
+        status = engine.run(viewer)
+    except _ReplayEnded:
+        pass
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Replay interrupted.[/yellow]")
+        return EXIT_OK
+    except ReplayError as exc:
+        if viewer.exhausted or "the log has" in str(exc) and "but the game asked for another" in str(exc):
+            pass
+        else:
+            console.print(f"[bold red]Replay error:[/bold red] {exc}")
+            return EXIT_USAGE
+
+    # -- final board -------------------------------------------------------
+    active_seat = engine.state.active_player
+    final_view = engine.view(active_seat)
+    console.print(render_board(final_view, registry))
+    console.print()
+
+    if isinstance(status, GameOver) and status.winner:
+        winner_name = engine.state.player(status.winner).name
+        console.print(f"[bold bright_yellow]🏆 {winner_name} wins![/bold bright_yellow]")
+    else:
+        console.print("[dim]Replay finished.[/dim]")
+    return EXIT_OK
 
 
 def main(argv: Sequence[str] | None = None) -> int:
