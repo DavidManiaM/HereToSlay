@@ -1,7 +1,8 @@
 """``hts`` — the command line entry point.
 
 Phase 1 ships ``hts validate``. Phase 5 adds ``hts play`` and ``hts replay``.
-``gui`` arrives with Phase 9; it is declared here so ``--help`` stays truthful.
+``hts gui`` arrives with Phase 9 and is deliberately *not* declared yet, so
+``--help`` never advertises a command that does not run.
 """
 
 from __future__ import annotations

@@ -308,19 +308,26 @@ process.
 
 ## 8. Presentation Layer
 
-Both UIs implement one protocol:
+Both UIs implement one protocol — and as of Phase 5 it is a *single* method, `DecisionSource`:
 
 ```python
-class Presenter(Protocol):
-    def render(self, view: GameView) -> None: ...
+class DecisionSource(Protocol):
     def answer(self, request: Request) -> Decision: ...
 ```
 
+The `render(view)` half sketched here before Phase 5 was dropped: the engine only calls the UI at
+decision points, so a render hook it owned would have had no caller. A UI renders **when it wants
+to**, by pulling `engine.view(seat)` itself — `CliPresenter.answer` does it once per prompt, and
+the pygame presenter will do it once per frame off its own clock. The same one-method protocol is
+what makes `LogSource` (replay) and the Phase 8 agents drop-in substitutes for a human.
+
 - `GameView` is a **redacted, read-only projection** of `GameState` from one player's seat
   (hidden zones become counts). Building it in the core, not the UI, means hidden information
-  can never leak into a renderer — and the AI gets the same fair view.
+  can never leak into a renderer — and the AI gets the same fair view. `ui/cli/render.py` is a
+  pure `GameView → rich` function for exactly this reason: no engine calls, no side effects.
 - **CLI** (`rich`) is the primary development UI and must stay playable head-to-head forever;
-  it is the fastest way to test a new card.
+  it is the fastest way to test a new card. `ui/cli/render.py` draws the board, and
+  `ui/cli/presenter.py` turns every `Request` kind into a numbered menu.
 - **PyGame** implements the same protocol. Its main loop pumps events, calls `render(view)`
   every frame, and feeds `answer()` from clicks. Because `answer()` cannot block a frame, the
   pygame presenter is itself state-machine-driven: `pending_request` drives which widgets are

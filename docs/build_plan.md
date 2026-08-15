@@ -244,18 +244,91 @@ not at end of turn; a whole game replays from its log to a byte-identical state.
 
 ---
 
-## Phase 5 — CLI: Playable Head-to-Head ★ *the milestone that de-risks everything*
+## Phase 5 — CLI: Playable Head-to-Head `[~]` ★ *the milestone that de-risks everything*
 
 **Deliverable:** `uv run hts play` — a real, complete game in the terminal.
 
-- [ ] `ui/cli/render.py` — `rich` board: parties, hands, monster row, AP, discard
-- [ ] `ui/cli/presenter.py` — implements `Presenter`; numbered menus from `legal_intents()`
-- [ ] Hot-seat privacy (clear screen between players), `--seed`, `--replay <log>`
-- [ ] Roll animation-lite: show raw dice, each modifier and its source, the final band
+- [x] `ui/cli/render.py` — `rich` board: parties, hands, monster row, AP, discard
+- [x] `ui/cli/presenter.py` — `CliPresenter(DecisionSource)`; numbered menus for every request
+      kind (`choose_intent`, `choose_cards`, `choose_player`, `choose_option`, `reaction`,
+      `confirm`)
+- [x] Hot-seat privacy (clear screen + "press Enter" gate on seat change), `--seed`
+- [x] Replay — shipped as a sibling command `hts replay <log> [--step]`, not a `--replay` flag on
+      `play` (see decision 2); `hts play` auto-saves to `./hts_logs/<ts>_<seed>.json` unless
+      `--no-save`
+- [ ] **Roll animation-lite: not wired.** `render_roll()` / `render_roll_result()` exist and are
+      correct, but `CliPresenter._print_last_rolls` reads `state.flags["_cli_rolls"]`, which
+      *nothing writes* — so no roll line is ever printed. See gap 1 below.
 
-**Acceptance:** two humans finish a full game with only the base pack. **From here on, every new
-card is testable in the terminal in seconds** — this is why the CLI comes before pygame.
+**Acceptance:** ⚠️ **partial.**
+* A full head-to-head game is playable end to end against `tests/fixtures/play` — board, menus,
+  costs, hot-seat gate, victory, log save and replay all work (verified by hand:
+  `hts play tests/fixtures/play --search-path data`).
+* "…with only the base pack" is **blocked on Phase 6**: `data/base` still provides `cards: []`,
+  so the default `hts play` deals an empty table. This is expected sequencing, not a Phase 5
+  defect.
+* 482 tests pass (also under `HTS_STRICT=1`), 25 of them in `tests/test_cli_play.py`.
+
 **Not yet:** pygame, AI.
+
+### Decisions taken during Phase 5
+
+1. **The presenter is a `DecisionSource`, not the `Presenter` protocol** sketched in
+   `architecture_notes.md §8`. There is no separate `render(view)` entry point: `answer()` renders
+   the board itself, immediately before it prompts. The engine only ever calls the UI at decision
+   points, so a second render hook would have had no caller — pygame, which *does* need to draw
+   every frame, will pull `engine.view(seat)` on its own clock instead.
+2. **`hts replay` is its own command, not `play --replay`.** Replay takes arguments `play` does
+   not (`--step`) and refuses arguments `play` needs (`--seed`, `--names` — the log carries both),
+   so one parser would have been half-illegal flags in both directions.
+3. **`cmd_replay` drives the engine with its own `ReplayViewer`, not `CliPresenter`.** It wraps
+   `LogSource`, renders before every logged decision, and stops at the end of the log. The
+   presenter's `silent=True` flag was built for this and is now unused by any caller.
+4. **Redaction stays in the core.** `render.py` is a pure `GameView → rich` transformation; it
+   prints a hand as faces only when `player.is_you`, and never touches `GameState`. The renderer
+   physically cannot leak a hidden zone, because it was never given one.
+5. **No card is drawn by bespoke code.** Names, class colours and monster requirement/band text
+   all come from the `CardDef` via the registry, with a slug-prettifying fallback when no registry
+   is passed — so a mod's card renders the moment its YAML exists.
+
+### Known gaps carried out of Phase 5
+
+These are real defects found by auditing the shipped code, each reproduced. None are blocking
+Phase 6 (card content), but **gaps 1 and 3 should be closed before Phase 7**, whose whole subject
+is rolls and reactions.
+
+1. **Roll display is dead code.** Nothing ever populates `state.flags["_cli_rolls"]`, so
+   `_print_last_rolls` always sees an empty list. Rolls live on `ctx.execution.rolls`
+   (`core/rolls.py`), which the `Engine` facade does not expose. *Fix shape:* either have the
+   presenter subscribe to `roll.resolved` on the bus, or add a `Engine.recent_rolls` accessor —
+   the latter keeps `ui/` off the bus. `render_roll_result()` (the one that shows the **band**
+   that was hit, which the Phase 5 bullet explicitly asks for) has no caller at all.
+2. **Emoji crash the CLI on a legacy Windows console.** `👾 💀 🎲 ⚔ 🏆` raise
+   `UnicodeEncodeError` under a non-UTF-8 code page (reproduced on cp1250: `hts play` dies while
+   printing the first board). *Fix shape:* construct the `Console` with an explicit UTF-8 file, or
+   fall back to ASCII icons when `console.encoding` cannot take them.
+3. **`_choose_cards` is the one prompt with no test, and has three bugs.**
+   * `hidden=True` raises `UnboundLocalError` — line 211 reads a loop variable `c` that is not
+     bound yet. It only survives today because `request.hidden` is `False` in every current
+     request, and `and` short-circuits.
+   * The `lo == hi == 1` auto-select branch appends `candidates[0]` unconditionally, so it can
+     re-add an already-chosen card (2 candidates, `min=1 max=2`, player types `1` twice →
+     `('c1','c1')` → the engine rejects it with "the same card was chosen twice"), or force a card
+     the player just declined onto the selection.
+   * The multi-pick loop re-prompts forever on EOF, because `_read_int` treats the empty string
+     from a closed stdin as "invalid, try again". Harmless for a human, an infinite loop for a
+     piped session.
+4. **Header markup is printed literally.** `_render_header` calls `Text.append` with
+   `"[dim][…][/dim]"`; `Text.append` does not parse markup, so the board shows
+   `[dim][4f9dfbda][/dim]`. Use `Text.append(..., style="dim")` like every other line does.
+5. **Monster band text is ambiguous.** `_render_monster_card` renders an open bound and the range
+   separator with the same en dash, giving `––12` and `2––`. Print `≤12` / `2+` instead.
+6. **`cmd_replay` detects "log exhausted" by matching substrings of a `ReplayError` message**
+   (`cli.py:401`). It works, but it is coupled to prose in `core/log.py`; a typed
+   `ReplayExhausted` would be honest.
+7. **Dead imports/locals** flagged by `ruff` in `ui/cli/` and `cli.py` (22 findings, mostly
+   `F401`/`F841`/`E501` plus the ambiguous en dashes). The lint gate does not currently cover
+   these files.
 
 ---
 
@@ -361,21 +434,30 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–4 complete.** `uv run hts validate data/base` is green; `uv run pytest` runs 468 tests,
-and the whole suite also passes under `HTS_STRICT=1` (invariants checked after every mutation).
+**Phases 0–4 complete; Phase 5 substantially complete.** `uv run hts validate data/base` is green;
+`uv run pytest` runs 482 tests, and the whole suite also passes under `HTS_STRICT=1` (invariants
+checked after every mutation).
 
-**The game is playable by an agent, end to end.** `Engine.new(content, players, seed=...)` deals a
+**The game is playable by a human, end to end.** `Engine.new(content, players, seed=...)` deals a
 table, starts turns, offers each seat a legal menu computed from `rules.yaml`, pays costs, rolls
 dice through the modifier pipeline, opens reaction windows in seat order, checks victory after
 every action, and replays the whole thing from its decision log to a byte-identical state. Every
-op the vocabulary declares now has a handler.
+op the vocabulary declares has a handler. `hts play` puts a person in that loop: a `rich` board,
+numbered menus, a hot-seat privacy gate, an auto-saved decision log, and `hts replay` to walk it
+back.
 
-What is missing is a *human* in that loop, and cards worth playing.
+What is missing is **cards worth playing** — and one Phase 5 bullet, the roll breakdown, which is
+written but never called (`Phase 5 → Known gaps`, item 1).
 
-Next up is **Phase 5 — CLI: Playable Head-to-Head**: `ui/cli/render.py` and `ui/cli/presenter.py`
-over the `Engine` facade, plus `hts play --seed` and `hts replay <log>`. The engine side is
-already shaped for it — `legal_intents()` is the numbered menu, `Request.requester` is who to
-prompt, `GameView` is what to draw, and `Roll.describe()` is the dice line.
+Next up is **Phase 6 — Base Content**: the base game's Heroes, Monsters, Leaders, Items and Magic
+as YAML under `data/base/cards/`. `data/base/pack.yaml` still declares `cards: []`, which is why
+the default `hts play` deals an empty table; `tests/fixtures/play` is the pack to imitate. This
+phase should need **zero** Python changes — if a card cannot be expressed, that is an engine hole
+to fix in the engine.
+
+Worth doing alongside Phase 6, since every card will be exercised through the terminal: close
+Phase 5 gaps 1–4 (roll display, the Windows emoji crash, `_choose_cards`, the header markup), and
+put `tests/test_cli_play.py` coverage on the prompt paths that currently have none.
 
 Open questions blocking later phases are collected in `rules_reference.md §5`. Only Phase 6 (base
 card content) is actually blocked by them.
