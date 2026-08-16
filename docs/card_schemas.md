@@ -117,10 +117,11 @@ effect:
 **Cards & zones**
 | op | params |
 |---|---|
-| `draw` | `target`, `count`, `from?` (zone ref; defaults to `main_deck`) |
+| `draw` | `target`, `count`, `from?` (zone ref; defaults to `main_deck`), `bind?`, `then?` |
 | `discard` | `target`, `count`, `random?`, `chooser?`, `filter?`, `zone?` |
 | `move_card` | `card`, `to` (zone ref), `position?` (`top`/`bottom`/`random`) |
-| `steal_card` | `from`, `to`, `count`, `random?`, `chooser?` |
+| `steal_card` | `from`, `to`, `count`, `random?`, `chooser?`, `bind?`, `then?` |
+| `swap_zones` | `a`, `b` (zone refs) — exchange both zones' whole contents |
 | `search` | `zone`, `filter`, `count`, `bind` (names what was found), `then` (effect) |
 | `reveal` | `card`/`zone`, `count`, `to` (audience) |
 | `shuffle` | `zone` |
@@ -156,6 +157,16 @@ effect:
 | `emit` | `event`, `payload` — fire a custom event for other cards to hook |
 | `win_game` | `target` |
 
+**`bind:`/`then:` on `draw` and `steal_card`** name what just moved so the body can inspect it —
+"DRAW 2 cards; if at least one is a Challenge card…", "pull a card; if it is a Hero, pull
+another". A single card binds as itself rather than a one-element list, so
+`{op: card_kind_is, card: $pulled, kind: hero}` reads the way a card is written. If nothing
+moved — an empty deck, an empty hand — `then` is skipped rather than run with an unbound name.
+
+**`swap_zones`** exists because "trade hands with another player" cannot be two `for_each` loops:
+the second would re-collect the cards the first just delivered. Both sides are snapshotted before
+anything moves.
+
 > Anything not in this table is a **plugin op**: one decorated generator function in a pack's
 > `plugin.py`. The table is a starting vocabulary, not a ceiling.
 
@@ -177,7 +188,7 @@ condition:
   of:
     - {op: party_has_class, player: $self, class: fighter, min: 2}
     - {op: not, of: {op: flag_set, scope: game, key: night}}
-    - {op: compare, left: {expr: "$self.hand_size"}, cmp: ">=", right: 3}
+    - {op: hand_size, player: $self, cmp: ">=", value: 3}
 ```
 
 | op | params |
@@ -185,7 +196,7 @@ condition:
 | `all` / `any` | `of[]` |
 | `not` | `of` |
 | `always` / `never` | — |
-| `party_has_class` | `player`, `class`, `min` |
+| `party_has_class` | `player`, `class`, `min` — counts Heroes **and** the Party Leader |
 | `party_size` / `hand_size` / `discard_size` | `player`, `cmp`, `value` |
 | `has_card` | `player`, `zone`, `filter` |
 | `slain_count` | `player`, `cmp`, `value` |
@@ -362,6 +373,11 @@ These are never *actions*; they are played into an open **window** for free.
 
 ### 6.6 Party Leader
 
+Most Party Leaders are pure passives, so they carry `triggers:` and nothing else. A Leader whose
+skill *costs* something cannot be a trigger — there is nothing to pay in a subscription — so
+`PartyLeaderDef` also accepts an `ability:` block, which the `use_leader_ability` action in
+`rules.yaml` offers. The base game's Shadow Claw is the only such Leader.
+
 ```yaml
 - id: base.leader.charismatic_song
   kind: party_leader
@@ -458,6 +474,7 @@ victory:
     condition: {op: slain_count, player: $player, cmp: ">=", value: 3}
   - id: full_party
     text: "One Hero of each class in your party"
+    # Counts the Party Leader's class as well, per the rulebook.
     condition: {op: party_covers_all_classes, player: $player}
 
 zones:

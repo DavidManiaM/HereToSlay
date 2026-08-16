@@ -7,4 +7,5 @@ version: "1.0.0"
 # Values are chosen to be assertable, not balanced.
 requires: [base]
 provides:
+  rules: rules.yaml
   cards: ["cards/*.yaml"]

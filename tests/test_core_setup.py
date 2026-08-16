@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from here_to_slay.content import ContentRegistry
+from here_to_slay.content import ContentRegistry, load_pack
+from here_to_slay.content.schema import DECK_FOR_KIND
 from here_to_slay.core.errors import SetupError
 from here_to_slay.core.ids import PlayerId
 from here_to_slay.core.invariants import find_violations
@@ -42,16 +43,33 @@ def test_hands_and_row_match_the_rules(table) -> None:
     assert len(table.zone_of("monster_row")) == rules.monster_row_size == 3
 
 
+def _minted(table, deck: str) -> int:
+    """How many cards the content says belong in a deck, before any are dealt."""
+    return sum(
+        definition.copies
+        for definition in table.content.cards.values()
+        if DECK_FOR_KIND[definition.kind] == deck
+    )
+
+
 def test_deck_sizes_add_up(table) -> None:
-    #  32 main deck - 4 players x 5 cards; 6 monsters - 3 face up; 6 leaders - 4 dealt
-    assert len(table.zone_of("main_deck")) == 12
-    assert len(table.zone_of("monster_deck")) == 3
-    assert len(table.zone_of("leader_pool")) == 2
+    """Every undealt card is still in its deck.
+
+    Derived rather than hardcoded: this fixture stacks on the *real* base pack,
+    so the totals move whenever base content does. The arithmetic is the claim
+    worth testing, not the snapshot.
+    """
+    seats = len(table.turn_order)
+    setup = table.rules.setup
+    assert len(table.zone_of("main_deck")) == _minted(table, "main_deck") - seats * setup.starting_hand
+    assert len(table.zone_of("monster_deck")) == _minted(table, "monster_deck") - setup.monster_row_size
+    assert len(table.zone_of("leader_pool")) == _minted(table, "leader_pool") - seats
     assert len(table.zone_of("discard")) == 0
 
 
 def test_no_card_is_lost_in_the_deal(table) -> None:
-    assert len(table.cards) == sum(len(zone) for zone in table.zones.values()) == 44
+    total = sum(_minted(table, deck) for deck in ("main_deck", "monster_deck", "leader_pool"))
+    assert len(table.cards) == sum(len(zone) for zone in table.zones.values()) == total
 
 
 def test_leaders_are_party_leaders_and_owned(table) -> None:
@@ -128,11 +146,16 @@ def test_duplicate_player_names_are_refused(table_content: ContentRegistry) -> N
         new_game(table_content, ["Ana", "Ana"])
 
 
-def test_a_deck_too_small_to_deal_says_so(base_content: ContentRegistry) -> None:
-    """The base pack has no cards until Phase 6 — the failure should name the
-    shortfall, not raise an IndexError somewhere in the deal."""
+def test_a_deck_too_small_to_deal_says_so(fixtures) -> None:
+    """A pack with rules but no cards should name the shortfall, not raise an
+    IndexError somewhere in the deal.
+
+    Uses the rules-only fixture rather than ``base``: since Phase 6 the base
+    pack ships a full 115-card deck and deals four players comfortably.
+    """
+    cardless = load_pack(fixtures / "rules_only")
     with pytest.raises(SetupError, match="main deck holds 0 cards"):
-        new_game(base_content, ["Ana", "Ben"])
+        new_game(cardless, ["Ana", "Ben"])
 
 
 # ---------------------------------------------------------------------------

@@ -21,9 +21,9 @@ Layout (top → bottom)
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any
 
-from rich.columns import Columns
 from rich.console import Group
 from rich.panel import Panel
 from rich.rule import Rule
@@ -58,11 +58,66 @@ _KIND_COLOUR: dict[str, str] = {
 _AP_STYLE = "bold bright_cyan"
 _INACTIVE_STYLE = "dim"
 _ACTIVE_STYLE = "bold"
-_TAPPED_ICON = " ⟳"
-_SLAIN_ICON = "💀"
-_HERO_ICON = "⚔ "
-_ITEM_ICON = "  ↳ "
-_MONSTER_ICON = "👾 "
+
+
+def _icons() -> dict[str, str]:
+    """Pick an icon set the console can actually encode.
+
+    A legacy Windows console runs a non-UTF-8 code page (cp1250 here), where
+    printing an emoji raises ``UnicodeEncodeError`` and takes the whole game
+    down mid-board. Probing the encoding once and falling back to ASCII keeps
+    the CLI playable everywhere, which matters because the CLI is the primary
+    way a new card gets tested.
+    """
+    encoding = getattr(sys.stdout, "encoding", None) or "ascii"
+    rich = {
+        "tapped": " ⟳",
+        "slain": "💀",
+        "hero": "⚔ ",
+        "item": "  ↳ ",
+        "monster": "👾 ",
+        "roll": "🎲",
+        "trophy": "🏆",
+        "sep": "•",
+        "bullet": "•",
+        "active": "▶",
+        "arrow": "→",
+        "rule": "─",
+    }
+    try:
+        "".join(rich.values()).encode(encoding)
+    except (UnicodeEncodeError, LookupError):
+        return {
+            "tapped": " (used)",
+            "slain": "[x]",
+            "hero": "+ ",
+            "item": "  -> ",
+            "monster": "M ",
+            "roll": "#",
+            "trophy": "*",
+            "sep": "|",
+            "bullet": "-",
+            "active": ">",
+            "arrow": "->",
+            "rule": "-",
+        }
+    return rich
+
+
+ICONS = _icons()
+
+_TAPPED_ICON = ICONS["tapped"]
+_SLAIN_ICON = ICONS["slain"]
+_HERO_ICON = ICONS["hero"]
+_ITEM_ICON = ICONS["item"]
+_MONSTER_ICON = ICONS["monster"]
+_ROLL_ICON = ICONS["roll"]
+_TROPHY_ICON = ICONS["trophy"]
+_SEP = ICONS["sep"]
+_BULLET = ICONS["bullet"]
+_ACTIVE_ICON = ICONS["active"]
+_ARROW = ICONS["arrow"]
+_RULE_CHAR = ICONS["rule"]
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +131,7 @@ def render_board(view: GameView, registry: Any = None) -> Group:  # type: ignore
         _render_header(view),
         _render_monster_row(view, registry),
         _render_shared_decks(view),
-        Rule(style="dim"),
+        Rule(style="dim", characters=_RULE_CHAR),
         *_render_all_players(view, registry),
     ]
     return Group(*parts)
@@ -91,16 +146,16 @@ def _render_header(view: GameView) -> Text:
     active_name = _player_name(view, view.active_player)
     header = Text()
     header.append(f" Turn {view.turn_number}", style="bold")
-    header.append("  •  ", style="dim")
+    header.append(f"  {_SEP}  ", style="dim")
     header.append(view.phase, style="italic")
-    header.append("  •  ", style="dim")
+    header.append(f"  {_SEP}  ", style="dim")
     header.append(f"{active_name}'s turn", style="bold bright_yellow")
     if view.winner:
         header.append(
-            f"  🏆 {_player_name(view, view.winner)} wins!",
+            f"  {_TROPHY_ICON} {_player_name(view, view.winner)} wins!",
             style="bold bright_green",
         )
-    header.append(f"  [dim][{view.content_hash[:8]}][/dim]")
+    header.append(f"  [{view.content_hash[:8]}]", style="dim")
     return header
 
 
@@ -123,6 +178,22 @@ def _render_monster_row(view: GameView, registry: Any = None) -> Panel:
     return Panel(table, title="[bold red]Monster Row[/bold red]", border_style="red")
 
 
+def _band_text(band: Any) -> str:
+    """A band as a player reads it: ``8+``, ``5-7``, ``4-``.
+
+    An open bound and the range separator used to be the same en dash, which
+    rendered as ``--12`` and ``2--`` — unreadable in either direction.
+    """
+    low, high = band.min, band.max
+    if low is not None and high is not None:
+        return f"{low}-{high}" if low != high else str(low)
+    if low is not None:
+        return f"{low}+"
+    if high is not None:
+        return f"{high}-"
+    return "any"
+
+
 def _render_monster_card(card: CardView, registry: Any = None) -> Text:
     t = Text()
     t.append(f"{_MONSTER_ICON}", style="red")
@@ -138,9 +209,7 @@ def _render_monster_card(card: CardView, registry: Any = None) -> Text:
             if roll is not None:
                 t.append(f"\n    Roll: {roll.dice}", style="dim")
                 for band in getattr(roll, "outcomes", []):
-                    low = band.min if band.min is not None else "–"
-                    high = band.max if band.max is not None else "–"
-                    t.append(f"\n      {low}–{high}: {band.effect.op}", style="dim italic")
+                    t.append(f"\n      {_band_text(band)}: {band.effect.op}", style="dim italic")
     return t
 
 
@@ -189,7 +258,7 @@ def _render_player(view: GameView, player: PlayerView, registry: Any = None) -> 
 
     title_text = Text()
     if is_you:
-        title_text.append("▶ ", style="bright_yellow")
+        title_text.append(f"{_ACTIVE_ICON} ", style="bright_yellow")
     title_text.append(player.name, style=_ACTIVE_STYLE if is_active else _INACTIVE_STYLE)
     if is_you:
         title_text.append(" (you)", style="dim")
@@ -273,7 +342,7 @@ def _render_hand(zone: ZoneView, is_you: bool, registry: Any = None) -> Text:
     for card in zone.cards:
         name = _card_name(card, registry)
         colour = _card_colour(card, registry)
-        t.append(f"  • ", style="dim")
+        t.append(f"  {_BULLET} ", style="dim")
         t.append(name, style=colour)
         t.append("\n")
     return t
@@ -291,7 +360,7 @@ def render_roll(roll: Any) -> Text:
     can see exactly how the number was reached before the outcome runs.
     """
     t = Text()
-    t.append("  🎲 Roll", style="bold")
+    t.append(f"  {_ROLL_ICON} Roll", style="bold")
     if roll.kind and roll.kind != "generic":
         t.append(f" ({roll.kind})", style="dim")
     t.append(": ", style="dim")
@@ -304,7 +373,7 @@ def render_roll_result(roll: Any, band_label: str = "") -> Text:
     """One-line summary shown after the outcome band runs."""
     t = Text()
     dice_str = "+".join(str(d) for d in roll.raw) or "–"
-    t.append(f"  🎲 {roll.dice}: ", style="dim")
+    t.append(f"  {_ROLL_ICON} {roll.dice}: ", style="dim")
     t.append(f"[{dice_str}]", style="bold")
     if roll.modifiers:
         for mod in roll.modifiers:

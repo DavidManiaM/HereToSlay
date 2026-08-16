@@ -1,0 +1,1574 @@
+# Heroes — 48 cards, 8 per class, one copy each.
+#
+# Every Hero is the same shape: a class, and an `ability` whose `roll` has one
+# band at the printed roll requirement and one below it that does nothing. The
+# threshold *is* the band boundary — nothing in Python compares a total to a
+# number, which is why "this Hero needs 7+" is a YAML edit.
+#
+# `activation: action` + `once_per_turn: true` is the base rule: a Hero may be
+# used once per turn, and a failed roll still spends the action point (the
+# engine taps before resolving, see core/effects/actions.py:_use_ability).
+#
+# Recurring idioms worth knowing before reading:
+#   * "pull a card"  -> steal_card with random: true. A pull is blind; a
+#     *chosen* take out of a hidden hand would be `random: false`.
+#   * "if that card is a X" -> the `bind:`/`then:` pair on draw/steal_card.
+#   * "+N to your rolls until end of turn" -> the ability sets a player flag and
+#     a second trigger on the same card reads it during roll.started, then a
+#     turn.ended trigger clears it. Three small declarative parts instead of one
+#     bespoke "lasting effect" concept in the engine.
+#
+# UNVERIFIED values are marked inline. Both card wikis block automated fetches,
+# so a handful of thresholds and effects could not be confirmed against a
+# primary source; they are mechanically sensible, and correcting one is a
+# one-line edit here. See docs/rules_reference.md §7.
+
+# ==========================================================================
+# FIGHTER
+# ==========================================================================
+
+- id: base.hero.bad_axe
+  kind: hero
+  name: "Bad Axe"
+  card_class: fighter
+  copies: 1
+  text: "DESTROY a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Destroy a Hero belonging to whom?"
+              - { op: destroy_hero, target: $victim, chooser: $self }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.bear_claw
+  kind: hero
+  name: "Bear Claw"
+  card_class: fighter
+  copies: 1
+  text: >-
+    Pull a card from another player's hand. If it is a Hero card, pull a second
+    card from that player's hand.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull a card from whose hand?"
+              - op: steal_card
+                from: $victim
+                to: $self
+                count: 1
+                random: true
+                bind: pulled
+                then:
+                  op: if
+                  condition: { op: card_kind_is, card: $pulled, kind: hero }
+                  then: { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+                  else: { op: noop }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.beary_wise
+  kind: hero
+  name: "Beary Wise"
+  card_class: fighter
+  copies: 1
+  text: >-
+    Each other player must DISCARD a card. Choose one of the discarded cards and
+    add it to your hand.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - op: for_each
+                over: { selector: opponents, of: $self }
+                bind: other
+                effect: { op: discard, target: $other, count: 1, chooser: $other }
+              - op: search
+                zone: { zone: discard }
+                count: 1
+                chooser: $self
+                bind: taken
+                then: { op: move_card, card: $taken, to: { player: $self, zone: hand } }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.fury_knuckle
+  kind: hero
+  name: "Fury Knuckle"
+  card_class: fighter
+  copies: 1
+  text: >-
+    Pull a card from another player's hand. If it is a Challenge card, pull a
+    second card from that player's hand.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 5
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull a card from whose hand?"
+              - op: steal_card
+                from: $victim
+                to: $self
+                count: 1
+                random: true
+                bind: pulled
+                then:
+                  op: if
+                  condition: { op: card_kind_is, card: $pulled, kind: challenge }
+                  then: { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+                  else: { op: noop }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.heavy_bear
+  kind: hero
+  name: "Heavy Bear"
+  card_class: fighter
+  copies: 1
+  text: "Choose a player. That player must DISCARD 2 cards."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 5
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Who discards 2 cards?"
+              - { op: discard, target: $victim, count: 2, chooser: $victim }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.pan_chucks
+  kind: hero
+  name: "Pan Chucks"
+  card_class: fighter
+  copies: 1
+  text: >-
+    DRAW 2 cards. If at least one of those cards is a Challenge card, you may
+    reveal it, then DESTROY a Hero card.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: draw
+            target: $self
+            count: 2
+            bind: drawn
+            then:
+              op: if
+              condition:
+                op: has_card
+                player: $self
+                zone: hand
+                filter: { op: card_kind_is, kind: challenge }
+                min: 1
+              then:
+                op: seq
+                steps:
+                  - op: choose
+                    bind: victim
+                    chooser: $self
+                    from: { selector: opponents, of: $self }
+                    prompt: "Destroy a Hero belonging to whom?"
+                  - { op: destroy_hero, target: $victim, chooser: $self }
+              else: { op: noop }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.qi_bear
+  kind: hero
+  name: "Qi Bear"
+  card_class: fighter
+  copies: 1
+  text: "DISCARD up to 3 cards. For each card discarded, DESTROY a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 10
+          effect:
+            op: choose_effect
+            chooser: $self
+            prompt: "Qi Bear: discard how many?"
+            options:
+              - label: "None"
+                effect: { op: noop }
+              - label: "1 card, destroy 1 Hero"
+                effect:
+                  op: seq
+                  steps:
+                    - { op: discard, target: $self, count: 1, chooser: $self }
+                    - op: choose
+                      bind: victim
+                      chooser: $self
+                      from: { selector: opponents, of: $self }
+                      prompt: "Destroy a Hero belonging to whom?"
+                    - { op: destroy_hero, target: $victim, chooser: $self }
+              - label: "2 cards, destroy 2 Heroes"
+                effect:
+                  op: seq
+                  steps:
+                    - { op: discard, target: $self, count: 2, chooser: $self }
+                    - op: repeat
+                      times: 2
+                      effect:
+                        op: seq
+                        steps:
+                          - op: choose
+                            bind: victim
+                            chooser: $self
+                            from: { selector: opponents, of: $self }
+                            prompt: "Destroy a Hero belonging to whom?"
+                          - { op: destroy_hero, target: $victim, chooser: $self }
+              - label: "3 cards, destroy 3 Heroes"
+                effect:
+                  op: seq
+                  steps:
+                    - { op: discard, target: $self, count: 3, chooser: $self }
+                    - op: repeat
+                      times: 3
+                      effect:
+                        op: seq
+                        steps:
+                          - op: choose
+                            bind: victim
+                            chooser: $self
+                            from: { selector: opponents, of: $self }
+                            prompt: "Destroy a Hero belonging to whom?"
+                          - { op: destroy_hero, target: $victim, chooser: $self }
+        - { max: 9, effect: { op: noop } }
+
+- id: base.hero.tough_teddy
+  kind: hero
+  name: "Tough Teddy"
+  card_class: fighter
+  copies: 1
+  text: "Each other player with a Fighter in their Party must DISCARD a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 4
+          effect:
+            op: for_each
+            over: { selector: opponents, of: $self }
+            bind: other
+            effect:
+              op: if
+              condition: { op: party_has_class, player: $other, class: fighter, min: 1 }
+              then: { op: discard, target: $other, count: 1, chooser: $other }
+              else: { op: noop }
+        - { max: 3, effect: { op: noop } }
+
+# ==========================================================================
+# BARD
+# ==========================================================================
+
+- id: base.hero.dodgy_dealer
+  kind: hero
+  name: "Dodgy Dealer"
+  card_class: bard
+  copies: 1
+  text: "Trade hands with another player."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 9
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: partner
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Trade hands with whom?"
+              - op: swap_zones
+                a: { player: $self, zone: hand }
+                b: { player: $partner, zone: hand }
+        - { max: 8, effect: { op: noop } }
+
+- id: base.hero.fuzzy_cheeks
+  kind: hero
+  name: "Fuzzy Cheeks"
+  card_class: bard
+  copies: 1
+  text: "DRAW a card and play a Hero card from your hand immediately."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: seq
+            steps:
+              - { op: draw, target: $self, count: 1 }
+              # Guarded rather than `choose optional:` — an optional choose that
+              # binds nothing leaves $hero unresolvable, and play_card_from_hand
+              # then fails with "expected exactly one card". Ask only when there
+              # is something to ask about.
+              - op: if
+                condition:
+                  op: has_card
+                  player: $self
+                  zone: hand
+                  filter: { op: card_kind_is, kind: hero }
+                  min: 1
+                then:
+                  op: seq
+                  steps:
+                    - op: choose
+                      bind: hero
+                      chooser: $self
+                      from:
+                        selector: cards
+                        of: { player: $self, zone: hand }
+                        where: { op: card_kind_is, kind: hero }
+                      prompt: "Play which Hero immediately?"
+                    # Free, and uncontestable: it is this Hero's effect
+                    # resolving, not a fresh play action.
+                    - { op: play_card_from_hand, card: $hero, kind: hero, challengeable: false }
+                else: { op: noop }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.greedy_cheeks
+  kind: hero
+  name: "Greedy Cheeks"
+  card_class: bard
+  copies: 1
+  text: "Each other player must give you a card from their hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: for_each
+            over: { selector: opponents, of: $self }
+            bind: other
+            # `chooser: $other` is what makes this "give" rather than "pull":
+            # they pick which card leaves their hand.
+            effect:
+              op: steal_card
+              from: $other
+              to: $self
+              count: 1
+              random: false
+              chooser: $other
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.lucky_bucky
+  kind: hero
+  name: "Lucky Bucky"
+  card_class: bard
+  copies: 1
+  text: >-
+    Pull a card from another player's hand. If it is a Hero card, you may play
+    it immediately.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull a card from whose hand?"
+              - op: steal_card
+                from: $victim
+                to: $self
+                count: 1
+                random: true
+                bind: pulled
+                then:
+                  op: if
+                  condition: { op: card_kind_is, card: $pulled, kind: hero }
+                  then:
+                    op: optional
+                    chooser: $self
+                    prompt: "Play that Hero immediately?"
+                    effect:
+                      op: play_card_from_hand
+                      card: $pulled
+                      kind: hero
+                      challengeable: false
+                  else: { op: noop }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.mellow_dee
+  kind: hero
+  name: "Mellow Dee"
+  card_class: bard
+  copies: 1
+  text: "DRAW a card. If it is a Hero card, you may play it immediately."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: draw
+            target: $self
+            count: 1
+            bind: drawn
+            then:
+              op: if
+              condition: { op: card_kind_is, card: $drawn, kind: hero }
+              then:
+                op: optional
+                chooser: $self
+                prompt: "Play that Hero immediately?"
+                effect:
+                  op: play_card_from_hand
+                  card: $drawn
+                  kind: hero
+                  challengeable: false
+              else: { op: noop }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.napping_nibbles
+  kind: hero
+  name: "Napping Nibbles"
+  card_class: bard
+  copies: 1
+  text: "Do nothing."
+  # Genuinely the printed card. Its 2+ threshold means the roll never fails,
+  # which makes it a useful smoke test: an ability that always takes its top
+  # band and always does nothing.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # A bare catch-all, not `min: 2`. Bands are validated against the
+        # *natural* dice range, but a Modifier can push a total outside it —
+        # a -3 on a roll of 2 gives -1, which `min: 2` does not cover, and the
+        # roll then raises mid-game. Every other card here already has an
+        # open-ended bottom band; this one needs the same.
+        - { effect: { op: noop } }
+
+- id: base.hero.peanut
+  kind: hero
+  name: "Peanut"
+  card_class: bard
+  copies: 1
+  text: "DRAW 2 cards."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - { min: 7, effect: { op: draw, target: $self, count: 2 } }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.tipsy_tootie
+  kind: hero
+  name: "Tipsy Tootie"
+  card_class: bard
+  copies: 1
+  text: >-
+    Choose a player. STEAL a Hero card from that player's Party, then move this
+    card to that player's Party.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Swap Heroes with whom?"
+              - { op: steal_hero, from: $victim, to: $self, chooser: $self }
+              - { op: move_card, card: $card, to: { player: $victim, zone: party } }
+        - { max: 5, effect: { op: noop } }
+
+# ==========================================================================
+# GUARDIAN
+# ==========================================================================
+
+- id: base.hero.calming_voice
+  kind: hero
+  name: "Calming Voice"
+  card_class: guardian
+  copies: 1
+  text: "Hero cards in your Party cannot be stolen until your next turn."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 9
+          effect: { op: set_flag, scope: player, key: heroes_unstealable, target: $self, value: true }
+        - { max: 8, effect: { op: noop } }
+  triggers:
+    # A steal is "leaves my party for somewhere that is not the discard".
+    - on: hero.left_party
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: flag_set, scope: player, key: heroes_unstealable, target: $self }
+          - { op: compare, left: $event.player, cmp: "==", right: $self }
+          - { op: compare, left: $event.to, cmp: "!=", right: discard }
+      effect: { op: cancel_event, reason: "Calming Voice" }
+    # "Until your next turn" — so it lapses as that turn begins, not at the end
+    # of the turn it was played on.
+    - on: turn.started
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: heroes_unstealable, target: $self }
+
+- id: base.hero.guiding_light
+  kind: hero
+  name: "Guiding Light"
+  card_class: guardian
+  copies: 1
+  text: "Search the discard pile for a Hero card and add it to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: search
+            zone: { zone: discard }
+            filter: { op: card_kind_is, kind: hero }
+            count: 1
+            chooser: $self
+            bind: found
+            then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.holy_curselifter
+  kind: hero
+  name: "Holy Curselifter"
+  card_class: guardian
+  copies: 1
+  text: "Return a Cursed Item card equipped to a Hero card in your Party to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 5
+          effect:
+            op: search
+            zone: { player: $self, zone: party }
+            filter: { op: card_has_tag, tag: cursed }
+            count: 1
+            chooser: $self
+            bind: curse
+            then: { op: unequip_item, item: $curse, to_zone: { player: $self, zone: hand } }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.iron_resolve
+  kind: hero
+  name: "Iron Resolve"
+  card_class: guardian
+  copies: 1
+  text: "Cards you play cannot be challenged for the rest of your turn."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # rules.yaml's card_played window reads this flag, which is how the bus
+        # stays ignorant of the word "challenge".
+        - min: 8
+          effect: { op: set_flag, scope: player, key: uncontestable, target: $self, value: true }
+        - { max: 7, effect: { op: noop } }
+  triggers:
+    - on: turn.ended
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: uncontestable, target: $self }
+
+- id: base.hero.mighty_blade
+  kind: hero
+  name: "Mighty Blade"
+  card_class: guardian
+  copies: 1
+  text: "Hero cards in your Party cannot be destroyed until your next turn."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: set_flag
+            scope: player
+            key: heroes_indestructible
+            target: $self
+            value: true
+        - { max: 7, effect: { op: noop } }
+  triggers:
+    - on: hero.left_party
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: flag_set, scope: player, key: heroes_indestructible, target: $self }
+          - { op: compare, left: $event.player, cmp: "==", right: $self }
+          - { op: compare, left: $event.to, cmp: "==", right: discard }
+          # A sacrifice is your own doing, so it is still allowed.
+          - { op: not, of: { op: event_actor_is, player: $self } }
+      effect: { op: cancel_event, reason: "Mighty Blade" }
+    - on: turn.started
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: heroes_indestructible, target: $self }
+
+- id: base.hero.radiant_horn
+  kind: hero
+  name: "Radiant Horn"
+  card_class: guardian
+  copies: 1
+  text: "Search the discard pile for a Modifier card and add it to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          effect:
+            op: search
+            zone: { zone: discard }
+            filter: { op: card_kind_is, kind: modifier }
+            count: 1
+            chooser: $self
+            bind: found
+            then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.vibrant_glow
+  kind: hero
+  name: "Vibrant Glow"
+  card_class: guardian
+  copies: 1
+  text: "+5 to all your rolls until the end of your turn."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - { min: 9, effect: { op: set_flag, scope: player, key: roll_bonus_5, target: $self, value: true } }
+        - { max: 8, effect: { op: noop } }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, roller: $self }
+          - { op: flag_set, scope: player, key: roll_bonus_5, target: $self }
+      effect: { op: modify_roll, amount: 5, source: $card }
+    - on: turn.ended
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: roll_bonus_5, target: $self }
+
+- id: base.hero.wise_shield
+  kind: hero
+  name: "Wise Shield"
+  card_class: guardian
+  copies: 1
+  text: "+3 to all your rolls until the end of your turn."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - { min: 6, effect: { op: set_flag, scope: player, key: roll_bonus_3, target: $self, value: true } }
+        - { max: 5, effect: { op: noop } }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, roller: $self }
+          - { op: flag_set, scope: player, key: roll_bonus_3, target: $self }
+      effect: { op: modify_roll, amount: 3, source: $card }
+    - on: turn.ended
+      timing: post
+      while_in: party
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: roll_bonus_3, target: $self }
+
+# ==========================================================================
+# RANGER
+# ==========================================================================
+
+- id: base.hero.bullseye
+  kind: hero
+  name: "Bullseye"
+  card_class: ranger
+  copies: 1
+  text: >-
+    Look at the top 3 cards of the main deck, add one to your hand, then return
+    the rest to the top of the deck.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (7+); the effect text is confirmed.
+        - min: 7
+          effect:
+            op: search
+            zone: { zone: main_deck }
+            count: 1
+            chooser: $self
+            bind: found
+            then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.hook
+  kind: hero
+  name: "Hook"
+  card_class: ranger
+  copies: 1
+  text: "Play an Item card from your hand immediately and DRAW a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (6+); the effect text is confirmed.
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: if
+                condition:
+                  op: has_card
+                  player: $self
+                  zone: hand
+                  filter: { op: card_kind_is, kind: item }
+                  min: 1
+                then:
+                  op: seq
+                  steps:
+                    - op: choose
+                      bind: item
+                      chooser: $self
+                      from:
+                        selector: cards
+                        of: { player: $self, zone: hand }
+                        where: { op: card_kind_is, kind: item }
+                      prompt: "Play which Item immediately?"
+                    - { op: play_card_from_hand, card: $item, kind: item, challengeable: false }
+                else: { op: noop }
+              - { op: draw, target: $self, count: 1 }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.lookie_rookie
+  kind: hero
+  name: "Lookie Rookie"
+  card_class: ranger
+  copies: 1
+  text: "Search the discard pile for an Item card and add it to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (5+); the effect text is confirmed.
+        - min: 5
+          effect:
+            op: search
+            zone: { zone: discard }
+            filter: { op: card_kind_is, kind: item }
+            count: 1
+            chooser: $self
+            bind: found
+            then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.quick_draw
+  kind: hero
+  name: "Quick Draw"
+  card_class: ranger
+  copies: 1
+  text: >-
+    DRAW 2 cards. If at least one of those cards is an Item card, you may play
+    one of them immediately.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (8+); the effect text is confirmed.
+        - min: 8
+          effect:
+            op: draw
+            target: $self
+            count: 2
+            bind: drawn
+            then:
+              op: if
+              condition:
+                op: has_card
+                player: $self
+                zone: hand
+                filter: { op: card_kind_is, kind: item }
+                min: 1
+              then:
+                op: seq
+                steps:
+                  - op: choose
+                    bind: item
+                    chooser: $self
+                    from:
+                      selector: cards
+                      of: { player: $self, zone: hand }
+                      where: { op: card_kind_is, kind: item }
+                    prompt: "Play which Item immediately?"
+                  - { op: play_card_from_hand, card: $item, kind: item, challengeable: false }
+              else: { op: noop }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.serious_grey
+  kind: hero
+  name: "Serious Grey"
+  card_class: ranger
+  copies: 1
+  text: "DESTROY a Hero card and DRAW a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 9
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Destroy a Hero belonging to whom?"
+              - { op: destroy_hero, target: $victim, chooser: $self }
+              - { op: draw, target: $self, count: 1 }
+        - { max: 8, effect: { op: noop } }
+
+- id: base.hero.sharp_fox
+  kind: hero
+  name: "Sharp Fox"
+  card_class: ranger
+  copies: 1
+  text: "Look at another player's hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 5
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Look at whose hand?"
+              - { op: reveal, zone: { player: $victim, zone: hand }, count: 99, to: $self }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.wildshot
+  kind: hero
+  name: "Wildshot"
+  card_class: ranger
+  copies: 1
+  text: "DRAW 3 cards and DISCARD a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: seq
+            steps:
+              - { op: draw, target: $self, count: 3 }
+              - { op: discard, target: $self, count: 1, chooser: $self }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.wily_red
+  kind: hero
+  name: "Wily Red"
+  card_class: ranger
+  copies: 1
+  # UNVERIFIED card: neither the threshold nor the effect could be confirmed
+  # against a primary source, so this is a placeholder in the Ranger idiom
+  # (card advantage with a cost). Replace it freely — it is data.
+  text: "DRAW 2 cards, then DISCARD a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - { op: draw, target: $self, count: 2 }
+              - { op: discard, target: $self, count: 1, chooser: $self }
+        - { max: 6, effect: { op: noop } }
+
+# ==========================================================================
+# THIEF
+# ==========================================================================
+
+- id: base.hero.kit_napper
+  kind: hero
+  name: "Kit Napper"
+  card_class: thief
+  copies: 1
+  # UNVERIFIED threshold (9+); "STEAL a Hero card" is the confirmed effect.
+  text: "STEAL a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 9
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Steal a Hero from whom?"
+              - { op: steal_hero, from: $victim, to: $self, chooser: $self }
+        - { max: 8, effect: { op: noop } }
+
+- id: base.hero.meowzio
+  kind: hero
+  name: "Meowzio"
+  card_class: thief
+  copies: 1
+  text: >-
+    Choose a player. STEAL a Hero card from that player's Party and pull a card
+    from that player's hand.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (10+); the effect text is confirmed.
+        - min: 10
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Rob whom?"
+              - { op: steal_hero, from: $victim, to: $self, chooser: $self }
+              - { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+        - { max: 9, effect: { op: noop } }
+
+- id: base.hero.plundering_puma
+  kind: hero
+  name: "Plundering Puma"
+  card_class: thief
+  copies: 1
+  text: "Pull 2 cards from another player's hand. That player may DRAW a card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (6+); the effect text is confirmed.
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull 2 cards from whose hand?"
+              - { op: steal_card, from: $victim, to: $self, count: 2, random: true }
+              - op: optional
+                chooser: $victim
+                prompt: "Plundering Puma: draw a card?"
+                effect: { op: draw, target: $victim, count: 1 }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.shurikitty
+  kind: hero
+  name: "Shurikitty"
+  card_class: thief
+  copies: 1
+  text: >-
+    DESTROY a Hero card. If that Hero card had an Item card equipped to it, add
+    that Item card to your hand instead of moving it to the discard pile.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 9
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Destroy a Hero belonging to whom?"
+              - op: choose
+                bind: doomed
+                chooser: $self
+                from: { selector: heroes, of: $victim }
+                prompt: "Destroy which Hero?"
+              # Salvage the Item *before* the Hero leaves, or it travels to the
+              # discard with its host (the base rule for equipment).
+              - op: search
+                zone: { player: $victim, zone: party }
+                filter: { op: card_kind_is, kind: item }
+                count: 1
+                chooser: $self
+                bind: loot
+                then: { op: unequip_item, item: $loot, to_zone: { player: $self, zone: hand } }
+              - { op: move_card, card: $doomed, to: { zone: discard } }
+        - { max: 8, effect: { op: noop } }
+
+- id: base.hero.silent_shadow
+  kind: hero
+  name: "Silent Shadow"
+  card_class: thief
+  copies: 1
+  # UNVERIFIED card: threshold and exact wording unconfirmed. "Look at a hand
+  # and take one" is the Thief-class shape and is what the name implies.
+  text: "Look at another player's hand and choose a card to add to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Look at whose hand?"
+              - { op: reveal, zone: { player: $victim, zone: hand }, count: 99, to: $self }
+              # random: false — this one is a *chosen* take, which is the whole
+              # point of having looked first.
+              - { op: steal_card, from: $victim, to: $self, count: 1, random: false, chooser: $self }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.slippery_paws
+  kind: hero
+  name: "Slippery Paws"
+  card_class: thief
+  copies: 1
+  text: >-
+    Pull 2 cards from another player's hand, then DISCARD one of those cards.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull 2 cards from whose hand?"
+              - op: steal_card
+                from: $victim
+                to: $self
+                count: 2
+                random: true
+                bind: pulled
+                # Discarding "one of *those* cards" — the filter pins it to what
+                # was just taken rather than the whole hand.
+                then: { op: discard, target: $self, count: 1, chooser: $self }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.sly_pickings
+  kind: hero
+  name: "Sly Pickings"
+  card_class: thief
+  copies: 1
+  text: >-
+    Pull a card from another player's hand. If it is an Item card, you may play
+    it immediately.
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull a card from whose hand?"
+              - op: steal_card
+                from: $victim
+                to: $self
+                count: 1
+                random: true
+                bind: pulled
+                then:
+                  op: if
+                  condition: { op: card_kind_is, card: $pulled, kind: item }
+                  then:
+                    op: optional
+                    chooser: $self
+                    prompt: "Play that Item immediately?"
+                    effect:
+                      op: play_card_from_hand
+                      card: $pulled
+                      kind: item
+                      challengeable: false
+                  else: { op: noop }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.smooth_mimimeow
+  kind: hero
+  name: "Smooth Mimimeow"
+  card_class: thief
+  copies: 1
+  text: "Pull a card from the hand of each other player with a Thief in their Party."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: for_each
+            over: { selector: opponents, of: $self }
+            bind: other
+            effect:
+              op: if
+              condition: { op: party_has_class, player: $other, class: thief, min: 1 }
+              then: { op: steal_card, from: $other, to: $self, count: 1, random: true }
+              else: { op: noop }
+        - { max: 6, effect: { op: noop } }
+
+# ==========================================================================
+# WIZARD
+# ==========================================================================
+
+- id: base.hero.bun_bun
+  kind: hero
+  name: "Bun Bun"
+  card_class: wizard
+  copies: 1
+  text: "Search the discard pile for a Magic card and add it to your hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 5
+          effect:
+            op: search
+            zone: { zone: discard }
+            filter: { op: card_kind_is, kind: magic }
+            count: 1
+            chooser: $self
+            bind: found
+            then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { max: 4, effect: { op: noop } }
+
+- id: base.hero.buttons
+  kind: hero
+  name: "Buttons"
+  card_class: wizard
+  copies: 1
+  # UNVERIFIED card: threshold and wording unconfirmed.
+  text: "Pull a card from another player's hand."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Pull a card from whose hand?"
+              - { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+        - { max: 5, effect: { op: noop } }
+
+- id: base.hero.fluffy
+  kind: hero
+  name: "Fluffy"
+  card_class: wizard
+  copies: 1
+  text: "DESTROY 2 Hero cards."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (10+); the effect text is confirmed.
+        - min: 10
+          effect:
+            op: repeat
+            times: 2
+            effect:
+              op: seq
+              steps:
+                - op: choose
+                  bind: victim
+                  chooser: $self
+                  from: { selector: opponents, of: $self }
+                  prompt: "Destroy a Hero belonging to whom?"
+                - { op: destroy_hero, target: $victim, chooser: $self }
+        - { max: 9, effect: { op: noop } }
+
+- id: base.hero.hopper
+  kind: hero
+  name: "Hopper"
+  card_class: wizard
+  copies: 1
+  text: "Choose a player. That player must SACRIFICE a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 7
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Who sacrifices a Hero?"
+              - { op: sacrifice, target: $victim }
+        - { max: 6, effect: { op: noop } }
+
+- id: base.hero.snowball
+  kind: hero
+  name: "Snowball"
+  card_class: wizard
+  copies: 1
+  # UNVERIFIED card: threshold and wording unconfirmed.
+  text: "DRAW a card for each Wizard in your Party."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          effect:
+            op: for_each
+            over: { selector: heroes, of: $self, where: { op: card_class_is, class: wizard } }
+            bind: wizard
+            effect: { op: draw, target: $self, count: 1 }
+        - { max: 7, effect: { op: noop } }
+
+- id: base.hero.spooky
+  kind: hero
+  name: "Spooky"
+  card_class: wizard
+  copies: 1
+  text: "Each other player must SACRIFICE a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 10
+          effect:
+            op: for_each
+            over: { selector: opponents, of: $self }
+            bind: other
+            effect: { op: sacrifice, target: $other }
+        - { max: 9, effect: { op: noop } }
+
+- id: base.hero.whiskers
+  kind: hero
+  name: "Whiskers"
+  card_class: wizard
+  copies: 1
+  text: "STEAL a Hero card and DESTROY a Hero card."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        # UNVERIFIED threshold (11+); the effect text is confirmed.
+        - min: 11
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Steal a Hero from whom?"
+              - { op: steal_hero, from: $victim, to: $self, chooser: $self }
+              - op: choose
+                bind: target
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Destroy a Hero belonging to whom?"
+              - { op: destroy_hero, target: $target, chooser: $self }
+        - { max: 10, effect: { op: noop } }
+
+- id: base.hero.wiggles
+  kind: hero
+  name: "Wiggles"
+  card_class: wizard
+  copies: 1
+  text: "STEAL a Hero card and roll to use its effect immediately."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 10
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                bind: victim
+                chooser: $self
+                from: { selector: opponents, of: $self }
+                prompt: "Steal a Hero from whom?"
+              - op: choose
+                bind: prize
+                chooser: $self
+                from:
+                  selector: heroes
+                  of: $victim
+                  where: { op: card_has_ability, activation: action }
+                prompt: "Steal which Hero?"
+              - { op: move_card, card: $prize, to: { player: $self, zone: party } }
+              # `use_ability` re-rolls the stolen Hero's own roll. It is free
+              # here: the action point was already paid for Wiggles.
+              - { op: use_ability, card: $prize, user: $self }
+        - { max: 9, effect: { op: noop } }

@@ -121,12 +121,37 @@ actions:
       kind: magic
       challengeable: true
 
-  # Shipped off. A variant flips this to true — no Python involved.
+  # A Party Leader whose skill costs something cannot be a passive trigger.
+  # Only The Shadow Claw uses this in the base game; the target filter means the
+  # action simply is not offered to the other five.
+  - id: use_leader_ability
+    label: "Use your Party Leader's skill"
+    cost: {} # the ability's own `cost:` block pays
+    targets:
+      - param: card
+        from: { selector: party_leaders, of: $self }
+        where:
+          op: all
+          of:
+            - { op: card_has_ability, activation: action }
+            - { op: not, of: { op: card_tapped } }
+        prompt: "Use your Party Leader's skill?"
+    effect: { op: use_ability, card: $intent.card }
+
+  # The real 3-AP action, per the rulebook: DISCARD every card in your hand
+  # (if you have any) and DRAW five new cards.
   - id: discard_and_draw
-    label: "Discard your hand, draw that many plus one"
+    label: "Discard your hand and draw five"
     cost: { action_points: 3 }
-    enabled: false
-    effect: { op: noop }
+    requires: { op: hand_size, player: $self, cmp: ">", value: 0 }
+    effect:
+      op: seq
+      steps:
+        - op: for_each
+          over: { selector: cards, of: { player: $self, zone: hand } }
+          bind: held
+          effect: { op: move_card, card: $held, to: { zone: discard } }
+        - { op: draw, target: $self, count: 5 }
 
 # --------------------------------------------------------------------------
 # Turn structure. TurnMachine only knows how to walk this table.
@@ -142,7 +167,16 @@ phases:
   - id: main
     loop_while: { op: compare, left: $action_points, cmp: ">", right: 0 }
     allows:
-      [draw, play_hero, use_hero_ability, attack_monster, equip_item, cast_magic]
+      [
+        draw,
+        play_hero,
+        use_hero_ability,
+        use_leader_ability,
+        attack_monster,
+        equip_item,
+        cast_magic,
+        discard_and_draw,
+      ]
 
   - id: turn_end
     auto_advance: true
@@ -163,8 +197,16 @@ windows:
     order: seat_left_of_active
     reopen_on_action: true
     # `challengeable: false` (a reaction card, or an action that says so) keeps
-    # the window shut without the engine knowing the word.
-    condition: { op: compare, left: $event.challengeable, cmp: "==", right: true }
+    # the window shut without the engine knowing the word. The second clause is
+    # Iron Resolve's hook: "cards you play cannot be challenged for the rest of
+    # your turn" is a player flag this condition reads, so the Hero needed no
+    # new mechanism — only a flag and this line.
+    condition:
+      op: all
+      of:
+        - { op: compare, left: $event.challengeable, cmp: "==", right: true }
+        - op: not
+          of: { op: flag_set, scope: player, key: uncontestable, target: $event.player }
 
   roll_modification:
     # Opens after the dice have landed and before the band is chosen, so a

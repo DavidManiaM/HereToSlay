@@ -88,7 +88,9 @@ def test_opponents_are_listed_in_seat_order(state: GameState) -> None:
 
 def test_card_views_expose_only_rendering_facts(state: GameState) -> None:
     card = build_view(state, P1).zone("leader", P1).cards[0]
-    assert card.def_id.startswith("table.leader.")
+    # Which pack the leader came from is not the point (the fixture stacks on
+    # base, so it may be either); that a view carries the def id is.
+    assert state.content.cards[card.def_id].kind == "party_leader"
     assert card.owner == P1
     assert card.tapped is False
 

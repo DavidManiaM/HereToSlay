@@ -67,6 +67,33 @@ def _pick(
     return picked
 
 
+def _then(ctx: EffectContext, params: Params, cards: Sequence[CardId]) -> Flow:
+    """Run a ``then:`` body with ``bind:`` naming the cards that just moved.
+
+    "DRAW 2 cards; if at least one is a Challenge card…" and "pull a card; if it
+    is a Hero card, pull another" both need to *see* what they got. Without this
+    the ops could only ever move cards blind. A single card binds as itself
+    rather than a one-element list, so ``{op: card_kind_is, card: $pulled}``
+    reads the way a card is written.
+    """
+    body = params.get("then")
+    if body is None:
+        return Outcome.DONE
+    if not cards:
+        # Nothing moved — an empty deck, or a hand with nothing left to pull.
+        # "If that card is a Hero…" is vacuous with no card, and running the
+        # body anyway would leave the binding unresolvable.
+        return Outcome.DONE
+    name = params.get("bind")
+    scope = ctx
+    if name:
+        count = ctx.resolve_int(params.get("count"), 1)
+        value: Any = cards[0] if count == 1 and cards else list(cards)
+        scope = ctx.bind(**{str(name): value})
+    outcome = yield from scope.run(body)
+    return outcome
+
+
 @effect("draw")
 def _draw(ctx: EffectContext, params: Params) -> Flow:
     """Draw from the top of a deck.
@@ -83,18 +110,23 @@ def _draw(ctx: EffectContext, params: Params) -> Flow:
         else zone_id(DEFAULT_DECK)
     )
 
+    drawn: list[CardId] = []
     for _ in range(max(0, count)):
         deck = ctx.state.zone(deck_id)
         if deck.is_empty:
             break
+        card = deck.top()[0]
         result = yield from ctx.emit(
             "card.drawn",
-            {"player": target, "card": deck.top()[0], "from": deck_id},
+            {"player": target, "card": card, "from": deck_id},
             actor=target,
         )
         if not result.ok:
             return Outcome.CANCELLED
-    return Outcome.DONE
+        drawn.append(card)
+
+    outcome = yield from _then(ctx, params, drawn)
+    return outcome
 
 
 @effect("discard")
@@ -177,6 +209,30 @@ def _steal_card(ctx: EffectContext, params: Params) -> Flow:
         result = yield from ctx.emit(
             "card.moved", {"card": card, "to": zone_id("hand", thief), "from": source}, actor=thief
         )
+        if not result.ok:
+            return Outcome.CANCELLED
+
+    outcome = yield from _then(ctx, params, picked)
+    return outcome
+
+
+@effect("swap_zones")
+def _swap_zones(ctx: EffectContext, params: Params) -> Flow:
+    """Exchange the whole contents of two zones — "trade hands with a player".
+
+    Both sides are snapshotted *before* anything moves, which is the whole
+    reason this is an op rather than two ``for_each`` loops: the second loop
+    would otherwise re-collect the cards the first one just delivered.
+    """
+    zone_a = ctx.resolve_zone(params.get("a"))
+    zone_b = ctx.resolve_zone(params.get("b"))
+    if zone_a == zone_b:
+        return Outcome.DONE
+
+    cards_a = tuple(ctx.state.zone(zone_a).cards)
+    cards_b = tuple(ctx.state.zone(zone_b).cards)
+    for card, destination in [(c, zone_b) for c in cards_a] + [(c, zone_a) for c in cards_b]:
+        result = yield from ctx.emit("card.moved", {"card": card, "to": destination})
         if not result.ok:
             return Outcome.CANCELLED
     return Outcome.DONE

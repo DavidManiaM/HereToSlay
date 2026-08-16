@@ -1,0 +1,126 @@
+# Modifier and Challenge cards — the two reaction kinds.
+#
+# Neither is ever an *action*: they cost no action points and are played out of
+# turn into an open window declared in rules.yaml. That is why they have a
+# `reaction:` block instead of `play:` and never appear in the action menu.
+#
+# Deck arithmetic for the 115-card main deck:
+#     48 Heroes (1 each) + 12 Items (6x2) + 16 Magic (8x2)
+#   + 32 Modifiers (4x8) + 7 Challenges = 115
+# The 48/12/16 counts follow from confirmed card lists; the 32/7 split is
+# UNVERIFIED — I could not find a primary source for how many Modifier and
+# Challenge cards the box holds, so these are chosen to hit the printed 115.
+
+# ==========================================================================
+# Modifiers
+# ==========================================================================
+#
+# A Modifier is playable by anybody, on anybody's roll, any number per roll.
+# The card does not know what it is modifying: `modify_roll` reaches whatever
+# roll is in flight (core/effects/rolls.py), which is what lets the same card
+# swing a Hero ability, a Monster attack or a Challenge contest.
+#
+# Each card offers two options, per the rulebook: "simply declare the option you
+# wish to use on the current roll." `choose_effect` is that declaration.
+
+- id: base.modifier.plus_one_minus_three
+  kind: modifier
+  name: "+1 / -3"
+  copies: 8
+  text: "Add 1 or subtract 3 from any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect:
+      op: choose_effect
+      chooser: $self
+      prompt: "Apply which?"
+      options:
+        - { label: "+1", effect: { op: modify_roll, amount: 1, source: $card } }
+        - { label: "-3", effect: { op: modify_roll, amount: -3, source: $card } }
+
+- id: base.modifier.plus_two_minus_two
+  kind: modifier
+  name: "+2 / -2"
+  copies: 8
+  text: "Add 2 or subtract 2 from any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect:
+      op: choose_effect
+      chooser: $self
+      prompt: "Apply which?"
+      options:
+        - { label: "+2", effect: { op: modify_roll, amount: 2, source: $card } }
+        - { label: "-2", effect: { op: modify_roll, amount: -2, source: $card } }
+
+- id: base.modifier.plus_three_minus_one
+  kind: modifier
+  name: "+3 / -1"
+  copies: 8
+  text: "Add 3 or subtract 1 from any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect:
+      op: choose_effect
+      chooser: $self
+      prompt: "Apply which?"
+      options:
+        - { label: "+3", effect: { op: modify_roll, amount: 3, source: $card } }
+        - { label: "-1", effect: { op: modify_roll, amount: -1, source: $card } }
+
+- id: base.modifier.plus_four_minus_four
+  kind: modifier
+  name: "+4 / -4"
+  copies: 8
+  text: "Add 4 or subtract 4 from any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect:
+      op: choose_effect
+      chooser: $self
+      prompt: "Apply which?"
+      options:
+        - { label: "+4", effect: { op: modify_roll, amount: 4, source: $card } }
+        - { label: "-4", effect: { op: modify_roll, amount: -4, source: $card } }
+
+# ==========================================================================
+# Challenge
+# ==========================================================================
+
+- id: base.challenge.challenge
+  kind: challenge
+  name: "Challenge"
+  copies: 7
+  text: >-
+    Stop another player from playing a Hero, Item or Magic card. Both players
+    roll; if your roll is equal to or higher, that card is discarded.
+  reaction:
+    window: card_played
+    challengeable: false
+    condition:
+      op: all
+      of:
+        - { op: event_matches, kind_in: [hero, item, magic], played_by: { op: not_self } }
+        # "Each card can only be challenged once" — the flag is set on the card
+        # being played, so a second Challenge in the same window is not offered.
+        - { op: not, of: { op: flag_set, scope: card, key: challenged, target: $event.card } }
+    effect:
+      op: seq
+      steps:
+        - { op: set_flag, scope: card, key: challenged, target: $event.card, value: true }
+        - op: emit
+          event: challenge.declared
+          payload: { card: $event.card, defender: $event.player }
+        - op: contest_roll
+          a: { roller: $self, dice: "2d6", kind: challenge }
+          b: { roller: $event.player, dice: "2d6", kind: challenge }
+          # The rulebook is explicit: "If your roll is equal to or higher than
+          # the other player's roll, the card being challenged is moved to the
+          # discard pile." So a tie goes to the CHALLENGER, not the defender.
+          on_a_wins: { op: cancel_event, and_discard: true, reason: "Challenged" }
+          on_tie: { op: cancel_event, and_discard: true, reason: "Challenged (tie)" }
+          on_b_wins: { op: noop }

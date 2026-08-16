@@ -31,7 +31,6 @@ from rich.rule import Rule
 from rich.text import Text
 
 from here_to_slay.core.interpreter import (
-    Awaiting,
     CardsChosen,
     ChooseCards,
     ChooseIntent,
@@ -41,7 +40,6 @@ from here_to_slay.core.interpreter import (
     Confirmed,
     Decision,
     DecisionSource,
-    Intent,
     IntentChosen,
     OptionChosen,
     PlayerChosen,
@@ -115,7 +113,7 @@ class CliPresenter(DecisionSource):
             )
             self.console.print(
                 Text(
-                    f"Press Enter when {self._player_name(request.requester)} is ready…",
+                    f"Press Enter when {self._player_name(request.requester)} is ready...",
                     style="dim",
                 )
             )
@@ -146,13 +144,14 @@ class CliPresenter(DecisionSource):
         self.console.print()
 
     def _print_last_rolls(self) -> None:
-        """Print any rolls that resolved since the last prompt."""
-        rolls = getattr(self.engine.state, "_last_displayed_roll_index", 0)
-        execution = getattr(self.engine.interpreter, "_flow", None)
-        # Access rolls from the engine's current execution context
-        # Rolls live on the EffectContext.execution object, but the engine
-        # doesn't expose that directly. We track via state flag.
-        # Phase 5 roll display: read from state.flags injected by engine.
+        """Print any rolls that resolved since the last prompt.
+
+        Currently inert: nothing writes ``_cli_rolls``. Rolls live on
+        ``ctx.execution.rolls``, which the ``Engine`` facade does not expose, so
+        wiring this up needs an ``Engine.recent_rolls`` accessor rather than a
+        change here. Tracked as Phase 5 gap 1; Phase 7 is where rolls and
+        reactions get their attention.
+        """
         all_rolls = self.engine.state.flags.get("_cli_rolls", [])
         displayed = self.engine.state.flags.get("_cli_rolls_displayed", 0)
         new_rolls = all_rolls[displayed:]
@@ -199,60 +198,86 @@ class CliPresenter(DecisionSource):
     # ---- cards ----------------------------------------------------------
 
     def _choose_cards(self, request: ChooseCards, view: Any) -> CardsChosen:
+        """Pick between ``minimum`` and ``maximum`` cards, one number at a time.
+
+        The loop only ever offers cards not already taken, which is what keeps
+        it honest: the engine rejects a selection containing the same card
+        twice, so offering one is offering an illegal move. A blind pick
+        (``request.hidden`` — choosing out of a hand you cannot see) shows
+        positions rather than names.
+        """
         candidates = list(request.candidates)
         prompt = request.prompt or (
-            f"Choose {request.minimum}–{request.maximum} card(s):"
+            f"Choose {request.minimum}-{request.maximum} card(s):"
             if request.minimum != request.maximum
             else f"Choose {request.minimum} card(s):"
         )
         self.console.print(f"[bold]{prompt}[/bold]")
-        names = [self._card_name_for(c) for c in candidates]
-        for i, name in enumerate(names, 1):
-            hidden = request.hidden and c != view.seat  # noqa: F821  (view not used here)
-            label = "???" if request.hidden else name
-            self.console.print(f"  [{i}] {label}")
 
-        # hidden-blind: present backs
+        # A blind pick names positions, never faces: the whole point is that the
+        # chooser cannot see this zone.
+        names = [
+            f"card {i}" if request.hidden else self._card_name_for(card)
+            for i, card in enumerate(candidates, 1)
+        ]
+        for i, name in enumerate(names, 1):
+            self.console.print(f"  [{i}] {name}")
         if request.hidden:
-            self.console.print("  (You cannot see the faces of these cards.)")
+            self.console.print("  [dim](You cannot see the faces of these cards.)[/dim]")
 
         chosen: list[str] = []
-        remaining = request.minimum
-        while len(chosen) < request.minimum or (
-            len(chosen) < request.maximum and len(chosen) < len(candidates)
-        ):
-            lo = min(request.minimum, len(candidates) - len(chosen))
-            hi = min(request.maximum - len(chosen), len(candidates) - len(chosen))
-            if lo == hi and lo == 1:
-                self.console.print(f"  → auto-selecting: {names[0]}")
-                chosen.append(candidates[0])
+        maximum = min(request.maximum, len(candidates))
+        minimum = min(request.minimum, maximum)
+
+        while len(chosen) < maximum:
+            available = [c for c in candidates if c not in chosen]
+            if not available:
                 break
-            still = request.minimum - len(chosen)
-            self.console.print(
-                f"  Enter number (need {still} more, {len(candidates) - len(chosen)} available):"
-            )
-            idx = self._read_int(1, len(candidates))
-            c = candidates[idx - 1]
-            if c in chosen:
-                self.console.print("  [yellow]Already chosen — pick another.[/yellow]")
+            still = minimum - len(chosen)
+            # Forced and unambiguous: take it rather than asking a question with
+            # exactly one legal answer.
+            if len(available) == 1 and still > 0:
+                only = available[0]
+                self.console.print(
+                    f"  [dim]-> {names[candidates.index(only)]} (only choice)[/dim]"
+                )
+                chosen.append(only)
                 continue
-            chosen.append(c)
-            if len(chosen) >= request.maximum:
-                break
-            if len(chosen) >= request.minimum:
+
+            if still > 0:
+                self.console.print(f"  [dim](need {still} more)[/dim]")
+            else:
                 self.console.print("  [dim]Enter another number, or press Enter to stop:[/dim]")
                 raw = self._read_raw()
-                if not raw:
+                if not raw:  # Enter, or a closed stream: either way, we are done
                     break
-                try:
-                    idx2 = int(raw)
-                    if 1 <= idx2 <= len(candidates):
-                        c2 = candidates[idx2 - 1]
-                        if c2 not in chosen:
-                            chosen.append(c2)
-                except ValueError:
-                    pass
+                pick = self._parse_pick(raw, candidates, chosen)
+                if pick is None:
+                    continue
+                chosen.append(pick)
+                continue
+
+            index = self._read_int(1, len(candidates))
+            card = candidates[index - 1]
+            if card in chosen:
+                self.console.print("  [yellow]Already chosen - pick another.[/yellow]")
+                continue
+            chosen.append(card)
+
         return CardsChosen(tuple(chosen))  # type: ignore[arg-type]
+
+    def _parse_pick(
+        self, raw: str, candidates: list[str], chosen: list[str]
+    ) -> str | None:
+        """A 1-based index typed at the optional-extra prompt, or ``None``."""
+        try:
+            index = int(raw.strip())
+        except ValueError:
+            return None
+        if not 1 <= index <= len(candidates):
+            return None
+        card = candidates[index - 1]
+        return None if card in chosen else card
 
     def _card_name_for(self, card_id: str) -> str:
         try:
@@ -303,15 +328,26 @@ class CliPresenter(DecisionSource):
     def _confirm(self, request: Confirm) -> Confirmed:
         prompt = request.prompt or "Confirm?"
         self.console.print(f"[bold]{prompt}[/bold] [dim][y/N][/dim] ", end="")
-        raw = self._read_raw().strip().lower()
+        raw = (self._read_raw() or "").strip().lower()
         return Confirmed(raw in ("y", "yes"))
 
     # -- input helpers ----------------------------------------------------
 
     def _read_int(self, lo: int, hi: int) -> int:
+        """Prompt until a number in range arrives, or the input stream ends.
+
+        The EOF check is what stops a piped session spinning forever: a closed
+        stdin returns '' from every subsequent read, and re-prompting on that is
+        an infinite loop rather than a retry. A human pressing Enter by mistake
+        still just gets asked again, because ``_stdin_open`` is still true.
+        """
         while True:
-            self.console.print(f"  [dim]Enter {lo}–{hi}:[/dim] ", end="")
+            self.console.print(f"  [dim]Enter {lo}-{hi}:[/dim] ", end="")
             raw = self._read_raw()
+            if raw is None:
+                raise EOFError(
+                    f"stdin closed while waiting for a number between {lo} and {hi}"
+                )
             try:
                 value = int(raw.strip())
                 if lo <= value <= hi:
@@ -322,12 +358,17 @@ class CliPresenter(DecisionSource):
             except ValueError:
                 self.console.print("  [red]Please enter a number.[/red]")
 
-    def _read_raw(self) -> str:
+    def _read_raw(self) -> str | None:
+        """A line of input, or ``None`` once the stream is exhausted.
+
+        ``None`` and ``''`` mean different things — "there will never be more
+        input" versus "the player pressed Enter" — and collapsing them is what
+        made a closed stdin loop forever.
+        """
         try:
             return input()
         except (EOFError, KeyboardInterrupt):
-            # Non-interactive / test mode — return empty so callers fall back
-            return ""
+            return None
 
 
 __all__ = ["CliPresenter"]

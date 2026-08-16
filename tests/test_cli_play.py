@@ -24,23 +24,20 @@ from unittest.mock import patch
 
 import pytest
 
-from here_to_slay.content import ContentRegistry, load_pack
+from here_to_slay.content import ContentRegistry
 from here_to_slay.core import (
     CardsChosen,
     Confirmed,
     DecisionSource,
     Engine,
-    GameOver,
     IntentChosen,
     OptionChosen,
     PlayerChosen,
     ReactionChosen,
     Request,
     new_game,
-    zone_id,
 )
 from here_to_slay.core.interpreter import Decision
-from here_to_slay.core.log import DecisionLog
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -131,10 +128,11 @@ class TestRender:
         assert "Turn" in output
 
     def test_render_roll(self) -> None:
-        from here_to_slay.core.rolls import Modifier, Roll
-        from here_to_slay.core.ids import roll_id
-        from here_to_slay.ui.cli.render import render_roll
         from rich.text import Text
+
+        from here_to_slay.core.ids import roll_id
+        from here_to_slay.core.rolls import Modifier, Roll
+        from here_to_slay.ui.cli.render import render_roll
 
         roll = Roll(id=roll_id(1), kind="ability", dice="2d6")
         roll.raw = (3, 4)
@@ -242,12 +240,12 @@ class TestCmdPlay:
         auto_source: bool = True,
     ) -> tuple[int, str]:
         """Run main() and return (exit_code, console_output)."""
+        import argparse
         from io import StringIO
 
         from rich.console import Console
 
         from here_to_slay.cli import cmd_play
-        import argparse
 
         buf = StringIO()
 
@@ -300,7 +298,6 @@ class TestLogRoundTrip:
 
     def test_save_and_replay(self, tmp_path: Path, fixtures: Path) -> None:
         import argparse
-
         from io import StringIO
 
         from rich.console import Console
@@ -411,7 +408,102 @@ class TestCliHelp:
         assert exc.value.code == 0
 
     def test_main_without_subcommand_shows_usage(self) -> None:
-        from here_to_slay.cli import main, EXIT_USAGE
+        from here_to_slay.cli import EXIT_USAGE, main
 
         result = main([])
         assert result == EXIT_USAGE
+
+
+class TestChooseCardsPrompt:
+    """``_choose_cards`` — the prompt that had no coverage until Phase 6.
+
+    It is reachable from the base game in three shapes: a forced single pick, a
+    multi-pick that must not offer the same card twice, and a *blind* pick out
+    of a hand the chooser cannot see (Silent Shadow). The last one used to raise
+    ``UnboundLocalError`` and was unreachable only because no card set
+    ``hidden`` until the base content existed.
+    """
+
+    def _presenter(self, engine, registry, inputs):
+        from io import StringIO
+
+        from rich.console import Console
+
+        from here_to_slay.ui.cli.presenter import CliPresenter
+
+        buf = StringIO()
+        presenter = CliPresenter(
+            engine,
+            registry,
+            console=Console(file=buf, no_color=True, width=120),
+            silent=True,
+        )
+        supply = iter(inputs)
+        presenter._read_raw = lambda: next(supply, None)  # type: ignore[method-assign]
+        return presenter, buf
+
+    def _request(self, cards, **kwargs):
+        from here_to_slay.core.interpreter import ChooseCards
+
+        return ChooseCards(requester="p1", candidates=tuple(cards), **kwargs)
+
+    def test_a_forced_single_pick_asks_nothing(self, cardless_content: ContentRegistry) -> None:
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="cc1")
+        engine.start()
+        presenter, buf = self._presenter(engine, cardless_content, [])
+
+        decision = presenter._choose_cards(self._request(["a"], minimum=1, maximum=1), None)
+
+        assert decision.cards == ("a",)
+        assert "only choice" in buf.getvalue()
+
+    def test_the_same_card_is_never_chosen_twice(self, cardless_content: ContentRegistry) -> None:
+        """Typing '1' twice must not yield ('a', 'a') — the engine rejects it."""
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="cc2")
+        engine.start()
+        presenter, _ = self._presenter(engine, cardless_content, ["1", "1", "2"])
+
+        decision = presenter._choose_cards(
+            self._request(["a", "b"], minimum=2, maximum=2), None
+        )
+
+        assert sorted(decision.cards) == ["a", "b"]
+        assert len(set(decision.cards)) == 2
+
+    def test_a_blind_pick_shows_positions_not_names(
+        self, cardless_content: ContentRegistry
+    ) -> None:
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="cc3")
+        engine.start()
+        presenter, buf = self._presenter(engine, cardless_content, ["1"])
+
+        decision = presenter._choose_cards(
+            self._request(["a", "b"], minimum=1, maximum=1, hidden=True), None
+        )
+
+        out = buf.getvalue()
+        assert decision.cards == ("a",)
+        assert "card 1" in out and "card 2" in out
+        assert "cannot see the faces" in out
+
+    def test_an_optional_extra_stops_on_enter(self, cardless_content: ContentRegistry) -> None:
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="cc4")
+        engine.start()
+        presenter, _ = self._presenter(engine, cardless_content, ["1", ""])
+
+        decision = presenter._choose_cards(
+            self._request(["a", "b", "c"], minimum=1, maximum=3), None
+        )
+
+        assert decision.cards == ("a",)
+
+    def test_a_closed_stream_does_not_loop_forever(
+        self, cardless_content: ContentRegistry
+    ) -> None:
+        """EOF is not "invalid, try again" — that was an infinite loop."""
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="cc5")
+        engine.start()
+        presenter, _ = self._presenter(engine, cardless_content, [])
+
+        with pytest.raises(EOFError):
+            presenter._choose_cards(self._request(["a", "b"], minimum=1, maximum=1), None)

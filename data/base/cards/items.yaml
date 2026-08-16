@@ -1,0 +1,154 @@
+# Items — equipped to a Hero, never to a Party Leader.
+#
+# All six effects were confirmed against the wikis. The base rules that govern
+# them (one Item per Hero, no replacing, and the Item travels with its host if
+# the Hero is destroyed, stolen or returned) are enforced by the engine's
+# attachment link, not restated per card.
+#
+# Cursed Items are the reason `equip.to` is a selector rather than a constant:
+# a blessing targets your own Heroes, a curse targets somebody else's. The
+# `cursed` tag is what Holy Curselifter searches for — a tag, not a subclass,
+# so a variant's new curse is found by the same Hero with no code change.
+
+- id: base.item.really_big_ring
+  kind: item
+  name: "Really Big Ring"
+  copies: 2
+  text: "Whenever you roll to use the equipped Hero card's effect, +2 to that roll."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
+      effect: { op: modify_roll, amount: 2, source: $card }
+
+- id: base.item.particularly_rusty_coin
+  kind: item
+  name: "Particularly Rusty Coin"
+  copies: 2
+  text: "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card."
+  # DEVIATION: "unsuccessfully" needs a notion of which band ran, which roll
+  # bands deliberately do not have (see monsters.yaml, Arctic Aries). Modelled
+  # as a low total instead — 6 or less on 2d6 fails every Hero in the set whose
+  # threshold is 7+, which is most of them.
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    - on: roll.resolved
+      timing: post
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
+          - { op: compare, left: $event.roll.total, cmp: "<=", right: 6 }
+      effect: { op: draw, target: $self, count: 1 }
+
+- id: base.item.decoy_doll
+  kind: item
+  name: "Decoy Doll"
+  copies: 2
+  text: >-
+    If the equipped Hero card would be sacrificed or destroyed, move this card
+    to the discard pile instead.
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    # The archetypal PRE cancel: intercept the Hero leaving, spend itself, and
+    # let the Hero stay. `while_in: party` means it stops working the moment it
+    # is discarded, which is exactly once.
+    - on: hero.left_party
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: compare, left: $event.card, cmp: "==", right: $card.attached_to }
+          - { op: compare, left: $event.to, cmp: "==", right: discard }
+      effect:
+        op: seq
+        steps:
+          - { op: unequip_item, item: $card, to_zone: { zone: discard } }
+          - { op: cancel_event, reason: "Decoy Doll" }
+
+- id: base.item.suspiciously_shiny_coin
+  kind: item
+  name: "Suspiciously Shiny Coin"
+  copies: 2
+  tags: [cursed]
+  text: "If you successfully roll to use the equipped Hero card's effect, DISCARD a card."
+  # A Cursed Item: `equip.to` points at *other* players' Heroes.
+  # DEVIATION: same "successfully" problem as Particularly Rusty Coin, mirrored
+  # — a total of 7 or more stands in for success.
+  equip:
+    to: { selector: heroes, of: $opponents }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    - on: roll.resolved
+      timing: post
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
+          - { op: compare, left: $event.roll.total, cmp: ">=", right: 7 }
+      effect: { op: discard, target: $event.roller, count: 1, chooser: $event.roller }
+
+- id: base.item.curse_of_the_snakes_eyes
+  kind: item
+  name: "Curse of the Snake's Eyes"
+  copies: 2
+  tags: [cursed]
+  text: "Whenever you roll to use the equipped Hero card's effect, -2 to that roll."
+  equip:
+    to: { selector: heroes, of: $opponents }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
+      effect: { op: modify_roll, amount: -2, source: $card }
+
+- id: base.item.sealing_key
+  kind: item
+  name: "Sealing Key"
+  copies: 2
+  tags: [cursed]
+  text: "You cannot use the equipped Hero card's effect."
+  equip:
+    to: { selector: heroes, of: $opponents }
+    cost: { action_points: 1 }
+    challengeable: true
+  triggers:
+    # Cancels the declaration, so the action point is never paid — "cannot use"
+    # rather than "uses and fails".
+    - on: action.declared
+      timing: pre
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: compare, left: $event.action, cmp: "==", right: use_hero_ability }
+          - { op: compare, left: $event.card, cmp: "==", right: $card.attached_to }
+      effect: { op: cancel_event, reason: "Sealing Key" }

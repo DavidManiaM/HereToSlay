@@ -284,6 +284,9 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
     # -- run ---------------------------------------------------------------
     from here_to_slay.core.interpreter import GameOver
     from here_to_slay.ui.cli.presenter import CliPresenter
+    from here_to_slay.ui.cli.render import ICONS
+
+    TROPHY = ICONS["trophy"]
 
     presenter = CliPresenter(engine, registry, console=console)
     try:
@@ -295,7 +298,7 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
     # -- result ------------------------------------------------------------
     if isinstance(status, GameOver) and status.winner:
         winner_name = engine.state.player(status.winner).name
-        console.print(f"\n[bold bright_yellow]🏆 {winner_name} wins![/bold bright_yellow]\n")
+        console.print(f"\n[bold bright_yellow]{TROPHY} {winner_name} wins![/bold bright_yellow]\n")
     else:
         console.print("\n[dim]Game over (no winner / turn cap reached).[/dim]\n")
 
@@ -360,7 +363,9 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
 
     # -- run (with per-step rendering) ------------------------------------
     from here_to_slay.core.interpreter import Decision, DecisionSource, Request
-    from here_to_slay.ui.cli.render import render_board
+    from here_to_slay.ui.cli.render import ICONS, render_board
+
+    TROPHY = ICONS["trophy"]
 
     def _step_pause() -> None:
         if args.step:
@@ -399,7 +404,7 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
         console.print("\n[yellow]Replay interrupted.[/yellow]")
         return EXIT_OK
     except ReplayError as exc:
-        if viewer.exhausted or "the log has" in str(exc) and "but the game asked for another" in str(exc):
+        if viewer.exhausted or ("the log has" in str(exc) and "but the game asked for another" in str(exc)):
             pass
         else:
             console.print(f"[bold red]Replay error:[/bold red] {exc}")
@@ -413,10 +418,26 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
 
     if isinstance(status, GameOver) and status.winner:
         winner_name = engine.state.player(status.winner).name
-        console.print(f"[bold bright_yellow]🏆 {winner_name} wins![/bold bright_yellow]")
+        console.print(f"[bold bright_yellow]{TROPHY} {winner_name} wins![/bold bright_yellow]")
     else:
         console.print("[dim]Replay finished.[/dim]")
     return EXIT_OK
+
+
+def _make_console() -> Console:
+    """A console that cannot die of an unencodable character.
+
+    A legacy Windows console runs a non-UTF-8 code page, where printing a box
+    glyph or an emoji raises ``UnicodeEncodeError`` and takes the game down
+    mid-board. ``errors="replace"`` degrades those to '?' instead; the ASCII
+    icon fallback in ``ui/cli/render.py`` keeps the *common* glyphs readable, so
+    in practice only rare decoration is affected.
+    """
+    try:
+        sys.stdout.reconfigure(errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, OSError, ValueError):  # pragma: no cover - exotic stdout
+        pass
+    return Console()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -425,7 +446,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not getattr(args, "command", None):
         parser.print_help()
         return EXIT_USAGE
-    console = Console()
+    console = _make_console()
     return int(args.func(args, console))
 
 

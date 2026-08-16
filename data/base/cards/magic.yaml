@@ -1,0 +1,173 @@
+# Magic — one-time spells. Play, resolve, discard.
+#
+# `play.then` is what sends each card to the discard; it is per-card rather than
+# a rule so that a variant's "Magic card that stays in play" needs no engine
+# change (core/effects/actions.py:_run_play defaults anything still in limbo to
+# the discard anyway, but saying it explicitly is the documented shape).
+#
+# All are challengeable — Magic is one of the three kinds a Challenge may stop.
+
+- id: base.magic.destructive_spell
+  kind: magic
+  name: "Destructive Spell"
+  copies: 2
+  text: "DISCARD a card, then DESTROY a Hero card."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: seq
+      steps:
+        - { op: discard, target: $self, count: 1, chooser: $self }
+        - op: choose
+          bind: victim
+          chooser: $self
+          from: { selector: opponents, of: $self }
+          prompt: "Destroy a Hero belonging to whom?"
+        - { op: destroy_hero, target: $victim, chooser: $self }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.call_to_the_fallen
+  kind: magic
+  name: "Call to the Fallen"
+  copies: 2
+  text: "Search the discard pile for a Hero card and add it to your hand."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: search
+      zone: { zone: discard }
+      filter: { op: card_kind_is, kind: hero }
+      count: 1
+      chooser: $self
+      bind: found
+      then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.forced_exchange
+  kind: magic
+  name: "Forced Exchange"
+  copies: 2
+  text: >-
+    Choose a player. STEAL a Hero card from that player's Party, then move a
+    Hero card from your Party to that player's Party.
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: seq
+      steps:
+        - op: choose
+          bind: partner
+          chooser: $self
+          from: { selector: opponents, of: $self }
+          prompt: "Exchange Heroes with whom?"
+        - { op: steal_hero, from: $partner, to: $self, chooser: $self }
+        - op: choose
+          bind: given
+          chooser: $self
+          from: { selector: heroes, of: $self }
+          prompt: "Give them which Hero?"
+        - { op: move_card, card: $given, to: { player: $partner, zone: party } }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.enchanted_spell
+  kind: magic
+  name: "Enchanted Spell"
+  copies: 2
+  text: "+2 to all your rolls until the end of your turn."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect: { op: set_flag, scope: player, key: roll_bonus_2, target: $self, value: true }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+  triggers:
+    # `while_in: discard` is the trick that makes a one-shot lasting effect
+    # work: the card is in the discard by the time any roll happens, so that is
+    # where its subscription has to be live.
+    - on: roll.started
+      timing: pre
+      while_in: discard
+      condition:
+        op: all
+        of:
+          - { op: roll_is, roller: $self }
+          - { op: flag_set, scope: player, key: roll_bonus_2, target: $self }
+      effect: { op: modify_roll, amount: 2, source: $card }
+    - on: turn.ended
+      timing: post
+      while_in: discard
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: clear_flag, scope: player, key: roll_bonus_2, target: $self }
+
+- id: base.magic.winds_of_change
+  kind: magic
+  name: "Winds of Change"
+  copies: 2
+  text: "Return an Item card equipped to any Hero card to its owner's hand, then DRAW a card."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: seq
+      steps:
+        - op: search
+          zone: { zone: discard }
+          filter: { op: card_kind_is, kind: item }
+          count: 1
+          chooser: $self
+          bind: found
+          then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
+        - { op: draw, target: $self, count: 1 }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.forceful_winds
+  kind: magic
+  name: "Forceful Winds"
+  copies: 2
+  text: "Return all equipped Item cards to their owners' hands."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: for_each
+      over: { selector: items }
+      bind: equipped
+      effect: { op: unequip_item, item: $equipped, to_zone: { zone: discard } }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.critical_boost
+  kind: magic
+  name: "Critical Boost"
+  copies: 2
+  text: "DRAW 3 cards, then DISCARD a card."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: seq
+      steps:
+        - { op: draw, target: $self, count: 3 }
+        - { op: discard, target: $self, count: 1, chooser: $self }
+    then: { op: move_card, card: $card, to: { zone: discard } }
+
+- id: base.magic.entangling_trap
+  kind: magic
+  name: "Entangling Trap"
+  copies: 2
+  text: "DISCARD 2 cards, then STEAL a Hero card."
+  play:
+    cost: { action_points: 1 }
+    challengeable: true
+    effect:
+      op: seq
+      steps:
+        - { op: discard, target: $self, count: 2, chooser: $self }
+        - op: choose
+          bind: victim
+          chooser: $self
+          from: { selector: opponents, of: $self }
+          prompt: "Steal a Hero from whom?"
+        - { op: steal_hero, from: $victim, to: $self, chooser: $self }
+    then: { op: move_card, card: $card, to: { zone: discard } }

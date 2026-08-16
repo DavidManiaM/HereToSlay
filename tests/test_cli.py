@@ -55,10 +55,23 @@ def test_validate_fails_on_each_broken_fixture(
     assert f"{pack}/cards.yaml" in out, out
 
 
-def test_strict_promotes_warnings(project_root: Path) -> None:
+def test_strict_promotes_warnings(fixtures: Path) -> None:
+    """A pack that only *warns* passes normally and fails under --strict.
+
+    The rules-only fixture warns about an undealable deck. It replaced
+    ``data/base`` here at Phase 6: base now ships a full deck and validates
+    clean, so it no longer produces a warning to promote.
+    """
+    pack = str(fixtures / "rules_only")
+    assert main(["validate", pack]) == EXIT_OK
+    assert main(["validate", pack, "--strict"]) == EXIT_CONTENT_ERROR
+
+
+def test_the_shipping_pack_validates_clean(project_root: Path) -> None:
+    """The base game is warning-free, which is the Phase 6 acceptance gate."""
     base = str(project_root / "data" / "base")
     assert main(["validate", base]) == EXIT_OK
-    assert main(["validate", base, "--strict"]) == EXIT_CONTENT_ERROR
+    assert main(["validate", base, "--strict"]) == EXIT_OK
 
 
 def test_quiet_prints_only_the_summary(fixtures: Path, capsys: pytest.CaptureFixture[str]) -> None:

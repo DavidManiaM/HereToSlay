@@ -1,0 +1,14 @@
+# Base rules plus one deliberately disabled action.
+#
+# `actions` entries merge by id, so this adds an entry without restating the
+# table. It exists purely so a test has something that is *always* switched off:
+# `discard_and_draw` used to serve that purpose, but Phase 6 turned it on
+# because the rulebook lists it as a real 3-action-point move.
+id: play
+
+actions:
+  - id: shipped_off
+    label: "Deliberately disabled, for tests"
+    cost: { action_points: 1 }
+    enabled: false
+    effect: { op: noop }

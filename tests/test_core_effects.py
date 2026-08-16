@@ -286,7 +286,11 @@ class TestCardOps:
         self, table_state: GameState, run_effect: RunEffect
     ) -> None:
         available = len(table_state.zone("main_deck"))
-        run_effect(table_state, {"op": "draw", "target": "$self", "count": 50}, player="p1")
+        run_effect(
+            table_state,
+            {"op": "draw", "target": "$self", "count": available + 10},
+            player="p1",
+        )
         assert len(table_state.zone("main_deck")) == 0
         assert len(hand(table_state)) == 5 + available
 

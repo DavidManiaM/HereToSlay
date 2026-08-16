@@ -212,7 +212,7 @@ def _build_intent(ctx: EffectContext, action: ActionDef, values: dict[str, Any])
 def _label(ctx: EffectContext, action: ActionDef, values: Mapping[str, Any]) -> str:
     """"Play a Hero — Dodgy Dealer". What a numbered CLI menu prints."""
     named = [_name_of(ctx, value) for value in values.values() if value is not None]
-    return f"{action.label} — {', '.join(named)}" if named else action.label
+    return f"{action.label} - {', '.join(named)}" if named else action.label
 
 
 def _name_of(ctx: EffectContext, value: Any) -> str:

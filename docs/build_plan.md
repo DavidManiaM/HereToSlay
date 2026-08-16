@@ -332,19 +332,84 @@ is rolls and reactions.
 
 ---
 
-## Phase 6 — Base Content: Heroes, Monsters, Leaders
+## Phase 6 — Base Content: Heroes, Monsters, Leaders `[x]`
 
-**Deliverable:** the base game's card set as YAML. Pure data work — if this phase needs Python
-changes, the architecture has a hole and we fix the *engine*, not the card.
+**Deliverable:** the base game's card set as YAML. Mostly data work — where it needed Python, the
+architecture had a hole and we fixed the *engine*, not the card.
 
-- [ ] 6 Party Leaders
-- [ ] Heroes, all 6 classes
-- [ ] Monsters with requirement gates + outcome bands
-- [ ] Items, Magic
-- [ ] Golden replay test per card
+- [x] 6 Party Leaders (`data/base/cards/leaders.yaml`)
+- [x] 48 Heroes, 8 per class (`heroes.yaml`)
+- [x] 15 Monsters with requirement gates + outcome bands + slain-Monster skills (`monsters.yaml`)
+- [x] 6 Items incl. Cursed, 8 Magic (`items.yaml`, `magic.yaml`)
+- [x] 32 Modifiers + 7 Challenges (`reactions.yaml`)
+- [x] Golden test per card (`tests/test_base_content.py`)
 
-**Acceptance:** every card resolves in the CLI; each has a passing golden test.
-**Blocked on:** your answers in `rules_reference.md §5` (exact card text/values).
+**Acceptance:** ✅
+* `uv run hts validate data/base --strict` → **OK, 88 card definitions, 136 physical cards**
+  (115 main deck + 15 Monsters + 6 Leaders — the printed box contents).
+* `uv run pytest` → **667 passed**, and again under `HTS_STRICT=1`.
+* **60 random 3-player games on the real pack: 0 errors, 0 invariant violations, all terminated.**
+  53 won by `slay_three`, 7 by `full_party` — both victory conditions fire in real play.
+* `hts play data/base` deals, renders and plays end to end.
+
+**Not yet:** the reaction system under load (Phase 7), AI (Phase 8), pygame (Phase 9).
+
+### Decisions taken during Phase 6
+
+1. **The rulebook contradicted four things this project had already built on.** They are listed
+   in `rules_reference.md §7`; the sharpest is that **a Challenge tie goes to the challenger**,
+   not the defender, which had been assumed the other way in both the docs and the Phase 4
+   fixture. Verifying the rules turned out to be worth more than any single card.
+2. **Four engine changes, each forced by a card that could not otherwise be written.** The bar
+   was "no card-specific Python", not "no Python":
+   * `PartyLeaderDef.ability` — The Shadow Claw's skill *costs an action point*, and a cost
+     cannot live in a passive subscription.
+   * `party_classes()` reads the leader zone (`CLASS_BEARING_ZONES`) — the rulebook is explicit
+     that a Leader satisfies a class requirement and counts toward the six-class win, while never
+     being a Hero for "N Heroes of any class".
+   * `bind:`/`then:` on `draw` and `steal_card` — "DRAW 2; if one is a Challenge…" and "pull a
+     card; if it is a Hero, pull another" need to *see* what moved. Without it those ops could
+     only ever move cards blind. Six base cards depend on it.
+   * `swap_zones` — "trade hands" cannot be two `for_each` loops, because the second would
+     re-collect the cards the first just delivered. Both sides must be snapshotted first.
+3. **A lasting effect is three declarative parts, not a new engine concept.** "+3 to your rolls
+   until end of turn" is: an ability that sets a player flag, a `roll.started` trigger on the
+   same card that reads it, and a `turn.ended` trigger that clears it. Enchanted Spell shows the
+   variant — its triggers are `while_in: discard`, because a one-shot Magic card is already in
+   the discard by the time any roll happens.
+4. **Iron Resolve needed no mechanism at all.** "Cards you play cannot be challenged this turn"
+   is a flag plus one extra clause on the `card_played` window condition in `rules.yaml` — which
+   is exactly the claim `rules_engine.md §5` makes about windows being data.
+5. **A slain Monster's reward is a trigger with `while_in: slain`.** The Monster sits in your
+   party permanently, so that is where its subscription lives; `on_slay` stays for one-off
+   payouts. No "permanent skill" concept was needed.
+6. **The bottom band must be open-ended.** Bands are validated against the *natural* dice range,
+   but a Modifier can push a total outside it — a -3 on a roll of 2 gives -1. Napping Nibbles
+   shipped with a single `min: 2` band and raised mid-game in fuzzing. Every band table now ends
+   in a band with no lower bound.
+7. **Fuzzing found what the golden tests could not.** The per-card tests drive one band in
+   isolation; 60 random games found an empty-deck `draw`+`bind` crash and the band-coverage hole
+   above, because only a real game runs a deck to exhaustion or stacks two Modifiers.
+
+### Phase 5 gaps closed along the way
+
+Every card is tested through the terminal, so the CLI had to work. Closed gaps **2, 3, 4 and 5**:
+
+* **Emoji no longer crash a legacy Windows console.** `render.py` probes `sys.stdout.encoding`
+  once and falls back to an ASCII icon set; the console is also built with `errors="replace"` so
+  no glyph can ever kill a game mid-board. The intent-label separator moved from an em dash to
+  `-` in `core/actions.py` — typography was leaking out of the UI layer anyway.
+* **`_choose_cards` rewritten.** It had an `UnboundLocalError` that was unreachable only because
+  no card set `hidden` — Silent Shadow now does. It could also select the same card twice, which
+  the engine rejects. It now offers only cards not already chosen, and has five tests.
+* **EOF is no longer "invalid, try again".** `_read_raw` returns `None` for a closed stream
+  rather than `""`, so a piped session stops instead of looping forever.
+* **Header markup** (`[dim][…][/dim]` printed literally) and **band text** (`––12`, `2––`) fixed;
+  bands now read `8+`, `5-7`, `4-`.
+
+Still open: **gap 1** (roll display is dead code — `_print_last_rolls` reads a flag nothing
+writes; it needs an `Engine.recent_rolls` accessor) and **gap 6**. Both belong with Phase 7,
+whose subject is rolls and reactions.
 
 ---
 
@@ -434,30 +499,32 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–4 complete; Phase 5 substantially complete.** `uv run hts validate data/base` is green;
-`uv run pytest` runs 482 tests, and the whole suite also passes under `HTS_STRICT=1` (invariants
-checked after every mutation).
+**Phases 0–6 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
+and 136 physical cards; `uv run pytest` runs **667 tests**, and the whole suite also passes under
+`HTS_STRICT=1` (invariants checked after every mutation).
 
-**The game is playable by a human, end to end.** `Engine.new(content, players, seed=...)` deals a
-table, starts turns, offers each seat a legal menu computed from `rules.yaml`, pays costs, rolls
-dice through the modifier pipeline, opens reaction windows in seat order, checks victory after
-every action, and replays the whole thing from its decision log to a byte-identical state. Every
-op the vocabulary declares has a handler. `hts play` puts a person in that loop: a `rich` board,
-numbered menus, a hot-seat privacy gate, an auto-saved decision log, and `hts replay` to walk it
-back.
+**The base game is playable, end to end, with the real card set.** `hts play data/base` deals six
+Party Leaders, 48 Heroes across all six classes, 15 Monsters with requirement gates and outcome
+bands, Items (including Cursed ones), Magic, Modifiers and Challenges — then runs a full game
+with a `rich` board, numbered menus, a hot-seat privacy gate, an auto-saved decision log, and
+`hts replay` to walk it back. 60 random 3-player games complete with zero errors and zero
+invariant violations; **both** victory conditions fire in real play.
 
-What is missing is **cards worth playing** — and one Phase 5 bullet, the roll breakdown, which is
-written but never called (`Phase 5 → Known gaps`, item 1).
+Phase 6 needed four engine additions, each forced by a specific card rather than by convenience
+(see its decisions above). No card-specific Python exists anywhere: every one of the 88 cards is
+interpreted from its YAML.
 
-Next up is **Phase 6 — Base Content**: the base game's Heroes, Monsters, Leaders, Items and Magic
-as YAML under `data/base/cards/`. `data/base/pack.yaml` still declares `cards: []`, which is why
-the default `hts play` deals an empty table; `tests/fixtures/play` is the pack to imitate. This
-phase should need **zero** Python changes — if a card cannot be expressed, that is an engine hole
-to fix in the engine.
+Next up is **Phase 7 — Reactions: Challenge & Modifier**. Much of it already works — Challenges
+contest and cancel, Modifiers stack, and the base cards for both ship — so the phase is really
+about proving the interrupt system *under load*: a scripted 3-deep interrupt chain,
+challenge-a-challenge, modifier-on-a-challenge-roll, and the depth cap. Two Phase 5 gaps belong
+with it, since its subject is rolls and reactions:
 
-Worth doing alongside Phase 6, since every card will be exercised through the terminal: close
-Phase 5 gaps 1–4 (roll display, the Windows emoji crash, `_choose_cards`, the header markup), and
-put `tests/test_cli_play.py` coverage on the prompt paths that currently have none.
+* **gap 1** — roll display is dead code. `_print_last_rolls` reads `state.flags["_cli_rolls"]`,
+  which nothing writes; rolls live on `ctx.execution.rolls` and want an `Engine.recent_rolls`
+  accessor so `ui/` stays off the bus. `render_roll_result()` — the one showing which *band* was
+  hit — still has no caller.
+* **gap 6** — `cmd_replay` detects "log exhausted" by matching prose in a `ReplayError` message.
 
-Open questions blocking later phases are collected in `rules_reference.md §5`. Only Phase 6 (base
-card content) is actually blocked by them.
+Worth doing at some point, not urgent: `Band.tag`, which would let a card say "on a **successful**
+roll" and close the three documented deviations in `rules_reference.md §8`.

@@ -164,8 +164,20 @@ _EFFECTS: tuple[OpSpec, ...] = (
     OpSpec(
         "draw",
         OpKind.EFFECT,
-        _p(target=R.REF, count=R.VALUE, **{"from": ParamSpec(R.ZONE)}),  # type: ignore[arg-type]
-        doc="draw from the top of a deck (``main_deck`` unless told otherwise)",
+        _p(
+            target=R.REF,
+            count=R.VALUE,
+            **{"from": ParamSpec(R.ZONE)},  # type: ignore[arg-type]
+            bind=R.NAME,
+            then=R.EFFECT,
+        ),
+        binds="bind",
+        bind_scope="body",
+        body=("then",),
+        doc=(
+            "draw from the top of a deck (``main_deck`` unless told otherwise); "
+            "'bind' names what was drawn so 'then' can inspect it"
+        ),
     ),
     OpSpec(
         "discard",
@@ -184,7 +196,19 @@ _EFFECTS: tuple[OpSpec, ...] = (
             count=R.VALUE,
             random=R.VALUE,
             chooser=R.REF,
+            bind=R.NAME,
+            then=R.EFFECT,
         ),  # type: ignore[arg-type]
+        binds="bind",
+        bind_scope="body",
+        body=("then",),
+        doc="'bind' names what was pulled, so 'then' can ask what it was",
+    ),
+    OpSpec(
+        "swap_zones",
+        OpKind.EFFECT,
+        _p(a=(R.ZONE, REQ), b=(R.ZONE, REQ)),
+        doc="exchange the entire contents of two zones ('trade hands')",
     ),
     OpSpec(
         "search",
@@ -397,7 +421,13 @@ CORE_REFS: frozenset[str] = frozenset(
         "rules",
         "action_points",
         "active_player",
+        # `players`/`any_player` are every seat; `opponents` is every seat but
+        # `$self`. All three are resolved by EffectContext, so they belong here
+        # — leaving them out made `hts validate` reject content the engine runs
+        # perfectly well (found writing the base Items).
         "any_player",
+        "players",
+        "opponents",
         "player",
         "game",
         "roll",

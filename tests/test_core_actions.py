@@ -39,16 +39,31 @@ def in_main(state: GameState, action_points: int = 3) -> GameState:
 
 class TestTheMenu:
     def test_only_what_is_actually_playable_appears(self, quiet_state: GameState) -> None:
-        """An empty hand and an empty party leave exactly two things to do: draw,
-        or attack one of the Monsters the deal turned face up."""
+        """An empty hand and an empty party leave exactly one thing to do: draw.
+
+        Every base Monster gates on a party requirement, so a seat with no
+        Heroes cannot attack any of them — which is the menu doing its job, not
+        a missing entry. ``attack_monster`` is offered the moment a requirement
+        is met, which the next test covers.
+        """
         in_main(quiet_state)
         offered = legal_intents(quiet_state)
+
+        assert {intent.action for intent in offered} == {"draw"}
+
+    def test_an_attackable_monster_reaches_the_menu(
+        self, quiet_state: GameState, place: Place
+    ) -> None:
+        """The other half: a Monster whose requirement is met *is* offered, and
+        only against the Monsters actually in the row."""
+        in_main(quiet_state)
+        place(quiet_state, "play.monster.pushover", "monster_row")
+
+        offered = intents_for(quiet_state, PlayerId("p1"), "attack_monster")
         row = quiet_state.zone(zone_id("monster_row")).cards
 
-        assert {intent.action for intent in offered} == {"draw", "attack_monster"}
-        assert all(
-            intent.target in row for intent in offered if intent.action == "attack_monster"
-        )
+        assert offered
+        assert all(intent.target in row for intent in offered)
 
     def test_an_action_expands_once_per_legal_target(
         self, quiet_state: GameState, place: Place
@@ -139,7 +154,9 @@ class TestTheMenu:
         in_main(quiet_state)
         place(quiet_state, "play.hero.lump", "hand", "p1")
         (intent,) = intents_for(quiet_state, PlayerId("p1"), "play_hero")
-        assert str(intent) == "Play a Hero — Lump"
+        # ASCII: the label crosses into the CLI, and an em dash is unencodable
+        # on a legacy Windows console. Typography is the UI's business anyway.
+        assert str(intent) == "Play a Hero - Lump"
 
     def test_legality_is_checked_by_key_not_by_identity(
         self, quiet_state: GameState, place: Place
@@ -181,12 +198,17 @@ class TestCosts:
     def test_a_disabled_action_is_refused_even_if_asked_for_directly(
         self, quiet_state: GameState
     ) -> None:
-        """``discard_and_draw`` ships turned off; the UI is never trusted."""
+        """An action switched off in the rules is refused; the UI is never trusted.
+
+        Uses the fixture's own ``shipped_off`` action: ``discard_and_draw`` used
+        to be the disabled one, but Phase 6 enabled it — the rulebook lists
+        "DISCARD your hand and DRAW five" as a real three-point action.
+        """
         ctx = EffectContext.root(quiet_state, player=PlayerId("p1"))
         with pytest.raises(EffectError, match="is disabled"):
             drive(
                 Interpreter(quiet_state),
-                perform_action(ctx, Intent(action="discard_and_draw"), player=PlayerId("p1")),
+                perform_action(ctx, Intent(action="shipped_off"), player=PlayerId("p1")),
                 ScriptedSource([]),
             )
 
