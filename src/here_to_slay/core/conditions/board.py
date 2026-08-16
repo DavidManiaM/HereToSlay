@@ -28,17 +28,35 @@ def _counted(ctx: EffectContext, params: Params, count: int) -> bool:
     return compare_values(count, str(params.get("cmp", ">=")), ctx.resolve_int(params.get("value")))
 
 
+#: Zones whose cards contribute a *class* to a party, and the card kinds in each
+#: that count. A Party Leader is not a Hero — it never satisfies "N Heroes of any
+#: class" — but it does represent its class, both for a Monster's class
+#: requirement and for the six-class win. Keeping that as a table rather than an
+#: ``if`` is what lets a variant add a class-bearing zone without editing this.
+CLASS_BEARING_ZONES: tuple[tuple[str, frozenset[str]], ...] = (
+    ("party", frozenset({"hero"})),
+    ("leader", frozenset({"party_leader"})),
+)
+
+
 def party_classes(ctx: EffectContext, player: PlayerId) -> dict[str, int]:
-    """How many Heroes of each class sit in a party. The shared count behind
-    ``party_has_class`` and ``party_covers_all_classes``."""
+    """How many cards of each class a player's party represents.
+
+    The shared count behind ``party_has_class`` and
+    ``party_covers_all_classes``. Counts Heroes *and* the Party Leader, because
+    the rulebook is explicit on both points: a class requirement may be met by
+    "either a Hero card or the [class] Party Leader card", and the six-class win
+    reads "your Party (including your Party Leader card)".
+    """
     counts: dict[str, int] = {}
-    for instance in ctx.state.cards_in(zone_id("party", player)):
-        definition = ctx.state.definition(instance)
-        if definition.kind != "hero":
-            continue
-        card_class = getattr(definition, "card_class", None)
-        if card_class:
-            counts[card_class] = counts.get(card_class, 0) + 1
+    for zone, kinds in CLASS_BEARING_ZONES:
+        for instance in ctx.state.cards_in(zone_id(zone, player)):
+            definition = ctx.state.definition(instance)
+            if definition.kind not in kinds:
+                continue
+            card_class = getattr(definition, "card_class", None)
+            if card_class:
+                counts[card_class] = counts.get(card_class, 0) + 1
     return counts
 
 

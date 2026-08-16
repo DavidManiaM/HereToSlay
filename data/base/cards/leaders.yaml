@@ -1,0 +1,129 @@
+# Party Leaders — one per class, six in the base game.
+#
+# A Leader is never a Hero: it does not count toward a Monster's "N Heroes"
+# requirement, and it cannot be stolen, destroyed, sacrificed or returned. It
+# *does* count toward a class requirement and toward the six-class win — that
+# is `core/conditions/board.py:party_classes`, which reads the leader zone too.
+#
+# Five of the six are pure passives, so they are `triggers:` and nothing else.
+# The Shadow Claw is the exception: its skill costs an action point, so it is an
+# `ability:` and the `use_leader_ability` action in rules.yaml offers it.
+
+- id: base.leader.fist_of_reason
+  kind: party_leader
+  name: "The Fist of Reason"
+  card_class: fighter
+  text: "Each time you roll to CHALLENGE, +2 to your roll."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: challenge }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 2, source: $card }
+
+- id: base.leader.charismatic_song
+  kind: party_leader
+  name: "The Charismatic Song"
+  card_class: bard
+  text: "Each time you roll to use a Hero card's effect, +1 to your roll."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: base.leader.protecting_horn
+  kind: party_leader
+  name: "The Protecting Horn"
+  card_class: guardian
+  text: "Each time you play a Modifier card on a roll, +1 or -1 to that roll."
+  triggers:
+    # Hooks the *modification*, not the roll: the bonus only exists because a
+    # Modifier was played. `kind_in: [modifier]` is also what stops this
+    # recursing — the extra +1/-1 it adds is sourced from the Leader, which is
+    # not a modifier card, so the resulting roll.modified does not re-trigger.
+    - on: roll.modified
+      timing: post
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: event_matches, kind_in: [modifier], played_by: $self }
+          - { op: not, of: { op: flag_set, scope: card, key: horn_applied } }
+      effect:
+        op: seq
+        steps:
+          - { op: set_flag, scope: card, key: horn_applied, value: true }
+          - op: choose_effect
+            chooser: $self
+            prompt: "The Protecting Horn: adjust that roll by"
+            options:
+              - label: "+1"
+                effect: { op: modify_roll, amount: 1, source: $card }
+              - label: "-1"
+                effect: { op: modify_roll, amount: -1, source: $card }
+          - { op: clear_flag, scope: card, key: horn_applied }
+
+- id: base.leader.divine_arrow
+  kind: party_leader
+  name: "The Divine Arrow"
+  card_class: ranger
+  text: "Each time you roll to ATTACK a Monster card, +1 to your roll."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: monster_attack }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: base.leader.shadow_claw
+  kind: party_leader
+  name: "The Shadow Claw"
+  card_class: thief
+  text: >-
+    Once per turn on your turn, you may spend an action point to pull a card
+    from another player's hand.
+  # The only Leader whose skill costs something, so it is an activated ability
+  # rather than a trigger. `use_leader_ability` in rules.yaml is what offers it.
+  ability:
+    activation: action
+    cost: { action_points: 1 }
+    once_per_turn: true
+    effect:
+      op: seq
+      steps:
+        - op: choose
+          bind: victim
+          chooser: $self
+          from: { selector: opponents, of: $self }
+          prompt: "Pull a card from whose hand?"
+        - { op: steal_card, from: $victim, to: $self, count: 1, random: true }
+
+- id: base.leader.cloaked_sage
+  kind: party_leader
+  name: "The Cloaked Sage"
+  card_class: wizard
+  text: "Each time you play a Magic card, DRAW a card."
+  triggers:
+    - on: card.played
+      timing: post
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: event_matches, kind_in: [magic] }
+          - { op: event_actor_is, player: $self }
+      effect: { op: draw, target: $self, count: 1 }

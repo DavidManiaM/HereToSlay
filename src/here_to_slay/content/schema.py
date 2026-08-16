@@ -284,6 +284,11 @@ class PartyLeaderDef(BaseCardDef):
     kind: Literal["party_leader"] = "party_leader"
     card_class: str
     copies: int = Field(default=1, ge=0)
+    #: Most Leaders are pure passives (``triggers``), but a skill that *costs*
+    #: something cannot be a trigger — there is nothing to pay in a subscription.
+    #: The base game's Shadow Claw ("spend an action point to pull a card") is
+    #: the one such Leader, and ``use_ability`` reads this block generically.
+    ability: AbilityDef | None = None
 
 
 CardDef = Annotated[

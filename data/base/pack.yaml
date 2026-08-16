@@ -8,5 +8,4 @@ plugin: null
 
 provides:
   rules: rules.yaml
-  # Phase 6 adds cards/*.yaml here. The engine phases below it only need rules.
-  cards: []
+  cards: [cards/*.yaml]

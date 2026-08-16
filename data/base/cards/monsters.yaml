@@ -1,0 +1,554 @@
+# Monsters — 15 oversized cards, three face up at all times.
+#
+# Every Monster is the same three-part shape, and none of it is Python:
+#
+#   requirement:  may you even attack? (a condition, checked by the action menu
+#                 via `requirement_met`, so an ineligible Monster is not offered)
+#   roll.outcomes: the bands. First match wins, so they are written high-to-low.
+#   on_slay:      the skill you keep for the rest of the game — modelled as the
+#                 Monster's own `triggers:` firing `while_in: slain`, since a
+#                 slain Monster sits in your party permanently.
+#
+# Requirement grammar, straight from the rulebook:
+#   * "N Heroes of any class" counts Heroes only — the Party Leader does not
+#     count, hence `has_card` over the party zone filtered to kind: hero.
+#   * a class symbol may be satisfied by a Hero *or* the Party Leader, hence
+#     `party_has_class` (see core/conditions/board.py:CLASS_BEARING_ZONES).
+#   * a class symbol plus a generic symbol means both, and one Hero cannot pay
+#     for both — so "wizard + any" is `party_has_class(wizard)` AND
+#     `has_card(hero, min: 2)`.
+#
+# Bands are 2d6, so the range is 2..12. Every Monster leaves a "nothing happens"
+# gap between its penalty band and its slay band; the validator proves the bands
+# cover the whole range.
+
+# --------------------------------------------------------------------------
+# Two-symbol Monsters: one class, one generic Hero
+# --------------------------------------------------------------------------
+
+- id: base.monster.orthus
+  kind: monster
+  name: "Orthus"
+  copies: 1
+  text: "Each time you DRAW a Magic card, you may play it immediately."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: wizard, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Wizard and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, effect: { op: noop } }
+      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: card.drawn
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: event_actor_is, player: $self }
+          - { op: event_matches, kind_in: [magic] }
+      effect:
+        op: optional
+        chooser: $self
+        prompt: "Orthus: play that Magic card immediately?"
+        effect:
+          op: play_card_from_hand
+          card: $event.card
+          kind: magic
+          challengeable: false
+
+- id: base.monster.dark_dragon_king
+  kind: monster
+  name: "Dark Dragon King"
+  copies: 1
+  text: "Each time you roll to use a Hero card's effect, +1 to your roll."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: bard, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Bard and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, effect: { op: noop } }
+      - { max: 4, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: base.monster.rex_major
+  kind: monster
+  name: "Rex Major"
+  copies: 1
+  text: "Each time you play a Hero card, DRAW a card."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: guardian, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Guardian and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, effect: { op: noop } }
+      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: card.played
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: event_actor_is, player: $self }
+          - { op: event_matches, kind_in: [hero] }
+      effect: { op: draw, target: $self, count: 1 }
+
+- id: base.monster.titan_wyvern
+  kind: monster
+  name: "Titan Wyvern"
+  copies: 1
+  text: "Each time you play a Hero card, +1 to your next roll this turn."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: fighter, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Fighter and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, effect: { op: noop } }
+      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, roller: $self }
+          - { op: flag_set, scope: player, key: titan_wyvern_bonus, target: $self }
+      effect:
+        op: seq
+        steps:
+          - { op: modify_roll, amount: 1, source: $card }
+          - { op: clear_flag, scope: player, key: titan_wyvern_bonus, target: $self }
+    - on: card.played
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: event_actor_is, player: $self }
+          - { op: event_matches, kind_in: [hero] }
+      effect:
+        op: set_flag
+        scope: player
+        key: titan_wyvern_bonus
+        target: $self
+        value: true
+    - on: turn.ended
+      timing: post
+      while_in: slain
+      effect: { op: clear_flag, scope: player, key: titan_wyvern_bonus, target: $self }
+
+- id: base.monster.crowned_serpent
+  kind: monster
+  name: "Crowned Serpent"
+  copies: 1
+  text: "Each time you roll to ATTACK a Monster card, +1 to your roll."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: thief, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Thief and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 10, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 9, effect: { op: noop } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: monster_attack }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: base.monster.warworn_owlbear
+  kind: monster
+  name: "Warworn Owlbear"
+  copies: 1
+  text: "Each time you DRAW a card outside your turn, DRAW an extra card."
+  requirement:
+    op: all
+    of:
+      - { op: party_has_class, player: $self, class: ranger, min: 1 }
+      - op: has_card
+        player: $self
+        zone: party
+        filter: { op: card_kind_is, kind: hero }
+        min: 2
+  requirement_text: "1 Ranger and 1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, effect: { op: noop } }
+      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: monster.slain
+      timing: post
+      while_in: slain
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: draw, target: $self, count: 1 }
+
+# --------------------------------------------------------------------------
+# Generic-Hero Monsters: no class demanded, only bodies
+# --------------------------------------------------------------------------
+
+- id: base.monster.mega_slime
+  kind: monster
+  name: "Mega Slime"
+  copies: 1
+  text: "You may spend an extra action point on each of your turns."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 4
+  requirement_text: "4 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      # The nastiest bands in the row: no safe middle at all.
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 7, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: turn.started
+      timing: post
+      while_in: slain
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: gain_action_points, target: $self, amount: 1 }
+
+- id: base.monster.abyss_queen
+  kind: monster
+  name: "Abyss Queen"
+  copies: 1
+  text: "Each time another player plays a Modifier card on your roll, +1 to your roll."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 3
+  requirement_text: "3 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 7, effect: { op: noop } }
+      - { max: 5, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.modified
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, roller: $self }
+          - { op: event_matches, kind_in: [modifier] }
+          - { op: not, of: { op: event_actor_is, player: $self } }
+          - { op: not, of: { op: flag_set, scope: card, key: abyss_applied } }
+      effect:
+        op: seq
+        steps:
+          - { op: set_flag, scope: card, key: abyss_applied, value: true }
+          - { op: modify_roll, amount: 1, source: $card }
+          - { op: clear_flag, scope: card, key: abyss_applied }
+
+- id: base.monster.anuran_cauldron
+  kind: monster
+  name: "Anuran Cauldron"
+  copies: 1
+  text: "Each time you roll, +1 to that roll."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 3
+  requirement_text: "3 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 7, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: slain
+      condition: { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }
+
+- id: base.monster.corrupted_sabretooth
+  kind: monster
+  name: "Corrupted Sabretooth"
+  copies: 1
+  text: "Each time you SLAY a Monster card, DRAW a card."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 3
+  requirement_text: "3 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 8, effect: { op: noop } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: draw, target: $self, count: 1 }
+  triggers:
+    - on: monster.slain
+      timing: post
+      while_in: slain
+      condition: { op: event_actor_is, player: $self }
+      effect: { op: draw, target: $self, count: 1 }
+
+- id: base.monster.bloodwing
+  kind: monster
+  name: "Bloodwing"
+  copies: 1
+  text: "Each time another player CHALLENGEs you, that player must DISCARD a card."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 2
+  requirement_text: "2 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 8, effect: { op: noop } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: challenge.declared
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: compare, left: $event.defender, cmp: "==", right: $self }
+          - { op: not, of: { op: event_actor_is, player: $self } }
+      effect: { op: discard, target: $event.player, count: 1, chooser: $event.player }
+
+- id: base.monster.arctic_aries
+  kind: monster
+  name: "Arctic Aries"
+  copies: 1
+  # DEVIATION (documented in docs/rules_reference.md §7): the printed card says
+  # "each time you *successfully* roll". A roll's bands are declarative ranges
+  # with no notion of success, so there is no event meaning "the good band ran".
+  # Hooking roll.resolved makes this fire on every Hero-ability roll instead —
+  # strictly more generous. Closing it wants a `tag:` on Band, which is an
+  # engine change and belongs in its own phase, not here.
+  text: "Each time you roll to use a Hero card's effect, DRAW a card."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 1
+  requirement_text: "1 Hero of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 10, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 9, effect: { op: noop } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: roll.resolved
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+      effect: { op: draw, target: $self, count: 1 }
+
+- id: base.monster.terratuga
+  kind: monster
+  name: "Terratuga"
+  copies: 1
+  text: "Your Hero cards cannot be destroyed."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 2
+  requirement_text: "2 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 11, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 10, effect: { op: noop } }
+      - { max: 6, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    # A protection, so it must land in PRE and cancel. `to: discard` is what
+    # separates "destroyed" from "stolen" — a steal moves to another party.
+    - on: hero.left_party
+      timing: pre
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: compare, left: $event.player, cmp: "==", right: $self }
+          - { op: compare, left: $event.to, cmp: "==", right: discard }
+          - { op: not, of: { op: event_actor_is, player: $self } }
+      effect: { op: cancel_event, reason: "Terratuga" }
+
+- id: base.monster.malamammoth
+  kind: monster
+  name: "Malamammoth"
+  copies: 1
+  text: "Each time you play an Item card, DRAW a card."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 2
+  requirement_text: "2 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 8, effect: { op: noop } }
+      - { max: 5, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+  on_slay: { op: noop }
+  triggers:
+    - on: card.played
+      timing: post
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: event_actor_is, player: $self }
+          - { op: event_matches, kind_in: [item] }
+      effect: { op: draw, target: $self, count: 1 }
+
+- id: base.monster.dracos
+  kind: monster
+  name: "Dracos"
+  copies: 1
+  text: "Each time you roll to use a Hero card's effect, you may reroll the dice once."
+  requirement:
+    op: has_card
+    player: $self
+    zone: party
+    filter: { op: card_kind_is, kind: hero }
+    min: 2
+  requirement_text: "2 Heroes of any class"
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 8, effect: { op: noop } }
+      - { max: 5, effect: { op: sacrifice, target: $self } }
+  on_slay: { op: noop }
+  triggers:
+    # Fires in the same window a Modifier uses: after the dice land, before the
+    # band is chosen. The flag stops it offering a reroll of its own reroll.
+    - on: roll.resolved
+      timing: pre
+      while_in: slain
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+          - { op: not, of: { op: flag_set, scope: card, key: dracos_rerolled } }
+      effect:
+        op: seq
+        steps:
+          - { op: set_flag, scope: card, key: dracos_rerolled, value: true }
+          - op: optional
+            chooser: $self
+            prompt: "Dracos: reroll the dice?"
+            effect: { op: reroll, roller: $self }
+          - { op: clear_flag, scope: card, key: dracos_rerolled }
