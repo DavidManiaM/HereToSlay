@@ -20,5 +20,12 @@ uv run pytest
 
 ## Status
 
-Phase 1 — content schema, pack loader and the semantic validator. The engine,
-CLI and pygame client land in later phases; see [`docs/build_plan.md`](docs/build_plan.md).
+Phases 0–6 complete. The base game is playable end to end in the terminal with
+the full card set — 88 card definitions, 136 physical cards.
+
+```bash
+uv run hts play data/base
+```
+
+The AI, the reaction stress tests and the pygame client land in later phases;
+see [`docs/build_plan.md`](docs/build_plan.md).
