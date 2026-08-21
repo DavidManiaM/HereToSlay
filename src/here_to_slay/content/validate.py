@@ -250,11 +250,14 @@ class _Validator:
                     "condition is never evaluated",
                 )
             return
-        if not self.vocab.knows_event(window.on) and window.on not in self.emitted_events:
+        for index, event in enumerate(window.opens_on):
+            if self.vocab.knows_event(event) or event in self.emitted_events:
+                continue
+            where = f"{path}.on" if isinstance(window.on, str) else f"{path}.on[{index}]"
             self.error(
-                f"{path}.on",
-                f"unknown event '{window.on}'",
-                _did_you_mean(window.on, self.vocab.events)
+                where,
+                f"unknown event '{event}'",
+                _did_you_mean(event, self.vocab.events)
                 or "no loaded card emits it either — see architecture_notes.md §3.3",
             )
         if window.condition is not None:

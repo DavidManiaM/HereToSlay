@@ -211,10 +211,22 @@ windows:
   roll_modification:
     # Opens after the dice have landed and before the band is chosen, so a
     # Modifier played here changes which outcome happens.
-    on: roll.resolved
+    #
+    # Two events, one window: a lone roll offers itself, and a Challenge offers
+    # both its sides at once. Modifier cards name `roll_modification` and do not
+    # care which of the two brought them here.
+    on: [roll.resolved, contest.resolved]
     timing: pre
     order: seat_left_of_active
     reopen_on_action: true
+    # A contested roll is skipped *as a single side* — it is modified later,
+    # together with the other side, on `contest.resolved`. Otherwise the
+    # challenger's dice would have to be answered before the defender had even
+    # rolled, which is not how the rulebook plays it: both roll, then Modifiers.
+    # A variant that prefers side-at-a-time modification deletes this condition.
+    condition:
+      op: not
+      of: { op: compare, left: $event.contested, cmp: "==", right: true }
 
 max_reaction_depth: 8
 

@@ -174,4 +174,11 @@ def _roll_is(ctx: EffectContext, params: Params) -> bool:
         roller = getattr(roll, "roller", None)
         if roller is None or PlayerId(str(roller)) not in ctx.resolve_players(wanted_roller):
             return False
-    return True
+    # `tag:` is how a card says "…on a *successful* roll". A roll has no notion
+    # of success; the band that ran does, if its author tagged it. Only true
+    # once a band has actually been selected, so this matches on `roll.banded`
+    # and not a frame earlier.
+    wanted_tag = params.get("tag")
+    if wanted_tag is None:
+        return True
+    return getattr(roll, "band_tag", None) in _values(ctx.resolve(wanted_tag))

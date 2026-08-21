@@ -8,10 +8,11 @@ Design points
 * **Hot-seat privacy.** When ``request.requester`` changes, the screen is
   cleared and the game waits for an explicit Enter before rendering the new
   player's view. That way Player 2 cannot accidentally see Player 1's hand.
-* **Roll display.** After a ``roll.resolved`` event the presenter prints a
-  breakdown of raw dice, each modifier and the final total before asking for
-  the next decision. The engine exposes rolls through ``engine.state``; we
-  read them from the ``Execution`` attached to the last resolved context.
+* **Roll display.** Before every prompt the presenter prints any roll made
+  since it last asked: raw dice, each modifier with its source, the total, and
+  the outcome band's tag once one has been chosen. It reads
+  ``engine.recent_rolls`` and keeps its own "already shown" count, so the UI
+  needs neither the bus nor ``GameState``.
 * **Numbered menus.** Every prompt is ``[1] label``, ``[2] label``, …,  then
   ``Enter a number: ``. Invalid input re-prompts until the player enters a
   valid choice.
@@ -47,7 +48,7 @@ from here_to_slay.core.interpreter import (
     ReactionPrompt,
     Request,
 )
-from here_to_slay.ui.cli.render import render_board
+from here_to_slay.ui.cli.render import render_board, render_roll, render_roll_result
 
 if TYPE_CHECKING:
     from here_to_slay.content.registry import ContentRegistry
@@ -84,6 +85,8 @@ class CliPresenter(DecisionSource):
         self.console = console or Console()
         self.silent = silent
         self._last_seat: str | None = None
+        #: how many of ``engine.recent_rolls`` this terminal has already drawn
+        self._rolls_shown = 0
 
     # -- DecisionSource implementation ------------------------------------
 
@@ -144,22 +147,25 @@ class CliPresenter(DecisionSource):
         self.console.print()
 
     def _print_last_rolls(self) -> None:
-        """Print any rolls that resolved since the last prompt.
+        """Print every roll made since this presenter last prompted.
 
-        Currently inert: nothing writes ``_cli_rolls``. Rolls live on
-        ``ctx.execution.rolls``, which the ``Engine`` facade does not expose, so
-        wiring this up needs an ``Engine.recent_rolls`` accessor rather than a
-        change here. Tracked as Phase 5 gap 1; Phase 7 is where rolls and
-        reactions get their attention.
+        Reads ``engine.recent_rolls`` — a plain accessor, so the UI stays off
+        the event bus and off ``GameState``. The count of what has been shown
+        lives on the presenter, not in game flags: how much of the board a
+        particular terminal has already drawn is not part of the game.
+
+        A roll whose outcome band has been chosen is printed with the band's
+        tag (``→ success``); one still in flight — which is exactly what a
+        player being asked to modify a Challenge is looking at — is printed
+        without, because no band has run yet.
         """
-        all_rolls = self.engine.state.flags.get("_cli_rolls", [])
-        displayed = self.engine.state.flags.get("_cli_rolls_displayed", 0)
-        new_rolls = all_rolls[displayed:]
-        for roll in new_rolls:
-            from here_to_slay.ui.cli.render import render_roll
-            self.console.print(render_roll(roll))
-        if new_rolls:
-            self.engine.state.flags["_cli_rolls_displayed"] = len(all_rolls)
+        rolls = self.engine.recent_rolls
+        for roll in rolls[self._rolls_shown :]:
+            if roll.band_tag:
+                self.console.print(render_roll_result(roll, roll.band_tag))
+            else:
+                self.console.print(render_roll(roll))
+        self._rolls_shown = len(rolls)
 
     # -- prompts ----------------------------------------------------------
 

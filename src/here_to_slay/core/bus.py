@@ -221,7 +221,7 @@ def _open_windows(ctx: EffectContext, frame: EventFrame, phase: Phase) -> Flow:
     windows = ctx.execution.state.rules.windows
     for name in sorted(windows):
         window = windows[name]
-        if window.on != frame.event.name or window.timing != phase.value:
+        if frame.event.name not in window.opens_on or window.timing != phase.value:
             continue
         child = ctx.derive(event=frame.event, intent=None, bindings={})
         if not child.test(window.condition):

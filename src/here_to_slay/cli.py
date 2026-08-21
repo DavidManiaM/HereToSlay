@@ -324,7 +324,7 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
     from pathlib import Path
 
     from here_to_slay.core.engine import Engine
-    from here_to_slay.core.errors import ReplayError
+    from here_to_slay.core.errors import ReplayError, ReplayExhausted
     from here_to_slay.core.interpreter import GameOver
     from here_to_slay.core.log import DecisionLog, LogSource
 
@@ -375,40 +375,39 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
             except (EOFError, KeyboardInterrupt):
                 pass
 
-    class _ReplayEnded(Exception):
-        """Raised internally when we've replayed every decision in the log."""
-
     class ReplayViewer(DecisionSource):
+        """Renders the board before every logged decision, then answers from it.
+
+        There is no "have we run out?" check here any more: ``LogSource`` raises
+        :class:`ReplayExhausted` when the log ends, which is the honest place to
+        detect it. The board is drawn before the call either way, so a partial
+        log still shows the position it stopped at.
+        """
+
         def __init__(self, source: LogSource) -> None:
             self.source = source
-            self.exhausted = False
 
         def answer(self, request: Request) -> Decision:
-            seat = request.requester
-            view = engine.view(seat)
+            view = engine.view(request.requester)
             console.print(render_board(view, registry))
             console.print()
             _step_pause()
-            if self.source.index >= len(self.source.log.entries):
-                self.exhausted = True
-                raise _ReplayEnded()
             return self.source.answer(request)
 
     viewer = ReplayViewer(log_source)
     status: object = None
     try:
         status = engine.run(viewer)
-    except _ReplayEnded:
+    except ReplayExhausted:
+        # The expected end of a partial log — a distinct type rather than a
+        # substring of somebody else's message (Phase 5 gap 6).
         pass
     except KeyboardInterrupt:
         console.print("\n[yellow]Replay interrupted.[/yellow]")
         return EXIT_OK
     except ReplayError as exc:
-        if viewer.exhausted or ("the log has" in str(exc) and "but the game asked for another" in str(exc)):
-            pass
-        else:
-            console.print(f"[bold red]Replay error:[/bold red] {exc}")
-            return EXIT_USAGE
+        console.print(f"[bold red]Replay error:[/bold red] {exc}")
+        return EXIT_USAGE
 
     # -- final board -------------------------------------------------------
     active_seat = engine.state.active_player

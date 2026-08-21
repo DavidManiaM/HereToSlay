@@ -54,6 +54,16 @@ class ReplayError(EngineError):
     """A decision log does not reproduce the game it claims to."""
 
 
+class ReplayExhausted(ReplayError):
+    """The log ran out while the game was still asking questions.
+
+    Its own type because this is the *expected* end of a partial log — a viewer
+    stepping through a game that was saved mid-turn should stop cleanly, not
+    print an error. Matching on the prose of a :class:`ReplayError` message
+    worked, and coupled the CLI to a sentence in this package.
+    """
+
+
 class EngineInvariantError(EngineError):
     """A state invariant broke (``docs/rules_engine.md §8``).
 

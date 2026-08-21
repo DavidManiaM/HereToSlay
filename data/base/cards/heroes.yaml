@@ -42,6 +42,7 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: seq
             steps:
@@ -51,7 +52,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Destroy a Hero belonging to whom?"
               - { op: destroy_hero, target: $victim, chooser: $self }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.bear_claw
   kind: hero
@@ -70,6 +71,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: seq
             steps:
@@ -89,7 +91,7 @@
                   condition: { op: card_kind_is, card: $pulled, kind: hero }
                   then: { op: steal_card, from: $victim, to: $self, count: 1, random: true }
                   else: { op: noop }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.beary_wise
   kind: hero
@@ -108,6 +110,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: seq
             steps:
@@ -121,7 +124,7 @@
                 chooser: $self
                 bind: taken
                 then: { op: move_card, card: $taken, to: { player: $self, zone: hand } }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.fury_knuckle
   kind: hero
@@ -140,6 +143,7 @@
       kind: hero_ability
       outcomes:
         - min: 5
+          tag: success
           effect:
             op: seq
             steps:
@@ -159,7 +163,7 @@
                   condition: { op: card_kind_is, card: $pulled, kind: challenge }
                   then: { op: steal_card, from: $victim, to: $self, count: 1, random: true }
                   else: { op: noop }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.heavy_bear
   kind: hero
@@ -176,6 +180,7 @@
       kind: hero_ability
       outcomes:
         - min: 5
+          tag: success
           effect:
             op: seq
             steps:
@@ -185,7 +190,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Who discards 2 cards?"
               - { op: discard, target: $victim, count: 2, chooser: $victim }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.pan_chucks
   kind: hero
@@ -204,6 +209,7 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: draw
             target: $self
@@ -227,7 +233,7 @@
                     prompt: "Destroy a Hero belonging to whom?"
                   - { op: destroy_hero, target: $victim, chooser: $self }
               else: { op: noop }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.qi_bear
   kind: hero
@@ -244,6 +250,7 @@
       kind: hero_ability
       outcomes:
         - min: 10
+          tag: success
           effect:
             op: choose_effect
             chooser: $self
@@ -294,7 +301,7 @@
                             from: { selector: opponents, of: $self }
                             prompt: "Destroy a Hero belonging to whom?"
                           - { op: destroy_hero, target: $victim, chooser: $self }
-        - { max: 9, effect: { op: noop } }
+        - { max: 9, tag: failure, effect: { op: noop } }
 
 - id: base.hero.tough_teddy
   kind: hero
@@ -311,6 +318,7 @@
       kind: hero_ability
       outcomes:
         - min: 4
+          tag: success
           effect:
             op: for_each
             over: { selector: opponents, of: $self }
@@ -320,7 +328,7 @@
               condition: { op: party_has_class, player: $other, class: fighter, min: 1 }
               then: { op: discard, target: $other, count: 1, chooser: $other }
               else: { op: noop }
-        - { max: 3, effect: { op: noop } }
+        - { max: 3, tag: failure, effect: { op: noop } }
 
 # ==========================================================================
 # BARD
@@ -341,6 +349,7 @@
       kind: hero_ability
       outcomes:
         - min: 9
+          tag: success
           effect:
             op: seq
             steps:
@@ -352,7 +361,7 @@
               - op: swap_zones
                 a: { player: $self, zone: hand }
                 b: { player: $partner, zone: hand }
-        - { max: 8, effect: { op: noop } }
+        - { max: 8, tag: failure, effect: { op: noop } }
 
 - id: base.hero.fuzzy_cheeks
   kind: hero
@@ -369,6 +378,7 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: seq
             steps:
@@ -399,7 +409,7 @@
                     # resolving, not a fresh play action.
                     - { op: play_card_from_hand, card: $hero, kind: hero, challengeable: false }
                 else: { op: noop }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.greedy_cheeks
   kind: hero
@@ -416,6 +426,7 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: for_each
             over: { selector: opponents, of: $self }
@@ -429,7 +440,7 @@
               count: 1
               random: false
               chooser: $other
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.lucky_bucky
   kind: hero
@@ -448,6 +459,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: seq
             steps:
@@ -475,7 +487,7 @@
                       kind: hero
                       challengeable: false
                   else: { op: noop }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.mellow_dee
   kind: hero
@@ -492,6 +504,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: draw
             target: $self
@@ -510,7 +523,7 @@
                   kind: hero
                   challengeable: false
               else: { op: noop }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.napping_nibbles
   kind: hero
@@ -534,7 +547,7 @@
         # a -3 on a roll of 2 gives -1, which `min: 2` does not cover, and the
         # roll then raises mid-game. Every other card here already has an
         # open-ended bottom band; this one needs the same.
-        - { effect: { op: noop } }
+        - { tag: success, effect: { op: noop } }
 
 - id: base.hero.peanut
   kind: hero
@@ -550,8 +563,8 @@
       dice: "2d6"
       kind: hero_ability
       outcomes:
-        - { min: 7, effect: { op: draw, target: $self, count: 2 } }
-        - { max: 6, effect: { op: noop } }
+        - { min: 7, tag: success, effect: { op: draw, target: $self, count: 2 } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.tipsy_tootie
   kind: hero
@@ -570,6 +583,7 @@
       kind: hero_ability
       outcomes:
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -580,7 +594,7 @@
                 prompt: "Swap Heroes with whom?"
               - { op: steal_hero, from: $victim, to: $self, chooser: $self }
               - { op: move_card, card: $card, to: { player: $victim, zone: party } }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 # ==========================================================================
 # GUARDIAN
@@ -601,8 +615,9 @@
       kind: hero_ability
       outcomes:
         - min: 9
+          tag: success
           effect: { op: set_flag, scope: player, key: heroes_unstealable, target: $self, value: true }
-        - { max: 8, effect: { op: noop } }
+        - { max: 8, tag: failure, effect: { op: noop } }
   triggers:
     # A steal is "leaves my party for somewhere that is not the discard".
     - on: hero.left_party
@@ -638,6 +653,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: search
             zone: { zone: discard }
@@ -646,7 +662,7 @@
             chooser: $self
             bind: found
             then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.holy_curselifter
   kind: hero
@@ -663,6 +679,7 @@
       kind: hero_ability
       outcomes:
         - min: 5
+          tag: success
           effect:
             op: search
             zone: { player: $self, zone: party }
@@ -671,7 +688,7 @@
             chooser: $self
             bind: curse
             then: { op: unequip_item, item: $curse, to_zone: { player: $self, zone: hand } }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.iron_resolve
   kind: hero
@@ -690,8 +707,9 @@
         # rules.yaml's card_played window reads this flag, which is how the bus
         # stays ignorant of the word "challenge".
         - min: 8
+          tag: success
           effect: { op: set_flag, scope: player, key: uncontestable, target: $self, value: true }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
   triggers:
     - on: turn.ended
       timing: post
@@ -714,13 +732,14 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: set_flag
             scope: player
             key: heroes_indestructible
             target: $self
             value: true
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
   triggers:
     - on: hero.left_party
       timing: pre
@@ -755,6 +774,7 @@
       kind: hero_ability
       outcomes:
         - min: 6
+          tag: success
           effect:
             op: search
             zone: { zone: discard }
@@ -763,7 +783,7 @@
             chooser: $self
             bind: found
             then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.vibrant_glow
   kind: hero
@@ -779,8 +799,8 @@
       dice: "2d6"
       kind: hero_ability
       outcomes:
-        - { min: 9, effect: { op: set_flag, scope: player, key: roll_bonus_5, target: $self, value: true } }
-        - { max: 8, effect: { op: noop } }
+        - { min: 9, tag: success, effect: { op: set_flag, scope: player, key: roll_bonus_5, target: $self, value: true } }
+        - { max: 8, tag: failure, effect: { op: noop } }
   triggers:
     - on: roll.started
       timing: pre
@@ -811,8 +831,8 @@
       dice: "2d6"
       kind: hero_ability
       outcomes:
-        - { min: 6, effect: { op: set_flag, scope: player, key: roll_bonus_3, target: $self, value: true } }
-        - { max: 5, effect: { op: noop } }
+        - { min: 6, tag: success, effect: { op: set_flag, scope: player, key: roll_bonus_3, target: $self, value: true } }
+        - { max: 5, tag: failure, effect: { op: noop } }
   triggers:
     - on: roll.started
       timing: pre
@@ -851,6 +871,7 @@
       outcomes:
         # UNVERIFIED threshold (7+); the effect text is confirmed.
         - min: 7
+          tag: success
           effect:
             op: search
             zone: { zone: main_deck }
@@ -858,7 +879,7 @@
             chooser: $self
             bind: found
             then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.hook
   kind: hero
@@ -876,6 +897,7 @@
       outcomes:
         # UNVERIFIED threshold (6+); the effect text is confirmed.
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -900,7 +922,7 @@
                     - { op: play_card_from_hand, card: $item, kind: item, challengeable: false }
                 else: { op: noop }
               - { op: draw, target: $self, count: 1 }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.lookie_rookie
   kind: hero
@@ -918,6 +940,7 @@
       outcomes:
         # UNVERIFIED threshold (5+); the effect text is confirmed.
         - min: 5
+          tag: success
           effect:
             op: search
             zone: { zone: discard }
@@ -926,7 +949,7 @@
             chooser: $self
             bind: found
             then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.quick_draw
   kind: hero
@@ -946,6 +969,7 @@
       outcomes:
         # UNVERIFIED threshold (8+); the effect text is confirmed.
         - min: 8
+          tag: success
           effect:
             op: draw
             target: $self
@@ -972,7 +996,7 @@
                     prompt: "Play which Item immediately?"
                   - { op: play_card_from_hand, card: $item, kind: item, challengeable: false }
               else: { op: noop }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.serious_grey
   kind: hero
@@ -989,6 +1013,7 @@
       kind: hero_ability
       outcomes:
         - min: 9
+          tag: success
           effect:
             op: seq
             steps:
@@ -999,7 +1024,7 @@
                 prompt: "Destroy a Hero belonging to whom?"
               - { op: destroy_hero, target: $victim, chooser: $self }
               - { op: draw, target: $self, count: 1 }
-        - { max: 8, effect: { op: noop } }
+        - { max: 8, tag: failure, effect: { op: noop } }
 
 - id: base.hero.sharp_fox
   kind: hero
@@ -1016,6 +1041,7 @@
       kind: hero_ability
       outcomes:
         - min: 5
+          tag: success
           effect:
             op: seq
             steps:
@@ -1025,7 +1051,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Look at whose hand?"
               - { op: reveal, zone: { player: $victim, zone: hand }, count: 99, to: $self }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.wildshot
   kind: hero
@@ -1042,12 +1068,13 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: seq
             steps:
               - { op: draw, target: $self, count: 3 }
               - { op: discard, target: $self, count: 1, chooser: $self }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.wily_red
   kind: hero
@@ -1067,12 +1094,13 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: seq
             steps:
               - { op: draw, target: $self, count: 2 }
               - { op: discard, target: $self, count: 1, chooser: $self }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 # ==========================================================================
 # THIEF
@@ -1094,6 +1122,7 @@
       kind: hero_ability
       outcomes:
         - min: 9
+          tag: success
           effect:
             op: seq
             steps:
@@ -1103,7 +1132,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Steal a Hero from whom?"
               - { op: steal_hero, from: $victim, to: $self, chooser: $self }
-        - { max: 8, effect: { op: noop } }
+        - { max: 8, tag: failure, effect: { op: noop } }
 
 - id: base.hero.meowzio
   kind: hero
@@ -1123,6 +1152,7 @@
       outcomes:
         # UNVERIFIED threshold (10+); the effect text is confirmed.
         - min: 10
+          tag: success
           effect:
             op: seq
             steps:
@@ -1133,7 +1163,7 @@
                 prompt: "Rob whom?"
               - { op: steal_hero, from: $victim, to: $self, chooser: $self }
               - { op: steal_card, from: $victim, to: $self, count: 1, random: true }
-        - { max: 9, effect: { op: noop } }
+        - { max: 9, tag: failure, effect: { op: noop } }
 
 - id: base.hero.plundering_puma
   kind: hero
@@ -1151,6 +1181,7 @@
       outcomes:
         # UNVERIFIED threshold (6+); the effect text is confirmed.
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -1164,7 +1195,7 @@
                 chooser: $victim
                 prompt: "Plundering Puma: draw a card?"
                 effect: { op: draw, target: $victim, count: 1 }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.shurikitty
   kind: hero
@@ -1183,6 +1214,7 @@
       kind: hero_ability
       outcomes:
         - min: 9
+          tag: success
           effect:
             op: seq
             steps:
@@ -1206,7 +1238,7 @@
                 bind: loot
                 then: { op: unequip_item, item: $loot, to_zone: { player: $self, zone: hand } }
               - { op: move_card, card: $doomed, to: { zone: discard } }
-        - { max: 8, effect: { op: noop } }
+        - { max: 8, tag: failure, effect: { op: noop } }
 
 - id: base.hero.silent_shadow
   kind: hero
@@ -1225,6 +1257,7 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: seq
             steps:
@@ -1237,7 +1270,7 @@
               # random: false — this one is a *chosen* take, which is the whole
               # point of having looked first.
               - { op: steal_card, from: $victim, to: $self, count: 1, random: false, chooser: $self }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.slippery_paws
   kind: hero
@@ -1255,6 +1288,7 @@
       kind: hero_ability
       outcomes:
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -1272,7 +1306,7 @@
                 # Discarding "one of *those* cards" — the filter pins it to what
                 # was just taken rather than the whole hand.
                 then: { op: discard, target: $self, count: 1, chooser: $self }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.sly_pickings
   kind: hero
@@ -1291,6 +1325,7 @@
       kind: hero_ability
       outcomes:
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -1318,7 +1353,7 @@
                       kind: item
                       challengeable: false
                   else: { op: noop }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.smooth_mimimeow
   kind: hero
@@ -1335,6 +1370,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: for_each
             over: { selector: opponents, of: $self }
@@ -1344,7 +1380,7 @@
               condition: { op: party_has_class, player: $other, class: thief, min: 1 }
               then: { op: steal_card, from: $other, to: $self, count: 1, random: true }
               else: { op: noop }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 # ==========================================================================
 # WIZARD
@@ -1365,6 +1401,7 @@
       kind: hero_ability
       outcomes:
         - min: 5
+          tag: success
           effect:
             op: search
             zone: { zone: discard }
@@ -1373,7 +1410,7 @@
             chooser: $self
             bind: found
             then: { op: move_card, card: $found, to: { player: $self, zone: hand } }
-        - { max: 4, effect: { op: noop } }
+        - { max: 4, tag: failure, effect: { op: noop } }
 
 - id: base.hero.buttons
   kind: hero
@@ -1391,6 +1428,7 @@
       kind: hero_ability
       outcomes:
         - min: 6
+          tag: success
           effect:
             op: seq
             steps:
@@ -1400,7 +1438,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Pull a card from whose hand?"
               - { op: steal_card, from: $victim, to: $self, count: 1, random: true }
-        - { max: 5, effect: { op: noop } }
+        - { max: 5, tag: failure, effect: { op: noop } }
 
 - id: base.hero.fluffy
   kind: hero
@@ -1418,6 +1456,7 @@
       outcomes:
         # UNVERIFIED threshold (10+); the effect text is confirmed.
         - min: 10
+          tag: success
           effect:
             op: repeat
             times: 2
@@ -1430,7 +1469,7 @@
                   from: { selector: opponents, of: $self }
                   prompt: "Destroy a Hero belonging to whom?"
                 - { op: destroy_hero, target: $victim, chooser: $self }
-        - { max: 9, effect: { op: noop } }
+        - { max: 9, tag: failure, effect: { op: noop } }
 
 - id: base.hero.hopper
   kind: hero
@@ -1447,6 +1486,7 @@
       kind: hero_ability
       outcomes:
         - min: 7
+          tag: success
           effect:
             op: seq
             steps:
@@ -1456,7 +1496,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Who sacrifices a Hero?"
               - { op: sacrifice, target: $victim }
-        - { max: 6, effect: { op: noop } }
+        - { max: 6, tag: failure, effect: { op: noop } }
 
 - id: base.hero.snowball
   kind: hero
@@ -1474,12 +1514,13 @@
       kind: hero_ability
       outcomes:
         - min: 8
+          tag: success
           effect:
             op: for_each
             over: { selector: heroes, of: $self, where: { op: card_class_is, class: wizard } }
             bind: wizard
             effect: { op: draw, target: $self, count: 1 }
-        - { max: 7, effect: { op: noop } }
+        - { max: 7, tag: failure, effect: { op: noop } }
 
 - id: base.hero.spooky
   kind: hero
@@ -1496,12 +1537,13 @@
       kind: hero_ability
       outcomes:
         - min: 10
+          tag: success
           effect:
             op: for_each
             over: { selector: opponents, of: $self }
             bind: other
             effect: { op: sacrifice, target: $other }
-        - { max: 9, effect: { op: noop } }
+        - { max: 9, tag: failure, effect: { op: noop } }
 
 - id: base.hero.whiskers
   kind: hero
@@ -1519,6 +1561,7 @@
       outcomes:
         # UNVERIFIED threshold (11+); the effect text is confirmed.
         - min: 11
+          tag: success
           effect:
             op: seq
             steps:
@@ -1534,7 +1577,7 @@
                 from: { selector: opponents, of: $self }
                 prompt: "Destroy a Hero belonging to whom?"
               - { op: destroy_hero, target: $target, chooser: $self }
-        - { max: 10, effect: { op: noop } }
+        - { max: 10, tag: failure, effect: { op: noop } }
 
 - id: base.hero.wiggles
   kind: hero
@@ -1551,6 +1594,7 @@
       kind: hero_ability
       outcomes:
         - min: 10
+          tag: success
           effect:
             op: seq
             steps:
@@ -1571,4 +1615,4 @@
               # `use_ability` re-rolls the stolen Hero's own roll. It is free
               # here: the action point was already paid for Wiggles.
               - { op: use_ability, card: $prize, user: $self }
-        - { max: 9, effect: { op: noop } }
+        - { max: 9, tag: failure, effect: { op: noop } }

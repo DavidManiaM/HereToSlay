@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from here_to_slay.core.errors import ReplayError
+from here_to_slay.core.errors import ReplayError, ReplayExhausted
 from here_to_slay.core.ids import PlayerId
 from here_to_slay.core.interpreter import (
     Decision,
@@ -186,7 +186,7 @@ class LogSource(DecisionSource):
 
     def answer(self, request: Request) -> Decision:
         if self.index >= len(self.log.entries):
-            raise ReplayError(
+            raise ReplayExhausted(
                 f"the log has {len(self.log.entries)} decision(s) but the game asked for "
                 f"another: {request.kind} for '{request.requester}'"
             )

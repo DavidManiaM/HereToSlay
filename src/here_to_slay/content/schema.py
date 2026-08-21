@@ -97,10 +97,19 @@ class Band(Frozen):
 
     Both omitted means "catch-all"; bands are tried in declaration order and the
     first match wins. The semantic pass proves the bands cover the dice range.
+
+    ``tag`` names the band so *other* cards can talk about it. A roll has no
+    built-in notion of succeeding — a band is only a range — so a card that says
+    "each time you **successfully** roll" needs the roll's author to say which
+    band counts as success. Tag it ``success`` and the ``roll.banded`` event
+    carries ``$event.tag``, which any trigger can read. The engine attaches no
+    meaning to any particular tag; ``success`` is a convention of the base pack,
+    not a keyword.
     """
 
     min: int | None = None
     max: int | None = None
+    tag: str | None = None
     effect: EffectNode
 
     @model_validator(mode="after")
@@ -388,9 +397,19 @@ class WindowDef(Frozen):
 
     order: str = "seat_left_of_active"
     reopen_on_action: bool = True
-    on: str | None = None
+    #: one event name, or several — a window that means the same thing on more
+    #: than one event says so once instead of being declared twice under two
+    #: names that cards would then both have to list.
+    on: str | list[str] | None = None
     timing: Timing = "pre"
     condition: ConditionNode | None = None
+
+    @property
+    def opens_on(self) -> tuple[str, ...]:
+        """Every event name that opens this window."""
+        if self.on is None:
+            return ()
+        return (self.on,) if isinstance(self.on, str) else tuple(self.on)
 
 
 class VictoryDef(Frozen):

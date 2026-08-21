@@ -136,14 +136,33 @@ unconfirmed.
 
 **Deliberate deviations**, where the printed card needs something the engine has no concept of:
 
-* `Arctic Aries`, `Particularly Rusty Coin`, `Suspiciously Shiny Coin` say "**successfully** roll".
-  A roll's bands are declarative ranges with no notion of success, so there is no event meaning
-  "the good band ran". The first fires on every Hero-ability roll; the coins use a total of ≤6 /
-  ≥7 as a proxy. Closing this properly wants a `tag:` on `Band` — an engine change, and its own
-  piece of work.
+* ~~`Arctic Aries`, `Particularly Rusty Coin`, `Suspiciously Shiny Coin` say "**successfully**
+  roll", and a roll's bands are declarative ranges with no notion of success.~~ **Closed in
+  Phase 7.** `Band` gained a `tag:`, every base Hero tags the band at its printed threshold
+  `success` and the one below it `failure`, and `roll.banded` reports which ran. All three cards
+  now ask for the tag instead of standing in a total. Success is *declared by the card being
+  rolled*, which is the only place that knows — the engine still has no opinion about it.
 * ~~`card_schemas.md` advertises `{expr: "$self.hand_size"}`, which the engine does not
   resolve.~~ **Fixed** — the doc example now uses the `hand_size` condition. `$ref.<field>` paths
   reach `PlayerState` attributes only; zone sizes go through a condition.
+
+---
+
+---
+
+## 8b. Rules the rulebook settled in Phase 7
+
+Two more places the rulebook decided a design question:
+
+1. **In a Challenge, both players roll before Modifiers are played.** The engine used to resolve
+   the challenger's roll — modification window and all — before the defender had touched the dice,
+   which made a Modifier on a Challenge a blind gamble. `contest_roll` now rolls both sides, then
+   opens one window over the pair (`rules_engine.md §4.2`). A Modifier played there picks which
+   roll it swings.
+2. **A Challenge cannot itself be Challenged.** The base pack therefore keeps
+   `challengeable: false` on `base.challenge.challenge`. The *mechanism* is real and tested — set
+   `challengeable: true` and a reaction becomes answerable by another reaction — but it is proved
+   against `tests/fixtures/play`'s `Open Veto`, not by shipping a rule the rulebook contradicts.
 
 ---
 

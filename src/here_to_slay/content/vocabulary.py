@@ -353,7 +353,7 @@ _CONDITIONS: tuple[OpSpec, ...] = (
         OpKind.CONDITION,
         _p(kind_in=R.ANY, class_in=R.ANY, tag_in=R.ANY, played_by=R.ANY, card=R.REF),
     ),
-    OpSpec("roll_is", OpKind.CONDITION, _p(kind=R.VALUE, roller=R.REF)),
+    OpSpec("roll_is", OpKind.CONDITION, _p(kind=R.VALUE, roller=R.REF, tag=R.VALUE)),
     OpSpec(
         "flag_set",
         OpKind.CONDITION,
@@ -403,11 +403,11 @@ CORE_EVENTS: frozenset[str] = frozenset(
         # party & board
         "hero.entered_party", "hero.left_party", "item.equipped", "item.unequipped",
         # rolls
-        "roll.started", "roll.modified", "roll.resolved",
+        "roll.started", "roll.modified", "roll.resolved", "roll.banded",
         # monsters
         "monster.attacked", "monster.slain", "monster.failed", "monster_row.refilled",
         # reactions & endgame
-        "challenge.declared", "challenge.resolved",
+        "challenge.declared", "challenge.resolved", "contest.resolved",
         "flag.changed", "player.won", "game.ended",
     )
 )  # fmt: skip

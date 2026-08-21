@@ -24,6 +24,7 @@ outside world only ever sees the points where a human has something to decide.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from here_to_slay.content.registry import ContentRegistry
 from here_to_slay.core.actions import legal_intents
@@ -52,6 +53,10 @@ from here_to_slay.core.view import GameView, build_view
 #: a rule set that cannot make progress — better to say so than to hang
 MAX_QUIET_STEPS = 10_000
 
+#: how many rolls :attr:`Engine.recent_rolls` keeps. A UI shows the last few; a
+#: whole game's dice belong in the decision log, not in memory.
+MAX_ROLL_HISTORY = 64
+
 
 class Engine:
     """One game, driven by decisions."""
@@ -68,6 +73,13 @@ class Engine:
         self.interpreter = Interpreter(state, log=self.log)
         self.machine = TurnMachine(state, max_turns=max_turns)
         self._started = False
+        # Rolls live on the `Execution` of whichever step is running, and an
+        # `Execution` dies with its step. The engine holds the current context
+        # so it can harvest them before that happens — which is what keeps the
+        # UI off the event bus (Phase 5 gap 1).
+        self._ctx: EffectContext | None = None
+        self._rolls: list[Any] = []
+        self._harvested = 0
 
     # -- construction ------------------------------------------------------
 
@@ -164,6 +176,7 @@ class Engine:
             if self.over:
                 return GameOver(self.state.winner)
             ctx = EffectContext.root(self.state, player=self.state.active_player)
+            self._adopt(ctx)
             status = self.interpreter.begin(self.machine.step(ctx))
             if isinstance(status, Awaiting):
                 return status
@@ -176,6 +189,37 @@ class Engine:
         )
 
     # -- reading -----------------------------------------------------------
+
+    @property
+    def recent_rolls(self) -> tuple[Any, ...]:
+        """Every :class:`~here_to_slay.core.rolls.Roll` made lately, oldest first.
+
+        A read-only window onto the dice, so a UI can show *how* a number was
+        reached without subscribing to the bus or reaching into a context. Rolls
+        are appended as they are created, so one read mid-Challenge sees the
+        sides that have landed so far — which is exactly what the player being
+        asked "modify which roll?" wants on screen.
+        """
+        self._harvest_rolls()
+        return tuple(self._rolls)
+
+    def _adopt(self, ctx: EffectContext) -> None:
+        """Take over a fresh execution, banking the outgoing one's rolls first."""
+        self._harvest_rolls()
+        self._ctx = ctx
+        self._harvested = 0
+
+    def _harvest_rolls(self) -> None:
+        ctx = self._ctx
+        if ctx is None:
+            return
+        rolls = ctx.execution.rolls
+        if self._harvested >= len(rolls):
+            return
+        self._rolls.extend(rolls[self._harvested :])
+        self._harvested = len(rolls)
+        if len(self._rolls) > MAX_ROLL_HISTORY:
+            del self._rolls[: len(self._rolls) - MAX_ROLL_HISTORY]
 
     def view(self, seat: PlayerId) -> GameView:
         """The board through one seat's eyes. Redacted in the core, never the UI."""

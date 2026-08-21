@@ -15,9 +15,9 @@ from here_to_slay.core.registry import effect
 from here_to_slay.core.rolls import (
     DEFAULT_DICE,
     Modifier,
-    current_roll,
     perform_roll,
     reroll_dice,
+    target_roll,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -42,8 +42,12 @@ def _roll(ctx: EffectContext, params: Params) -> Flow:
 
 @effect("modify_roll")
 def _modify_roll(ctx: EffectContext, params: Params) -> Flow:
-    """The whole of a Modifier card. Note it does *not* know what it modifies."""
-    roll = current_roll(ctx, params.get("target_roll"))
+    """The whole of a Modifier card. Note it does *not* know what it modifies.
+
+    Which roll is :func:`target_roll`'s problem: the one in flight normally, and
+    a question to the player when a Challenge has put two on the table.
+    """
+    roll = yield from target_roll(ctx, params.get("target_roll"))
     amount = ctx.resolve_int(params.get("amount"))
     source = ctx.resolve_cards(params.get("source"))
     modifier = roll.add(
@@ -70,7 +74,7 @@ def _modify_roll(ctx: EffectContext, params: Params) -> Flow:
 @effect("reroll")
 def _reroll(ctx: EffectContext, params: Params) -> Flow:
     """Throw the dice again. Modifiers already applied stay applied."""
-    roll = current_roll(ctx, params.get("target_roll"))
+    roll = yield from target_roll(ctx, params.get("target_roll"))
     dice = params.get("dice")
     yield from reroll_dice(ctx, roll, ctx.resolve_text(dice) if dice is not None else None)
     return Outcome.DONE
@@ -79,7 +83,7 @@ def _reroll(ctx: EffectContext, params: Params) -> Flow:
 @effect("set_roll_result")
 def _set_roll_result(ctx: EffectContext, params: Params) -> Flow:
     """"Treat that roll as a 12" — overrides dice *and* modifiers."""
-    roll = current_roll(ctx, params.get("target_roll"))
+    roll = yield from target_roll(ctx, params.get("target_roll"))
     roll.forced = ctx.resolve_int(params.get("value"))
     yield from ctx.derive(roll=roll).emit(
         "roll.modified",
@@ -92,15 +96,42 @@ def _set_roll_result(ctx: EffectContext, params: Params) -> Flow:
 def _contest_roll(ctx: EffectContext, params: Params) -> Flow:
     """Two rolls, higher wins — the Challenge card's payload.
 
-    Each side is a full roll, so each opens its own modification window: a
-    Challenge can be won by a Modifier, and that falls out rather than being
-    special-cased. Ties go to ``on_tie`` (the base rule: the defender).
+    **Both sides land before anybody may modify either.** Each side is rolled
+    ``contested``, which is the flag ``rules.yaml`` uses to keep the per-roll
+    modification window shut; the pair is then announced as ``contest.resolved``
+    and the same window opens over both at once. That ordering is the rulebook's
+    (both players roll, *then* Modifiers are played) and it is the difference
+    between a Modifier being a decision and a Modifier being a gamble.
+
+    Which branch runs is decided *after* the window closes, so a Modifier played
+    into it genuinely changes the winner. ``on_tie`` is a branch of its own
+    rather than a default, because who a tie favours is a rule, not a fallback —
+    in the base game it favours the challenger.
     """
     roll_a = yield from _side(ctx, params.get("a"), "a")
     if roll_a.cancelled:
         return Outcome.CANCELLED
     roll_b = yield from _side(ctx, params.get("b"), "b")
     if roll_b.cancelled:
+        return Outcome.CANCELLED
+
+    scope = ctx.bind(roll_a=roll_a, roll_b=roll_b)
+    settled = yield from scope.derive(roll=None).emit(
+        "contest.resolved",
+        {
+            "rolls": (roll_a, roll_b),
+            "roll_a": roll_a,
+            "roll_b": roll_b,
+            "kind": roll_a.kind,
+            "card": ctx.source,
+            # The pair is settled, so this event *is* the modification point —
+            # it is not itself a side waiting for one. The window reads the key
+            # on both events it opens for, so both have to carry it.
+            "contested": False,
+        },
+        actor=roll_a.roller,
+    )
+    if not settled.ok or roll_a.cancelled or roll_b.cancelled:
         return Outcome.CANCELLED
 
     if roll_a.total > roll_b.total:
@@ -110,7 +141,6 @@ def _contest_roll(ctx: EffectContext, params: Params) -> Flow:
     else:
         branch = params.get("on_tie")
 
-    scope = ctx.bind(roll_a=roll_a, roll_b=roll_b)
     outcome = yield from scope.run(branch)
     return outcome
 
@@ -128,5 +158,6 @@ def _side(ctx: EffectContext, spec: Any, which: str) -> Flow:
         kind=str(data.get("kind") or "contest"),
         roller=ctx.resolve_player(data.get("roller")),
         source=ctx.source,
+        contested=True,
     )
     return roll

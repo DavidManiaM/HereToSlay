@@ -188,11 +188,17 @@ turn.started      turn.ended        phase.changed
 action.declared   action.paid       action.completed
 card.drawn        card.played       card.discarded    card.moved
 hero.entered_party hero.left_party  item.equipped     item.unequipped
-roll.started      roll.modified     roll.resolved
+roll.started      roll.modified     roll.resolved     roll.banded
 monster.attacked  monster.slain     monster.failed    monster_row.refilled
-challenge.declared challenge.resolved
+challenge.declared challenge.resolved                  contest.resolved
 player.won        game.ended
 ```
+
+`roll.banded` announces *which outcome band* a roll landed in, carrying the band's `tag:`;
+`contest.resolved` announces a `contest_roll` whose two sides have both landed and neither has
+been modified yet. Both exist so that a card can talk about something the engine has no opinion
+on — "a successful roll", "a Challenge that is settled but not yet decided" — without the engine
+gaining a concept for it.
 
 Mods may invent new event names freely; the bus does not validate against an enum (it validates
 against the *union of names referenced by loaded content*, so typos are still caught at load).

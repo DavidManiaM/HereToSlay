@@ -35,24 +35,23 @@
   name: "Particularly Rusty Coin"
   copies: 2
   text: "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card."
-  # DEVIATION: "unsuccessfully" needs a notion of which band ran, which roll
-  # bands deliberately do not have (see monsters.yaml, Arctic Aries). Modelled
-  # as a low total instead — 6 or less on 2d6 fails every Hero in the set whose
-  # threshold is 7+, which is most of them.
+  # "Unsuccessfully" is now literal: every Hero tags the band at its printed
+  # threshold `success` and the band below it `failure`, and `roll.banded`
+  # carries whichever ran. This card asks for the tag rather than guessing at a
+  # total, so it stays correct for a Hero whose threshold is not 7.
   equip:
     to: { selector: heroes, of: $self }
     cost: { action_points: 1 }
     challengeable: true
   triggers:
-    - on: roll.resolved
+    - on: roll.banded
       timing: post
       while_in: party
       condition:
         op: all
         of:
-          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, kind: hero_ability, tag: failure }
           - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
-          - { op: compare, left: $event.roll.total, cmp: "<=", right: 6 }
       effect: { op: draw, target: $self, count: 1 }
 
 - id: base.item.decoy_doll
@@ -91,22 +90,21 @@
   tags: [cursed]
   text: "If you successfully roll to use the equipped Hero card's effect, DISCARD a card."
   # A Cursed Item: `equip.to` points at *other* players' Heroes.
-  # DEVIATION: same "successfully" problem as Particularly Rusty Coin, mirrored
-  # — a total of 7 or more stands in for success.
+  # The mirror of Particularly Rusty Coin, and literal for the same reason: it
+  # asks `roll.banded` which band ran instead of guessing at a total.
   equip:
     to: { selector: heroes, of: $opponents }
     cost: { action_points: 1 }
     challengeable: true
   triggers:
-    - on: roll.resolved
+    - on: roll.banded
       timing: post
       while_in: party
       condition:
         op: all
         of:
-          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, kind: hero_ability, tag: success }
           - { op: compare, left: $event.source, cmp: "==", right: $card.attached_to }
-          - { op: compare, left: $event.roll.total, cmp: ">=", right: 7 }
       effect: { op: discard, target: $event.roller, count: 1, chooser: $event.roller }
 
 - id: base.item.curse_of_the_snakes_eyes

@@ -109,6 +109,8 @@ class Roll:
     raw: list[int]  # actual die faces (from state.rng)
     modifiers: list[Modifier]  # (source_card, amount, applied_by)
     outcomes: list[Band]  # from the card data
+    contested: bool  # one half of a contest_roll; modified with its partner
+    band_tag: str | None  # which band ran, once one has
 
     @property
     def total(self) -> int: ...
@@ -126,14 +128,17 @@ roll.resolved ─── PRE ───►  the `roll_modification` WINDOW opens h
       │                      Modifier can be countered by another Modifier.
       │                      Each one emits `roll.modified`; other cards react.
       ▼
-   total read, matching Band selected
+   total read, matching Band selected, `roll.band_tag` set
+      ▼
+roll.banded   ─── PRE ───►  "this outcome is about to happen, and it is the one
+      │                      tagged X". Cancelling it skips the band's effect.
       ▼
    band effect executed
 ```
 
 The window hangs off `roll.resolved` rather than off a line of Python: `rules.yaml` says
-`roll_modification: {on: roll.resolved, timing: pre}`. Landing there — after the dice, before the
-total is read — is what makes a Modifier change *which outcome happens*.
+`roll_modification: {on: [roll.resolved, contest.resolved], timing: pre}`. Landing there — after
+the dice, before the total is read — is what makes a Modifier change *which outcome happens*.
 
 **Key decisions:**
 - Modifiers are *additive integers with a source*, so "ignore Modifiers played by your opponents"
@@ -141,6 +146,59 @@ total is read — is what makes a Modifier change *which outcome happens*.
 - Bands are evaluated in declaration order; first match wins. `{min:}`/`{max:}` are inclusive.
   An unmatched roll is a validation error at load time (bands must cover the dice range).
 - The dice string is parsed (`NdM+K`), so `3d6` or `1d20` variants work without code changes.
+
+### 4.1 `Band.tag` — what a roll has no opinion about
+
+A roll has no notion of succeeding. A band is a *range*, and a range does not know whether
+landing in it is good news. So a card that says "each time you **successfully** roll…" cannot be
+written without the rolling card first saying which band counts as success.
+
+`tag:` is that declaration, and `roll.banded` is where it is readable:
+
+```yaml
+outcomes:
+  - { min: 8, tag: success, effect: {...} }   # the printed threshold
+  - { max: 7, tag: failure, effect: {op: noop} }
+```
+
+```yaml
+triggers:
+  - on: roll.banded
+    timing: post
+    condition: { op: roll_is, kind: hero_ability, tag: success }
+    effect: { op: draw, target: $self, count: 1 }
+```
+
+The engine attaches no meaning to any particular tag. `success` / `failure` on Heroes and
+`slain` / `spared` / `backfire` on Monsters are conventions of the base pack; a variant is free to
+tag `critical`, `fumble`, or nothing at all — an untagged band leaves `roll.band_tag` as `None`
+and every trigger that asks for a tag simply does not fire.
+
+`roll.banded` is announced *before* the band's effect runs, and cancelling it skips that effect.
+That makes "that outcome does not happen to you" a subscriber rather than an engine concept.
+
+### 4.2 Contests — both sides land before either is modified
+
+`contest_roll` (the Challenge card's payload) rolls two sides. Each is a full `Roll`, but each is
+rolled `contested`, and the base `roll_modification` window declines to open on a contested side:
+
+```yaml
+condition:
+  op: not
+  of: { op: compare, left: $event.contested, cmp: "==", right: true }
+```
+
+Once both sides have landed, `contest.resolved` is emitted with both rolls in its payload, and
+the *same* window opens on that instead. Only after it closes are the totals compared and a
+branch chosen.
+
+The ordering is the rulebook's — both players roll, then Modifiers are played — and it is what
+makes a Modifier on a Challenge a decision rather than a gamble. It also means a Modifier played
+there has two rolls to choose between, so `modify_roll` asks which one. That question only ever
+appears when it is genuinely ambiguous: an ordinary roll resolves without a prompt.
+
+A variant that prefers side-at-a-time modification deletes the `condition:` above. Nothing in
+Python changes.
 
 ---
 
@@ -151,20 +209,29 @@ A window is a named, re-entrant polling loop:
 ```python
 def open_window(ctx, window_name, event):
     depth_guard(ctx)
-    order = seat_order_from(ctx.rules.windows[window_name].order, event)
-    acted = True
-    while acted:  # re-open after any play
-        acted = False
+    window = ctx.rules.windows[window_name]
+    order = seat_order_from(window.order, event)
+    reopen = True
+    while reopen:
+        reopen = False
         for player in order:
             options = playable_reactions(ctx.state, player, window_name, event)
             if not options:
                 continue
             choice = yield ctx.ask_reaction(player, options)  # includes "pass"
-            if choice is not PASS:
-                yield from ctx.play_reaction(player, choice)
-                acted = True
-                break  # restart the poll from the top
+            if choice is PASS:
+                continue
+            yield from ctx.play_reaction(player, choice)
+            if window.reopen_on_action:
+                reopen = True
+                break  # everyone is asked again, from the top of the order
+            # otherwise: one pass, one reaction each — carry on down the order
 ```
+
+Note the `else` branch. `reopen_on_action: false` means **one pass with one reaction per seat**,
+not "the window shuts as soon as anybody acts": the seats after the one that acted have not been
+asked yet. Getting this wrong is easy — the loop used to `break` unconditionally and set
+`acted = False`, which silently disenfranchised every seat below the first responder.
 
 Properties that matter:
 
@@ -174,16 +241,37 @@ Properties that matter:
   card can't hang the engine.
 - **Skipped automatically** when nobody holds a legal reaction — so a 2-player game with no
   Challenge cards in hand costs zero prompts. The CLI and pygame never see a window they can't act in.
-- **Windows are data, including *when* they open.** A window declares `on:` (an event name) and
-  `timing:`, and the **bus** opens it during that event's dispatch — which is exactly why a
-  Challenge's `cancel_event` reaches the `card.played` it is challenging. An optional `condition:`
-  gates it; that is how `challengeable: false` keeps the window shut without the bus ever learning
-  the word. So a variant can add a `damage_prevention` window on its own event, and a card that
-  reacts to it, with no engine edit.
+- **Windows are data, including *when* they open.** A window declares `on:` (one event name, or a
+  list of them) and `timing:`, and the **bus** opens it during that event's dispatch — which is
+  exactly why a Challenge's `cancel_event` reaches the `card.played` it is challenging. An optional
+  `condition:` gates it; that is how `challengeable: false` keeps the window shut without the bus
+  ever learning the word. So a variant can add a `damage_prevention` window on its own event, and a
+  card that reacts to it, with no engine edit.
+- **One window may open on several events.** `roll_modification` lists
+  `on: [roll.resolved, contest.resolved]`, so a lone roll and a settled Challenge both bring the
+  same window up. Modifier cards name the window once and never learn which event fetched them —
+  the alternative, two windows under two names, would have forced every Modifier in the game to
+  list both.
 - **Reaction cards are played from hand**, moved through `limbo`, announced as a `card.played`
   like any other card, and spent to the discard once resolved. A variant whose Challenges are
   themselves challengeable sets `challengeable: true` in the card's `reaction` block and gets
-  challenge-a-challenge for free — the depth cap bounds it.
+  challenge-a-challenge for free — the depth cap bounds it. The base game does **not** do this:
+  the rulebook says a Challenge cannot be challenged. `tests/fixtures/play` ships an `Open Veto`
+  that does, which is how the mechanism is proved without shipping a wrong rule.
+
+### 5.1 What "under load" was actually tested
+
+Phase 7's claim is not that a window works, but that windows *nest*. `tests/test_reactions.py`
+covers: a reaction answered by another reaction; a three-deep chain that resolves and strands
+nothing; the same chain twice, asserting the same seats were asked in the same order; the depth
+cap ending a chain that could otherwise run further; `reopen_on_action` in both settings; a
+Modifier deciding a Challenge from either side; two Modifiers stacking on one roll; a Party
+Leader that reacts to Modifiers *without* recursing on its own; and sixty randomised three-player
+games on the real card set whose seats react roughly 60% of the time, asserting only what a chain
+cannot violate quietly — no card left in `limbo`, no broken invariant, and a game that ends.
+
+The randomised run is deliberately not the Phase 8 agent. It knows nothing about any card; its
+job is to reach depths and orderings a scripted test would never think to write down.
 
 ---
 

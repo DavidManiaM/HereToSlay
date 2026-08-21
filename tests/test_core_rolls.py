@@ -13,6 +13,7 @@ from here_to_slay.core import (
     EffectError,
     GameState,
     Interpreter,
+    OptionChosen,
     PlayerId,
     ReactionChosen,
     ScriptedSource,
@@ -92,7 +93,8 @@ class TestBands:
         ("total", "op"), [(12, "noop"), (11, "noop"), (10, "draw"), (7, "draw"), (6, "discard")]
     )
     def test_declaration_order_wins(self, total: int, op: str) -> None:
-        assert select_band(self.BANDS, total) == {"op": op}
+        band = select_band(self.BANDS, total)
+        assert band is not None and band["effect"] == {"op": op}
 
     def test_bounds_are_inclusive(self) -> None:
         band = [{"min": 7, "max": 7, "effect": {"op": "noop"}}]
@@ -361,6 +363,7 @@ def test_a_challenge_roll_can_itself_be_modified(play_state: GameState, place: P
 
     ctx = EffectContext.root(play_state, player=PlayerId("p1"))
     windows: list[str] = []
+    chosen: list[tuple[str, ...]] = []
 
     class Answerer(ScriptedSource):
         def answer(self, request: Any) -> Any:
@@ -373,6 +376,10 @@ def test_a_challenge_roll_can_itself_be_modified(play_state: GameState, place: P
                 return ReactionChosen(None)
             if request.kind == "choose_cards":
                 return CardsChosen((request.candidates[0],))
+            if request.kind == "choose_option":
+                # "Which roll?" — a Challenge puts two on the table at once.
+                chosen.append(tuple(option.label for option in request.options))
+                return OptionChosen(request.options[0].key)
             raise AssertionError(f"unexpected request {request.kind}")
 
     drive(
@@ -382,5 +389,8 @@ def test_a_challenge_roll_can_itself_be_modified(play_state: GameState, place: P
     )
 
     assert "card_played" in windows and "roll_modification" in windows
+    # The Modifier was offered both contest sides, not just whichever had been
+    # rolled most recently: both dice land before either may be modified.
+    assert chosen and len(chosen[0]) == 2
     assert play_state.card(challenge).zone == "discard"
     assert play_state.card(modifier).zone == "discard"

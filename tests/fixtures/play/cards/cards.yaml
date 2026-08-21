@@ -88,7 +88,33 @@
       b: { roller: $event.player, dice: "2d6", kind: challenge }
       on_a_wins: { op: cancel_event, and_discard: true, reason: "Challenged" }
       on_b_wins: { op: noop }
-      on_tie: { op: noop } # base rule: a tie goes to the defender
+      # Deliberately NOT the base rule, which gives a tie to the challenger
+      # (rules_reference.md §7). A fixture whose three branches are three
+      # different outcomes lets a test tell them apart; the base pack is where
+      # the real tie rule is asserted.
+      on_tie: { op: noop }
+
+# A swing no pair of 2d6 can survive, so a test can flip the winner of a
+# Challenge without hunting for a seed where the dice cooperate.
+- id: play.modifier.plus_ten
+  kind: modifier
+  name: "+10"
+  copies: 4
+  text: "Add 10 to any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect: { op: modify_roll, amount: 10, source: $card }
+
+- id: play.modifier.minus_two
+  kind: modifier
+  name: "-2"
+  copies: 6
+  text: "Subtract 2 from any roll."
+  reaction:
+    window: roll_modification
+    challengeable: false
+    effect: { op: modify_roll, amount: -2, source: $card }
 
 # A Challenge with no contest in it: it simply wins. Real Challenges roll, and a
 # test that wants to assert what a *won* challenge does should not have to hunt
@@ -107,6 +133,42 @@
       played_by: { op: not_self }
     effect: { op: cancel_event, and_discard: true, reason: "Vetoed" }
 
+# A Veto that may itself be vetoed. The base game's Challenges cannot be
+# challenged — the rulebook is explicit — so proving that the *mechanism*
+# supports it needs a card the base pack has no reason to print. Two settings
+# do all of it: `challengeable: true` opens a `card_played` window on this
+# card's own play, and `challenge` in `kind_in` makes another copy a legal
+# answer to it. No engine knows either fact.
+- id: play.challenge.open_veto
+  kind: challenge
+  name: "Open Veto"
+  copies: 8
+  text: "Cancel a card somebody else is playing - including another Open Veto."
+  reaction:
+    window: card_played
+    challengeable: true
+    condition:
+      op: event_matches
+      kind_in: [hero, item, magic, challenge]
+      played_by: { op: not_self }
+    effect: { op: cancel_event, and_discard: true, reason: "Vetoed" }
+
+# A Party Leader that cancels a *band* rather than a roll. `roll.banded` is
+# announced before the band's effect runs, so a PRE subscriber that cancels it
+# means "that outcome does not happen to you" — expressible without the engine
+# knowing what an outcome is.
+- id: play.leader.warden
+  kind: party_leader
+  name: "The Warden"
+  card_class: guardian
+  text: "A roll never backfires on you."
+  triggers:
+    - on: roll.banded
+      timing: pre
+      while_in: leader
+      condition: { op: roll_is, tag: backfire, roller: $self }
+      effect: { op: cancel_event, reason: "Warded" }
+
 # --------------------------------------------------------------------------
 # Monsters
 # --------------------------------------------------------------------------
@@ -120,8 +182,22 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 2, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 2, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
   on_slay: { op: gain_action_points, target: $self, amount: 1 }
+
+# The opposite of Pushover: every total backfires, so a test of what a *tagged*
+# band does never has to hunt for a seed.
+- id: play.monster.biter
+  kind: monster
+  name: "Biter"
+  copies: 2
+  text: "Bites, whatever you roll."
+  roll:
+    dice: "2d6"
+    kind: monster_attack
+    outcomes:
+      - { min: 2, tag: backfire, effect: { op: discard, target: $self, count: 1, chooser: $self } }
+  on_slay: { op: noop }
 
 # Needs a Fighter in the party, and survives whatever you roll.
 - id: play.monster.wall

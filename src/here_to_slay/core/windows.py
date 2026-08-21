@@ -149,10 +149,10 @@ def open_window(ctx: EffectContext, name: str, event: Event | None = None) -> Fl
         return Outcome.DONE
 
     seats = window_seats(ctx.state, window, event)
-    acted = True
     rounds = 0
-    while acted and rounds < MAX_ROUNDS:
-        acted = False
+    reopen = True
+    while reopen and rounds < MAX_ROUNDS:
+        reopen = False
         rounds += 1
         for player in seats:
             if ctx.aborted:
@@ -173,8 +173,14 @@ def open_window(ctx: EffectContext, name: str, event: Event | None = None) -> Fl
             yield from play_reaction(ctx, player, chosen, name, event)
             if ctx.aborted:
                 return Outcome.CANCELLED
-            acted = window.reopen_on_action
-            break  # restart the poll from the top of the seat order
+            if window.reopen_on_action:
+                # Somebody acted, so everyone gets asked again from the top of
+                # the seat order — the board they were passing on has changed.
+                reopen = True
+                break
+            # `reopen_on_action: false` means "one pass, one reaction each",
+            # *not* "the window shuts on the first reaction": the seats after
+            # this one have not been asked yet, so the pass continues.
     return Outcome.DONE
 
 

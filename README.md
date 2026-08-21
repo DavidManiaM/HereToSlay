@@ -20,12 +20,13 @@ uv run pytest
 
 ## Status
 
-Phases 0–6 complete. The base game is playable end to end in the terminal with
-the full card set — 88 card definitions, 136 physical cards.
+Phases 0–7 complete. The base game is playable end to end in the terminal with
+the full card set — 88 card definitions, 136 physical cards — and the interrupt
+system (Challenges, Modifiers, and chains of both) is proven under load.
 
 ```bash
 uv run hts play data/base
 ```
 
-The AI, the reaction stress tests and the pygame client land in later phases;
-see [`docs/build_plan.md`](docs/build_plan.md).
+The AI and the pygame client land in later phases; see
+[`docs/build_plan.md`](docs/build_plan.md).

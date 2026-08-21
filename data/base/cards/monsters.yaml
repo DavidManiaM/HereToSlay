@@ -45,9 +45,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 5, max: 7, effect: { op: noop } }
-      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 4, tag: backfire, effect: { op: discard, target: $self, count: 2, chooser: $self } }
   on_slay: { op: noop }
   triggers:
     - on: card.drawn
@@ -87,9 +87,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 5, max: 7, effect: { op: noop } }
-      - { max: 4, effect: { op: sacrifice, target: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 4, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: roll.started
@@ -121,9 +121,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 5, max: 7, effect: { op: noop } }
-      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 4, tag: backfire, effect: { op: discard, target: $self, count: 2, chooser: $self } }
   on_slay: { op: noop }
   triggers:
     - on: card.played
@@ -155,9 +155,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 5, max: 7, effect: { op: noop } }
-      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 4, tag: backfire, effect: { op: discard, target: $self, count: 2, chooser: $self } }
   on_slay: { op: noop }
   triggers:
     - on: roll.started
@@ -211,9 +211,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 10, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 7, max: 9, effect: { op: noop } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 10, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 9, tag: spared, effect: { op: noop } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: roll.started
@@ -245,9 +245,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 5, max: 7, effect: { op: noop } }
-      - { max: 4, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 5, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 4, tag: backfire, effect: { op: discard, target: $self, count: 2, chooser: $self } }
   on_slay: { op: noop }
   triggers:
     - on: monster.slain
@@ -277,8 +277,8 @@
     kind: monster_attack
     outcomes:
       # The nastiest bands in the row: no safe middle at all.
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { max: 7, effect: { op: sacrifice, target: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 7, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: turn.started
@@ -303,9 +303,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 8, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 6, max: 7, effect: { op: noop } }
-      - { max: 5, effect: { op: sacrifice, target: $self } }
+      - { min: 8, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 7, tag: spared, effect: { op: noop } }
+      - { max: 5, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: roll.modified
@@ -341,8 +341,8 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 7, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 7, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: roll.started
@@ -367,9 +367,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 7, max: 8, effect: { op: noop } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 9, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 8, tag: spared, effect: { op: noop } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: draw, target: $self, count: 1 }
   triggers:
     - on: monster.slain
@@ -394,9 +394,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 7, max: 8, effect: { op: noop } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 9, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 8, tag: spared, effect: { op: noop } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     - on: challenge.declared
@@ -413,13 +413,10 @@
   kind: monster
   name: "Arctic Aries"
   copies: 1
-  # DEVIATION (documented in docs/rules_reference.md §7): the printed card says
-  # "each time you *successfully* roll". A roll's bands are declarative ranges
-  # with no notion of success, so there is no event meaning "the good band ran".
-  # Hooking roll.resolved makes this fire on every Hero-ability roll instead —
-  # strictly more generous. Closing it wants a `tag:` on Band, which is an
-  # engine change and belongs in its own phase, not here.
-  text: "Each time you roll to use a Hero card's effect, DRAW a card."
+  # The printed card says "each time you *successfully* roll". Bands now carry a
+  # `tag:` and `roll.banded` reports which one ran, so this is the printed card
+  # rather than the more generous approximation it used to be.
+  text: "Each time you successfully roll to use a Hero card's effect, DRAW a card."
   requirement:
     op: has_card
     player: $self
@@ -431,18 +428,18 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 10, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 7, max: 9, effect: { op: noop } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 10, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 9, tag: spared, effect: { op: noop } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
-    - on: roll.resolved
+    - on: roll.banded
       timing: post
       while_in: slain
       condition:
         op: all
         of:
-          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, kind: hero_ability, tag: success }
           - { op: roll_is, roller: $self }
       effect: { op: draw, target: $self, count: 1 }
 
@@ -462,9 +459,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 11, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 7, max: 10, effect: { op: noop } }
-      - { max: 6, effect: { op: sacrifice, target: $self } }
+      - { min: 11, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 7, max: 10, tag: spared, effect: { op: noop } }
+      - { max: 6, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     # A protection, so it must land in PRE and cancel. `to: discard` is what
@@ -496,9 +493,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 6, max: 8, effect: { op: noop } }
-      - { max: 5, effect: { op: discard, target: $self, count: 2, chooser: $self } }
+      - { min: 9, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 8, tag: spared, effect: { op: noop } }
+      - { max: 5, tag: backfire, effect: { op: discard, target: $self, count: 2, chooser: $self } }
   on_slay: { op: noop }
   triggers:
     - on: card.played
@@ -527,9 +524,9 @@
     dice: "2d6"
     kind: monster_attack
     outcomes:
-      - { min: 9, effect: { op: slay_monster, monster: $card, by: $self } }
-      - { min: 6, max: 8, effect: { op: noop } }
-      - { max: 5, effect: { op: sacrifice, target: $self } }
+      - { min: 9, tag: slain, effect: { op: slay_monster, monster: $card, by: $self } }
+      - { min: 6, max: 8, tag: spared, effect: { op: noop } }
+      - { max: 5, tag: backfire, effect: { op: sacrifice, target: $self } }
   on_slay: { op: noop }
   triggers:
     # Fires in the same window a Modifier uses: after the dice land, before the

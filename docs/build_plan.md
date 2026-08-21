@@ -244,7 +244,7 @@ not at end of turn; a whole game replays from its log to a byte-identical state.
 
 ---
 
-## Phase 5 — CLI: Playable Head-to-Head `[~]` ★ *the milestone that de-risks everything*
+## Phase 5 — CLI: Playable Head-to-Head `[x]` ★ *the milestone that de-risks everything*
 
 **Deliverable:** `uv run hts play` — a real, complete game in the terminal.
 
@@ -256,11 +256,10 @@ not at end of turn; a whole game replays from its log to a byte-identical state.
 - [x] Replay — shipped as a sibling command `hts replay <log> [--step]`, not a `--replay` flag on
       `play` (see decision 2); `hts play` auto-saves to `./hts_logs/<ts>_<seed>.json` unless
       `--no-save`
-- [ ] **Roll animation-lite: not wired.** `render_roll()` / `render_roll_result()` exist and are
-      correct, but `CliPresenter._print_last_rolls` reads `state.flags["_cli_rolls"]`, which
-      *nothing writes* — so no roll line is ever printed. See gap 1 below.
+- [x] **Roll animation-lite.** Wired in Phase 7 via `Engine.recent_rolls`: the presenter prints
+      dice, each modifier with its source, the total, and the band's tag once one has run.
 
-**Acceptance:** ⚠️ **partial.**
+**Acceptance:** ✅ (completed across Phases 6 and 7 — see the gap list below).
 * A full head-to-head game is playable end to end against `tests/fixtures/play` — board, menus,
   costs, hot-seat gate, victory, log save and replay all work (verified by hand:
   `hts play tests/fixtures/play --search-path data`).
@@ -297,12 +296,10 @@ These are real defects found by auditing the shipped code, each reproduced. None
 Phase 6 (card content), but **gaps 1 and 3 should be closed before Phase 7**, whose whole subject
 is rolls and reactions.
 
-1. **Roll display is dead code.** Nothing ever populates `state.flags["_cli_rolls"]`, so
-   `_print_last_rolls` always sees an empty list. Rolls live on `ctx.execution.rolls`
-   (`core/rolls.py`), which the `Engine` facade does not expose. *Fix shape:* either have the
-   presenter subscribe to `roll.resolved` on the bus, or add a `Engine.recent_rolls` accessor —
-   the latter keeps `ui/` off the bus. `render_roll_result()` (the one that shows the **band**
-   that was hit, which the Phase 5 bullet explicitly asks for) has no caller at all.
+1. ~~**Roll display is dead code.**~~ **Closed in Phase 7.** `Engine.recent_rolls` harvests each
+   step's `Execution` before it is discarded; the presenter reads that and keeps its own
+   "already shown" count instead of writing to `state.flags`. `render_roll_result()` now has a
+   caller too — it prints the band's `tag:`, which is the thing the Phase 5 bullet asked for.
 2. **Emoji crash the CLI on a legacy Windows console.** `👾 💀 🎲 ⚔ 🏆` raise
    `UnicodeEncodeError` under a non-UTF-8 code page (reproduced on cp1250: `hts play` dies while
    printing the first board). *Fix shape:* construct the `Console` with an explicit UTF-8 file, or
@@ -323,9 +320,9 @@ is rolls and reactions.
    `[dim][4f9dfbda][/dim]`. Use `Text.append(..., style="dim")` like every other line does.
 5. **Monster band text is ambiguous.** `_render_monster_card` renders an open bound and the range
    separator with the same en dash, giving `––12` and `2––`. Print `≤12` / `2+` instead.
-6. **`cmd_replay` detects "log exhausted" by matching substrings of a `ReplayError` message**
-   (`cli.py:401`). It works, but it is coupled to prose in `core/log.py`; a typed
-   `ReplayExhausted` would be honest.
+6. ~~**`cmd_replay` detects "log exhausted" by matching substrings of a `ReplayError` message.**~~
+   **Closed in Phase 7.** `LogSource` raises a typed `ReplayExhausted`, and `cmd_replay` catches
+   that instead of reading prose.
 7. **Dead imports/locals** flagged by `ruff` in `ui/cli/` and `cli.py` (22 findings, mostly
    `F401`/`F841`/`E501` plus the ambiguous en dashes). The lint gate does not currently cover
    these files.
@@ -407,22 +404,88 @@ Every card is tested through the terminal, so the CLI had to work. Closed gaps *
 * **Header markup** (`[dim][…][/dim]` printed literally) and **band text** (`––12`, `2––`) fixed;
   bands now read `8+`, `5-7`, `4-`.
 
-Still open: **gap 1** (roll display is dead code — `_print_last_rolls` reads a flag nothing
-writes; it needs an `Engine.recent_rolls` accessor) and **gap 6**. Both belong with Phase 7,
-whose subject is rolls and reactions.
+Gaps **1** and **6** were left for Phase 7, whose subject is rolls and reactions, and closed
+there. Every Phase 5 gap is now closed except **7** (dead imports and long lines in `ui/cli/`,
+which the lint gate still does not cover).
 
 ---
 
-## Phase 7 — Reactions: Challenge & Modifier
+## Phase 7 — Reactions: Challenge & Modifier `[x]`
 
-**Deliverable:** the interrupt system proven under load.
+**Deliverable:** the interrupt system proven under load. Most of the machinery already existed;
+the work was proving it holds when windows nest — and it did not, in three places.
 
-- [ ] Challenge cards + the contest-roll op
-- [ ] Modifier cards (+/- variants) + stacking
-- [ ] Challenge-a-challenge; Modifier-on-a-challenge-roll
-- [ ] Depth cap, window skip, seat-order tests
+- [x] Challenge cards + the contest-roll op
+- [x] Modifier cards (+/- variants) + stacking
+- [x] Challenge-a-challenge; Modifier-on-a-challenge-roll
+- [x] Depth cap, window skip, seat-order tests
+- [x] `tests/test_reactions.py` — 85 tests, including 60 randomised three-player games
+- [x] Phase 5 **gap 1** (dead roll display) and **gap 6** (prose-matched replay exhaustion)
+- [x] `Band.tag` — closes the three "successfully roll" deviations in `rules_reference.md §8`
 
-**Acceptance:** a scripted 3-deep interrupt chain resolves correctly and deterministically.
+**Acceptance:** ✅
+* A scripted 3-deep chain (Hero ← veto ← veto ← veto) resolves correctly, strands nothing in
+  `limbo`, and asks the same seats in the same order on every run.
+* `uv run pytest` → **752 passed**, and again under `HTS_STRICT=1`.
+* `uv run hts validate data/base --strict` → OK, 88 card definitions, 136 physical cards.
+* 60 randomised 3-player games on the real pack, with seats reacting ~60% of the time: zero
+  errors, zero invariant violations, nothing left in `limbo`, all terminated.
+
+**Not yet:** AI (Phase 8), pygame (Phase 9).
+
+### Decisions taken during Phase 7
+
+1. **In a Challenge, both sides roll before either may be modified.** `contest_roll` used to
+   resolve side A completely — modification window and all — before side B touched the dice, so
+   playing a Modifier on a Challenge meant committing before you knew what you were beating. The
+   rulebook has both players roll and *then* Modifiers played. Each side is now rolled
+   `contested:`, the base `roll_modification` window declines to open on a contested side, and
+   `contest.resolved` re-opens the same window over both rolls at once. **The engine does not
+   know that a contest suppresses anything** — one `condition:` clause in `rules.yaml` does, and
+   a variant that wants side-at-a-time modification deletes it.
+2. **A window may declare `on:` as a list.** The alternative was a second window
+   (`contest_modification`) that every Modifier card in the game would then have had to list
+   alongside the first. `roll_modification` opens on `[roll.resolved, contest.resolved]`, and
+   Modifier cards are unchanged.
+3. **When a Modifier has two rolls to choose from, the engine asks.** `modify_roll` targets via
+   a new `target_roll()` flow: an explicit ref wins, then `$roll` if one is in flight, then the
+   rolls the event put on the table — one of which resolves silently, two of which raise a
+   `ChooseOption`. No existing card gained a click.
+4. **`Band.tag` — success is declared by the card being rolled, not inferred by the card
+   watching.** A band is a range and has no opinion about whether landing in it is good. Tagging
+   the band and emitting `roll.banded` with the tag is what let `Arctic Aries` and both Coins
+   stop approximating "successfully" with a threshold. The engine attaches no meaning to any tag
+   string; `success`/`failure`/`slain`/`spared`/`backfire` are base-pack convention.
+5. **`roll.banded` is announced before the band's effect runs**, so cancelling it means "that
+   outcome does not happen to you" — a subscriber, not an engine concept. `tests/fixtures/play`'s
+   The Warden is the proof.
+6. **Challenge-a-challenge is proved in a fixture, not in `data/base`.** The rulebook says a
+   Challenge cannot be Challenged, so the base pack keeps `challengeable: false`. `Open Veto`
+   (`challengeable: true`, `challenge` in its `kind_in`) shows the mechanism works with two
+   settings and no engine involvement.
+7. **`reopen_on_action: false` was silently disenfranchising seats.** `open_window` broke out of
+   the poll *and* set `acted = False` after any reaction, so with reopening off the window shut on
+   the first responder and the seats below them were never asked. It now means what it says: one
+   pass, one reaction per seat.
+8. **`Engine.recent_rolls` rather than a bus subscription.** Rolls live on the `Execution` of the
+   turn-machine step that made them, and an `Execution` dies with its step; the engine harvests
+   them as it goes into a bounded history. The CLI reads that and keeps its own "already shown"
+   count — how much of the board a terminal has drawn is not part of the game, so it does not
+   belong in `state.flags`, which is where the dead version of this looked.
+9. **`ReplayExhausted` is its own exception.** "The log ran out" is the *expected* end of a partial
+   replay, and detecting it by matching prose in a `ReplayError` message coupled `cli.py` to a
+   sentence in `core/log.py`.
+
+### Found while proving it
+
+* The Protecting Horn (+1/-1 each time a Modifier is played) reacts to `roll.modified` and its own
+  adjustment emits `roll.modified` too. It terminates because the card's condition asks *who
+  played what* — not because the engine guards re-entry. That is the load case a naive
+  implementation hangs on, so it now has a test of its own.
+* Adding cards to `tests/fixtures/play` re-deals every seeded fixture game. A control test was
+  passing for the wrong reason because the new Warden happened to be dealt to the seat it was
+  asserting about. Tests that depend on a specific Leader now place it explicitly — and clear the
+  dealt one first, since the `leader` zone declares no capacity and would otherwise hold both.
 
 ---
 
@@ -499,32 +562,35 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–6 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
-and 136 physical cards; `uv run pytest` runs **667 tests**, and the whole suite also passes under
+**Phases 0–7 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
+and 136 physical cards; `uv run pytest` runs **752 tests**, and the whole suite also passes under
 `HTS_STRICT=1` (invariants checked after every mutation).
 
 **The base game is playable, end to end, with the real card set.** `hts play data/base` deals six
 Party Leaders, 48 Heroes across all six classes, 15 Monsters with requirement gates and outcome
 bands, Items (including Cursed ones), Magic, Modifiers and Challenges — then runs a full game
-with a `rich` board, numbered menus, a hot-seat privacy gate, an auto-saved decision log, and
-`hts replay` to walk it back. 60 random 3-player games complete with zero errors and zero
-invariant violations; **both** victory conditions fire in real play.
+with a `rich` board, numbered menus, a hot-seat privacy gate, a live roll breakdown, an auto-saved
+decision log, and `hts replay` to walk it back. **Both** victory conditions fire in real play.
 
-Phase 6 needed four engine additions, each forced by a specific card rather than by convenience
-(see its decisions above). No card-specific Python exists anywhere: every one of the 88 cards is
-interpreted from its YAML.
+**The interrupt system holds under load.** A reaction can be answered by another reaction; a
+three-deep chain resolves, deterministically, with nothing stranded in `limbo`; the depth cap ends
+a chain that would otherwise run further; a Modifier decides a Challenge from either side, because
+both sides now roll before either may be modified. Sixty randomised three-player games whose seats
+react ~60% of the time complete with zero errors and zero invariant violations.
 
-Next up is **Phase 7 — Reactions: Challenge & Modifier**. Much of it already works — Challenges
-contest and cancel, Modifiers stack, and the base cards for both ship — so the phase is really
-about proving the interrupt system *under load*: a scripted 3-deep interrupt chain,
-challenge-a-challenge, modifier-on-a-challenge-roll, and the depth cap. Two Phase 5 gaps belong
-with it, since its subject is rolls and reactions:
+Phases 6 and 7 between them needed six engine additions, each forced by a specific card or a
+specific rule rather than by convenience (see their decisions above). No card-specific Python
+exists anywhere: every one of the 88 cards is interpreted from its YAML.
 
-* **gap 1** — roll display is dead code. `_print_last_rolls` reads `state.flags["_cli_rolls"]`,
-  which nothing writes; rolls live on `ctx.execution.rolls` and want an `Engine.recent_rolls`
-  accessor so `ui/` stays off the bus. `render_roll_result()` — the one showing which *band* was
-  hit — still has no caller.
-* **gap 6** — `cmd_replay` detects "log exhausted" by matching prose in a `ReplayError` message.
+Three things were fixed along the way that had been quietly wrong: `reopen_on_action: false` shut
+a window on its first responder instead of finishing the pass; `contest_roll` made a Modifier on a
+Challenge a blind gamble; and the CLI's roll display had no source to read from. All three had
+tests around them that passed.
 
-Worth doing at some point, not urgent: `Band.tag`, which would let a card say "on a **successful**
-roll" and close the three documented deviations in `rules_reference.md §8`.
+Next up is **Phase 8 — AI Agents**: a random agent over `legal_intents()`, a heuristic agent whose
+weights live in YAML, and `hts sim --games 1000`. Phase 7's `Chaos` source in
+`tests/test_reactions.py` is a deliberate sketch of the first of those — it answers every request
+kind at random from a seed, and knows nothing about any card.
+
+Still open, not urgent: Phase 5 **gap 7** — `ruff` findings in `ui/cli/` and `cli.py` (dead
+imports, long lines, ambiguous en dashes) that the lint gate does not currently cover.

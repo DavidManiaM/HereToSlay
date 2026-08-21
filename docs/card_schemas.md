@@ -275,11 +275,29 @@ choice back inside the action's effect; any other `param` name lands in `$intent
       dice: "2d6"
       kind: hero_ability    # tags the roll so leaders/items can modify it
       outcomes:
-        - {min: 7, effect: {op: seq, steps: [...]}}
-        - {max: 6, effect: {op: noop}}
+        - {min: 7, tag: success, effect: {op: seq, steps: [...]}}
+        - {max: 6, tag: failure, effect: {op: noop}}
 ```
 
 A Hero with a passive instead uses `triggers:` (see §6.6). A Hero may have **both**.
+
+**`tag:` on a band.** A band is a range, and a range has no opinion about whether landing in it
+is good news. `tag:` is where the card's author says so, and `roll.banded` is where another card
+reads it:
+
+```yaml
+triggers:
+  - on: roll.banded
+    timing: post
+    condition: {op: roll_is, kind: hero_ability, tag: success}
+    effect: {op: draw, target: $self, count: 1}
+```
+
+The engine attaches no meaning to any tag string. The base pack uses `success`/`failure` on
+Heroes and `slain`/`spared`/`backfire` on Monsters; a variant may use anything, or nothing —
+an untagged band leaves the tag unset and no tag-matching trigger fires. Cancelling `roll.banded`
+(a PRE subscriber) skips the band's effect, which is how "that outcome does not happen to you"
+is written without an engine concept for it.
 
 ### 6.2 Monster
 
@@ -368,8 +386,22 @@ These are never *actions*; they are played into an open **window** for free.
       b: {roller: $event.player, dice: "2d6", kind: challenge}
       on_a_wins: {op: cancel_event, and_discard: true}
       on_b_wins: {op: noop}
-      on_tie:    {op: noop}          # base rule: tie goes to the defender
+      # The rulebook: "if your roll is equal to or higher…" — a tie goes to the
+      # CHALLENGER, so the base card cancels here too. It is a branch of its own
+      # rather than a default, because who a tie favours is a rule.
+      on_tie:    {op: cancel_event, and_discard: true}
 ```
+
+**Both sides roll before either may be modified.** `contest_roll` rolls `a` and `b` back to back,
+each marked `contested` so the per-roll modification window stays shut, then emits
+`contest.resolved` carrying both. The `roll_modification` window opens on *that*, and only after
+it closes are the totals compared. A Modifier played there is offered both rolls to choose
+between; `modify_roll` asks. See `rules_engine.md §4.2`.
+
+**Reactions are announced as `card.played`,** so `challengeable: true` in a `reaction:` block
+makes a reaction card answerable by another one — challenge-a-challenge, bounded by
+`max_reaction_depth`. The base game sets it `false`, because the rulebook says a Challenge cannot
+be challenged.
 
 ### 6.6 Party Leader
 
@@ -462,10 +494,16 @@ windows:
     order: seat_left_of_active
     reopen_on_action: true
   roll_modification:
-    on: roll.resolved           # after the dice land, before the band is chosen
-    timing: pre
+    # `on:` takes one event name or a list. A lone roll and a settled Challenge
+    # both want this window, and Modifier cards should not have to name two.
+    on: [roll.resolved, contest.resolved]
+    timing: pre                 # after the dice land, before the band is chosen
     order: seat_left_of_active
-    reopen_on_action: true
+    reopen_on_action: true      # false = one pass, one reaction per seat
+    # Skip a *single* contest side: it is modified later, with its partner.
+    condition:
+      op: not
+      of: {op: compare, left: $event.contested, cmp: "==", right: true}
 max_reaction_depth: 8
 
 victory:
@@ -496,7 +534,8 @@ Pydantic gives structural validation. A second **semantic** pass runs after load
 
 1. Every `op` referenced exists in the effect/condition/selector registry.
 2. Every `$ref` is bindable in its lexical scope (catches `$victim` used before `choose`).
-3. Every `on:` event name is either a core event or emitted by some loaded card.
+3. Every `on:` event name is either a core event or emitted by some loaded card — each entry
+   independently, when a window lists several.
 4. Every `card_class` is in `rules.classes`; every `art` path exists (warning only).
 5. Deck arithmetic: `sum(copies)` per zone is sane; monster deck non-empty.
 6. Every `id` is unique across packs unless it is an explicit `patch`.
