@@ -520,22 +520,26 @@ the work was proving it holds when windows nest — and it did not, in three pla
 
 ---
 
-## Phase 9 — PyGame UI
+## Phase 9 — PyGame UI `[x]`
 
 **Deliverable:** the graphical client. Built last on purpose: by now the rules are proven, so
 this phase is *only* rendering and input.
 
-- [ ] `ui/pygame/app.py` — window, clock, scene stack, resize
-- [ ] `ui/pygame/layout.py` — resolution-independent anchored layout
-- [ ] `ui/pygame/widgets.py` — `CardSprite` (renders **any** card from its `CardDef`: art, name,
-      class colour, text — never per-card code), `ZoneWidget`, `Button`, `Toast`
-- [ ] `ui/pygame/presenter.py` — non-blocking `answer()`; `pending_request` drives which widgets
+- [x] `ui/pygame/app.py` — window, clock, scene stack, resize
+- [x] `ui/pygame/layout.py` — resolution-independent anchored layout
+- [x] `ui/pygame/widgets.py` — `CardSprite` (renders **any** card from its `CardDef`: art, name,
+      class colour, text — never per-card code), `ZoneWidget`, `Button`, `Toast`, `DiceWidget`, `PlayerBadge`
+- [x] `ui/pygame/presenter.py` — non-blocking `answer()`; `pending_request` drives which widgets
       highlight as legal targets
-- [ ] Animation queue: card moves, dice tumble, modifier pop-ins (cosmetic, driven by the event
+- [x] Animation queue: card moves, dice tumble, modifier pop-ins (cosmetic, driven by the event
       stream — never gates the engine)
-- [ ] Placeholder art generated procedurally so a new card is visible before an artist touches it
+- [x] Placeholder art generated procedurally so a new card is visible before an artist touches it
 
-**Acceptance:** a full game start→win with mouse only; the CLI still works unchanged.
+**Acceptance:** ✅
+* A full game start→win with mouse only; the CLI and AI still work unchanged.
+* `uv run hts gui data/base` launches the graphical client with full window resizing, hot-seat interstitial transitions, dice roll overlays, action menus, and party/hand/opponent rendering.
+* `uv run pytest` runs **803 tests** (12 PyGame tests in `tests/test_pygame_ui.py`), all green.
+* `ruff check .` is completely clean across the entire repository.
 
 ---
 
@@ -580,24 +584,14 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–8 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
-and 136 physical cards; `uv run pytest` runs **790 tests**, and the whole suite also passes under
+**Phases 0–9 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
+and 136 physical cards; `uv run pytest` runs **803 tests**, and the whole suite also passes under
 `HTS_STRICT=1` (invariants checked after every mutation).
 
-**The base game is playable, end to end, with the real card set.** `hts play data/base` deals six
-Party Leaders, 48 Heroes across all six classes, 15 Monsters with requirement gates and outcome
-bands, Items (including Cursed ones), Magic, Modifiers and Challenges — then runs a full game
-with a `rich` board, numbered menus, a hot-seat privacy gate, a live roll breakdown, an auto-saved
-decision log, and `hts replay` to walk it back. **Both** victory conditions fire in real play.
+**The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical
+client with responsive anchored layouts, procedural card rendering and caching, interactive zones,
+action selection menus, opponent overview badges, dice tumble / modifier pop-in animations,
+hot-seat transitions, and game over screens.
 
-**AI agents and headless simulation are fully operational.** Both `RandomAgent` and
-`HeuristicAgent` implement the `DecisionSource` protocol. Scoring weights for the heuristic agent
-are configured via `data/base/ai_weights.yaml` so variant packs can customize AI behavior without
-touching Python. `hts sim data/base --games 1000` runs 1,000 automated games with 0 errors and
-0 invariant violations.
-
-**Phase 5 gap 7 is closed.** All lint warnings and formatting issues across `ui/cli/`, `cli.py`, and
-test files have been cleaned up and verified with `ruff check .`.
-
-Next up is **Phase 9 — PyGame UI**: window, scene stack, widget hierarchy, anchored layout,
-non-blocking presenter, and procedural card rendering.
+Next up is **Phase 10 — Modding Support**: modding guide, pack plugin loader, `hts new-pack`, and
+the sample variant proving engine modifiability with zero edits to `core/`.

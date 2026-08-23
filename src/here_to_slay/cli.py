@@ -124,6 +124,71 @@ def build_parser() -> argparse.ArgumentParser:
     play.set_defaults(func=cmd_play)
 
     # ------------------------------------------------------------------
+    # gui
+    # ------------------------------------------------------------------
+    gui = subparsers.add_parser(
+        "gui",
+        help="start a graphical PyGame client",
+        description="Launch the PyGame desktop client for Here to Slay.",
+    )
+    gui.add_argument(
+        "packs",
+        nargs="*",
+        metavar="PACK",
+        default=["data/base"],
+        help="content packs to load (default: data/base)",
+    )
+    gui.add_argument(
+        "--search-path",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="extra directory to search for required packs (repeatable)",
+    )
+    gui.add_argument(
+        "--names",
+        nargs="+",
+        metavar="NAME",
+        default=[],
+        help="player names (default: Player 1, Player 2, …)",
+    )
+    gui.add_argument(
+        "--players",
+        type=int,
+        default=2,
+        metavar="N",
+        help="number of players (default: 2, ignored if --names is given)",
+    )
+    gui.add_argument(
+        "--seed",
+        default=None,
+        metavar="SEED",
+        help="RNG seed for a reproducible game",
+    )
+    gui.add_argument(
+        "--max-turns",
+        type=int,
+        default=0,
+        metavar="N",
+        help="stop after N turns (0 = no limit)",
+    )
+    gui.add_argument(
+        "--width",
+        type=int,
+        default=1280,
+        metavar="W",
+        help="window width (default: 1280)",
+    )
+    gui.add_argument(
+        "--height",
+        type=int,
+        default=800,
+        metavar="H",
+        help="window height (default: 800)",
+    )
+    gui.set_defaults(func=cmd_gui)
+
+    # ------------------------------------------------------------------
     # replay
     # ------------------------------------------------------------------
     replay = subparsers.add_parser(
@@ -391,6 +456,46 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
         engine.log.save(log_path)
         console.print(f"[dim]Decision log saved → {log_path}[/dim]")
 
+    return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# gui
+# ---------------------------------------------------------------------------
+
+
+def cmd_gui(args: argparse.Namespace, console: Console) -> int:
+    try:
+        registry = load_packs(args.packs, search_paths=args.search_path)
+    except ContentError as exc:
+        console.print(f"[bold red]Content error:[/bold red] {exc}")
+        return EXIT_CONTENT_ERROR
+
+    names: list[str]
+    if args.names:
+        names = list(args.names)
+    else:
+        n = max(2, args.players)
+        names = [f"Player {i}" for i in range(1, n + 1)]
+
+    n_players = len(names)
+    max_p = registry.rules.setup.max_players
+    min_p = registry.rules.setup.min_players
+    if not (min_p <= n_players <= max_p):
+        console.print(
+            f"[red]This rule set requires {min_p}-{max_p} players; "
+            f"got {n_players}.[/red]"
+        )
+        return EXIT_USAGE
+
+    seed: int | str = args.seed if args.seed is not None else _random_seed()
+
+    from here_to_slay.core.engine import Engine
+    from here_to_slay.ui.pygame import PygameApp
+
+    engine = Engine.new(registry, names, seed=seed, max_turns=args.max_turns)
+    app = PygameApp(engine, registry, width=args.width, height=args.height)
+    app.run()
     return EXIT_OK
 
 
