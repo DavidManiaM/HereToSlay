@@ -1,0 +1,839 @@
+[
+  {
+    "title": "Abyss Queen",
+    "pageid": 331,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Abyss_Queen",
+    "images": [
+      "File:AbyssQueen.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Monster_Template|title1=Abyss Queen|hero_requirement=2 heroes of any kind|roll_you_need_to_slay=8 or more|roll_you_need_to_get_negitive_affect=5 or less|negitive_affect_from_failing=Sacrifice a hero|abilety_you_keep_from_slaying=Each time another plays a modifier card on your role +1 to that roll|image1=AbyssQueen.png}}\n[[Category:Monster]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Bad Axe",
+    "pageid": 214,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bad_Axe",
+    "images": [],
+    "categories": [
+      "Category:Base Game",
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "[[Category:Fighters]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Bard Mask",
+    "pageid": 199,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bard_Mask",
+    "images": [
+      "File:Bard Mask Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Items",
+      "Category:Masks"
+    ],
+    "wikitext": "{{Item Templete|type=Mask|affect=The equipped Hero card is considered a Bard instead of its original class.|image1=Bard Mask Here to Slay.png}}\n[[Category:Items]]\n[[Category:Masks]]"
+  },
+  {
+    "title": "Bear Claw",
+    "pageid": 248,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bear_Claw",
+    "images": [
+      "File:Bear Claw Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Bear|roll_you_need_to_get_to_use_affect=7+|affect=Pull a card from another player's hand. If it is a Hero card, pull a second card from that player's hand.|image1=Bear Claw Here to Slay.png}}\n[[Category:Fighters]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Bearserker",
+    "pageid": 246,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bearserker",
+    "images": [
+      "File:Bearserker Here to Slay KSE.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero KSE Template|class=Fighter|animal_type=Bear|roll_you_need_to_get_to_use_affect=6+|affect=Choose any player. That player must DISCARD all cards in their hand and DRAW 3 cards.|kse=Yes|image1=Bearserker Here to Slay KSE.png}}\n[[Category:KSE]]\n[[Category:Fighters]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Beary Wise",
+    "pageid": 190,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Beary_Wise",
+    "images": [
+      "File:Beary Wise Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|animal_type=Bear|roll_you_need_to_get_to_use_affect=7+|affect=Each other player must DISCARD a card. Choose one of the discarded cards and add it to your hand.|image1=Beary Wise Here to Slay.png|class=Fighter}}\n[[Category:Hero's]]\n[[Category:Fighters]]"
+  },
+  {
+    "title": "Bottomless Bag",
+    "pageid": 308,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bottomless_Bag",
+    "images": [
+      "File:200px-HtS-WarDruid-007.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Expansion Item|image1=200px-HtS-WarDruid-007.png|type=Normal Item|effect=You may roll to use the equipped Hero card's effect more than once per turn, at a cost of one action point for each roll to use.|expansion=Warriors & Druids}}\n[[Category:Items]]\n[[Category:Expansion Items]]\n[[Category:Warrior and Druid Expansion]]"
+  },
+  {
+    "title": "Bun Bun",
+    "pageid": 193,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Bun_Bun",
+    "images": [
+      "File:Bun Bun Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Hero's",
+      "Category:Wizards"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Wizard|animal_type=Bunny|roll_you_need_to_get_to_use_affect=5+|affect=Search the discard pile for a Magic card and add it to your hand.|image1=Bun Bun Here to Slay.png}}\n[[Category:Wizards]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Complex Illusion",
+    "pageid": 342,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Complex_Illusion",
+    "images": [
+      "File:ComplexIllusion.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_KSE_Template|title1=Complex Illusion|image1=ComplexIllusion.png|class=Guardian|animal_type=Unicorn|roll_you_need_to_get_to_use_affect=8+|affect=DRAW 2 cards. If at least one of those cards is a Modifier card, you may reveal it, then spend an extra action point this turn.|kse=Yes}}\n[[Category:Hero's]]\n[[Category:Guardians]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "Critical Fang",
+    "pageid": 281,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Critical_Fang",
+    "images": [
+      "File:Critical Fang Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hero's",
+      "Category:Warrior",
+      "Category:Warrior and Druid Expansion"
+    ],
+    "wikitext": "{{Hero_Expantion_Template|image1=Critical Fang Here to Slay.png|class=Warrior|animal_type=Wolf|roll_you_need_to_get_to_use_affect=6+|affect=+4 to your rolls to ATTACK a Monster card until the end of your turn.|expantion=Warrior and Druid|Note=This Warrior can hold 2 items at once.}}\n[[Category:Warrior]]\n[[Category:Warrior and Druid Expansion]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Cursed Glove",
+    "pageid": 329,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Cursed_Glove",
+    "images": [
+      "File:200px-HtS-WarDruid-009.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Expansion_Item|image1=200px-HtS-WarDruid-009.png|effect=If another Hero card in your Party is stolen, move the equipped Hero card to the Party of the player who stole it as well.|expansion=Warrior and Druid Expansion}}"
+  },
+  {
+    "title": "Dark Dragon King",
+    "pageid": 261,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Dark_Dragon_King",
+    "images": [
+      "File:Dark Dragon King Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Bard Required",
+      "Category:Base Game",
+      "Category:Monster"
+    ],
+    "wikitext": "{{Monster_Template|hero_requirement=One Bard and one other Hero|roll_you_need_to_slay=8+|roll_you_need_to_get_negitive_affect=4-|extra_benifits_from_slaying=None|negitive_affect_from_failing=DISCARD 2 cards|abilety_you_keep_from_slaying=Each time you roll for a Hero card's effect, +1 to your roll.|image1=Dark Dragon King Here to Slay.png}}\n[[Category:Monster]]\n[[Category:Bard Required]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Decoy Doll",
+    "pageid": 287,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Decoy_Doll",
+    "images": [
+      "File:Decoy Doll Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Items"
+    ],
+    "wikitext": "{{Item_Templete|type=Normal Item|affect=If the equipped Hero card would be sacrificed or destroyed, move Decoy Doll to the discard pile instead.|image1=Decoy Doll Here to Slay.png}}\n[[Category:Items]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Destructive Spell",
+    "pageid": 319,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Destructive_Spell",
+    "images": [
+      "File:Dustrective Spell Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Magic Card Templte|image1=Dustrective Spell Here to Slay.png|affect=DISCARD a card, then DESTROY a Hero card|kse=No}}"
+  },
+  {
+    "title": "Doe Fallow",
+    "pageid": 305,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Doe_Fallow",
+    "images": [
+      "File:Doe Fallow card Here To Slay.png",
+      "File:Doe Fallow vinly figure card.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=Doe Fallow card Here To Slay.png|class=Druid|animal_type=Deer|roll_you_need_to_get_to_use_affect=-7|affect=SACRIFICE a Hero card, then DRAW cards until you have 7 cards in your hand.|expantion=Warriors & Druids}}\n\n== Vinyl figure card ==\nThis card is also a vinyl figure in the Here To Slay vinyl figure series, which means it has it's own special card, shown down below.\n[[File:Doe Fallow vinly figure card.png|left|thumb]]\n<br />\n[[Category:Druids]]\n[[Category:Warrior and Druid Expansion]]"
+  },
+  {
+    "title": "Fury Knuckle",
+    "pageid": 250,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Fury_Knuckle",
+    "images": [
+      "File:Fury Knuckle Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Bear|roll_you_need_to_get_to_use_affect=5+|affect=Pull a card from another player's hand. If it is a Challenge card, pull a second card from that player's hand.|image1=Fury Knuckle Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Fighters]]"
+  },
+  {
+    "title": "Greedy Cheeks",
+    "pageid": 212,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Greedy_Cheeks",
+    "images": [
+      "File:Greedy Cheeks Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Bards",
+      "Category:Base Game",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Bard|animal_type=Squirrel|roll_you_need_to_get_to_use_affect=8+|affect=Each other player must give you a card from their hand.|image1=Greedy Cheeks Here to Slay.png}}\n[[Category:Bards]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Gruesome Gladiator",
+    "pageid": 327,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Gruesome_Gladiator",
+    "images": [
+      "File:200px-HtS-BersNecr-016.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=200px-HtS-BersNecr-016.png|class=Berserker|animal_type=Jaguar|roll_you_need_to_get_to_use_affect=10+|affect=Look at each other player's hand. Choose a card from each player's hand and add it to your hand.|expantion=Berserkers and Necromancers}}\n[[Category:Beserkers and Necromancers expansion]]\n[[Category:Beserker]]"
+  },
+  {
+    "title": "Guardian Mask",
+    "pageid": 216,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Guardian_Mask",
+    "images": [
+      "File:Guardian Mask Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Items"
+    ],
+    "wikitext": "{{Item_Templete|type=Mask|affect=The equipped Hero card is considered a Guardian instead of its original class.|image1=Guardian Mask Here to Slay.png}}\n[[Category:Items]]"
+  },
+  {
+    "title": "Heavy Bear",
+    "pageid": 254,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Heavy_Bear",
+    "images": [
+      "File:Heavy Bear Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Polar Bear|roll_you_need_to_get_to_use_affect=5+|affect=Choose a player. That player must DISCARD 2 cards.|image1=Heavy Bear Here to Slay.png}}\n[[Category:Fighters]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Hollow Husk",
+    "pageid": 325,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Hollow_Husk",
+    "images": [
+      "File:200px-HtS-BersNecr-006.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=200px-HtS-BersNecr-006.png|class=Necromancer|animal_type=Husky|roll_you_need_to_get_to_use_affect=6+|affect=Look at another player's hand. Choose a Magic card (if they have one) and add it to your hand. You may play it immediately.|expantion=Berserkers and Necromancers Expansion}}\n[[Category:Necromancer]]\n[[Category:Beserkers and Necromancers expansion]]"
+  },
+  {
+    "title": "Hopper",
+    "pageid": 264,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Hopper",
+    "images": [
+      "File:Hopper Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Wizard|animal_type=Bunny|roll_you_need_to_get_to_use_affect=7+|affect=Choose a player. That player must SACRIFICE a Hero card.|image1=Hopper Here to Slay.png}}\n[[Category:Wizards]]\n[[Category:Base Game]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Kit Napper",
+    "pageid": 218,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Kit_Napper",
+    "images": [
+      "File:Kit Napper Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hero's",
+      "Category:Thiefs"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Thief|animal_type=Kitten|roll_you_need_to_get_to_use_affect=9+|affect=STEAL a Hero card.|image1=Kit Napper Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Thiefs]]"
+  },
+  {
+    "title": "Lookie Rookie",
+    "pageid": 257,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Lookie_Rookie",
+    "images": [
+      "File:Lookie Rookie Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hero's",
+      "Category:Rangers"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Ranger|animal_type=Fox|roll_you_need_to_get_to_use_affect=5+|affect=Search the discard pile for an item card and add it to your hand.|image1=Lookie Rookie Here to Slay.png}}\n[[Category:Rangers]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Mega Slime",
+    "pageid": 259,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Mega_Slime",
+    "images": [
+      "File:Mega Slime Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Monster"
+    ],
+    "wikitext": "{{Monster_Template|hero_requirement=4 Hero's of any kind|roll_you_need_to_slay=8+|roll_you_need_to_get_negitive_affect=7-|extra_benifits_from_slaying=Draw 2 cards|negitive_affect_from_failing=SACRIFICE a Hero card|abilety_you_keep_from_slaying=You may spend an extra action point on each of your turns.|image1=Mega Slime Here to Slay.png}}Megaslime is one of the most coveted monster cards in the game, giving the slayer of this monster an additional action every turn. To balance this, Megaslime is also one of the more perilous monsters to fight requiring more heroes than any other monster.\n\nWhereas it is not the most difficult to slay, only requiring an 8 to kill it is the among the very deadliest (along with Crowned Serpent), forcing any party which fails to defeat it to Sacrifice a hero card with a very probable roll of 7 or less.\n[[Category:Monster]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Mighty Blade",
+    "pageid": 184,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Mighty_Blade",
+    "images": [
+      "File:Might Blade Hero Card Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Guardians",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero Card Template|class=Guardian|animal_type=Unicorn|roll_you_need_to_get_to_use_affect=8+|affect=Hero cards in your Praty cannot be destroyed until the end of your next turn|image1=Might Blade Hero Card Here to Slay.png}}\n[[Category:Guardians]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Mimi",
+    "pageid": 340,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Mimi",
+    "images": [
+      "File:Mimi.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_KSE_Template|title1=Mimi|image1=Mimi.png|class=Wizard|animal_type=Rabbit|roll_you_need_to_get_to_use_affect=4+|affect=Choose a Hero card in any player's Party. Mimi's effect is that Hero card's effect (including roll cost) until the end of your turn. You may roll to use that effect immediately.|kse=Yes}}\n[[Category:Hero's]]\n[[Category:Wizards]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "Napping Nibbles",
+    "pageid": 268,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Napping_Nibbles",
+    "images": [
+      "File:Napping Nibbles Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Bards"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Bard|animal_type=Squirrel|roll_you_need_to_get_to_use_affect=2+|affect=Do nothing.|image1=Napping Nibbles Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Bards]]\n[[Category:Base Games]]"
+  },
+  {
+    "title": "Oracon",
+    "pageid": 310,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Oracon",
+    "images": [
+      "File:Oracon.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=Oracon.png|class=Sorcerer|animal_type=Dragon|roll_you_need_to_get_to_use_affect=7+|affect=Pull a card from another player's hand. If it is a Modifier card, that player must SACRIFICE a Hero card.|expantion=Dragon Sorcerer Expansion}}\n[[Category:Hero's]]\n[[Category:Sorcerers]]"
+  },
+  {
+    "title": "Pan Chucks",
+    "pageid": 252,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Pan_Chucks",
+    "images": [
+      "File:Pan Chucks Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Panda|roll_you_need_to_get_to_use_affect=8+|affect=DRAW 2 cards. If at least one of those cards is a Challenge card, you may reveal it, then DESTROY a Hero card.|image1=Pan Chucks Here to Slay.png}}\n[[Category:Fighters]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Purring Bandit",
+    "pageid": 338,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Purring_Bandit",
+    "images": [
+      "File:PurringBandit.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_KSE_Template|title1=Purring Bandit|image1=PurringBandit.png|class=Thief|animal_type=Cat|roll_you_need_to_get_to_use_affect=7+|affect=Pull a card from each player's hand with more cards in it than your hand.|kse=Yes}}\n[[Category:Hero's]]\n[[Category:Thiefs]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "Qi Bear",
+    "pageid": 223,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Qi_Bear",
+    "images": [
+      "File:Qi Bear Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Fighters",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Bear|roll_you_need_to_get_to_use_affect=10+|affect=DISCARD up to 3 cards. For each card discarded, DESTROY a Hero card.|image1=Qi Bear Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Fighters]]"
+  },
+  {
+    "title": "Rabid Beast",
+    "pageid": 323,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Rabid_Beast",
+    "images": [
+      "File:200px-HtS-BersNecr-015.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=200px-HtS-BersNecr-015.png|class=Berserker|animal_type=Black Panther|roll_you_need_to_get_to_use_affect=6+|affect=SACRIFICE any number of cards, then DESTROY the same number of cards.|expantion=Berserkers and Necromancers}}\n[[Category:Beserkers and Necromancers expansion]]\n[[Category:Beserker]]"
+  },
+  {
+    "title": "Really Big Ring",
+    "pageid": 300,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Really_Big_Ring",
+    "images": [
+      "File:200px-HtS-Base-010.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Item_Templete|image1=200px-HtS-Base-010.png|affect=Each time you roll to use the equipped Hero card's effect, +2 to your roll.}}"
+  },
+  {
+    "title": "Rex Major",
+    "pageid": 272,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Rex_Major",
+    "images": [
+      "File:Rex Major Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Monster_Template|hero_requirement=Guardian and another Hero of any kind|roll_you_need_to_slay=8+|roll_you_need_to_get_negitive_affect=4-|extra_benifits_from_slaying=None|negitive_affect_from_failing=DISCARD 2 cards|abilety_you_keep_from_slaying=Each time you DRAW a Modifier card, you may reveal it and DRAW a second card.|image1=Rex Major Here to Slay.png}}\n[[Category:Monster]]\n[[Category:Guardian Required]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Sealing Key",
+    "pageid": 207,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Sealing_Key",
+    "images": [
+      "File:Sealing Key Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Cursed Items"
+    ],
+    "wikitext": "{{Item_Templete|type=Cursed Item|affect=You cannot use the equipped Hero card's effect.|image1=Sealing Key Here to Slay.png}}\n[[Category:Items]]\n[[Category:Cursed Items]]"
+  },
+  {
+    "title": "Serious Grey",
+    "pageid": 198,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Serious_Grey",
+    "images": [
+      "File:200px-HtS-Base-058.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Hero's",
+      "Category:Rangers"
+    ],
+    "wikitext": "{{Hero_Card_Template|image1=200px-HtS-Base-058.png|class=Ranger|animal_type=Fox|roll_you_need_to_get_to_use_affect=+9|affect=DESTROY a Hero and DRAW a card.}}\n[[Category:Hero's]]\n[[Category:Rangers]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Sharp Fox",
+    "pageid": 194,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Sharp_Fox",
+    "images": [
+      "File:Sharp Fox Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Hero's",
+      "Category:Rangers"
+    ],
+    "wikitext": "{{Hero_Card_Template|animal_type=Fox|roll_you_need_to_get_to_use_affect=5+|affect=Look at another player's hand|class=Ranger|image1=Sharp Fox Here to Slay.png}}\n[[Category:Rangers]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Shurikitty",
+    "pageid": 186,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Shurikitty",
+    "images": [
+      "File:Shurikitty Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Hero's",
+      "Category:Thiefs"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Thief|animal_type=Kitten|roll_you_need_to_get_to_use_affect=9+|affect=DESTROY a Hero card. If that Hero card had an item card equipped to it, add that item card to your hand instead of moving it to the discard pile.|image1=Shurikitty Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Thiefs]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Sly Pickings",
+    "pageid": 284,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Sly_Pickings",
+    "images": [
+      "File:Sly Pickings Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Thief|animal_type=Kitten|roll_you_need_to_get_to_use_affect=6+|affect=Pull a card from another player's hand. If that card is an item card, you may play it immediately.|image1=Sly Pickings Here to Slay.png}}\n[[Category:Thiefs]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Smok",
+    "pageid": 274,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Smok",
+    "images": [
+      "File:Smok Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|class=Sorcerer|animal_type=Dragon|roll_you_need_to_get_to_use_affect=8+|affect=DRAW 2 cards. If at least one of those cards is a Magic card, you may reveal it, then spend an extra action point this turn.|expantion=Dragon Sorcerer|image1=Smok Here to Slay.png}}\n[[Category:Sorcerer]]\n[[Category:Hero's]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "Smooth Mimimeow",
+    "pageid": 321,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Smooth_Mimimeow",
+    "images": [
+      "File:Smooth Minimeow.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|image1=Smooth Minimeow.png|class=Thief|animal_type=Calico Cat|roll_you_need_to_get_to_use_affect=7+|affect=Pull a card from the hand of each other player with a Thief in their Party}}\n[[Category:Thiefs]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Spooky",
+    "pageid": 279,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Spooky",
+    "images": [
+      "File:Spooky Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|image1=Spooky Here to Slay.png|class=Wizard|animal_type=Bunny|roll_you_need_to_get_to_use_affect=10+|affect=Each other player must SACRIFICE a Hero card.}}\n[[Category:Wizards]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Tenacious Timber",
+    "pageid": 283,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Tenacious_Timber",
+    "images": [
+      "File:Tenacious Timber Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Expantion_Template|image1=Tenacious Timber Here to Slay.png|class=Warrior|animal_type=Wolf|roll_you_need_to_get_to_use_affect=8+|affect=For each Monster card in your Party, STEAL a Hero.|expantion=Warrior and Druid}}\n[[Category:Hero's]]\n[[Category:Warrior and Druid Expansion]]\n[[Category:Warrior]]"
+  },
+  {
+    "title": "The Brutal Bow",
+    "pageid": 236,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Brutal_Bow",
+    "images": [
+      "File:The Brutal Bow Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hybrid Class",
+      "Category:KSE"
+    ],
+    "wikitext": "{{Party_Leader_KSE_Template|class=Fighter/Ranger|animal_type=Fox|affect=At the beginning of your turn, you may switch The Brutal Bow's class between Fighter and Ranger.\nEach time you DESTROY a Hero card, DRAW a card.|kse=Yes|image1=The Brutal Bow Here to Slay.png}}\n[[Category:KSE]]\n[[Category:Party Leaders]]\n[[Category:Hybrid Class]]"
+  },
+  {
+    "title": "The Charismatic Song",
+    "pageid": 176,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Charismatic_Song",
+    "images": [
+      "File:The Chatismatic Song.png"
+    ],
+    "categories": [
+      "Category:Bards",
+      "Category:Party Leaders"
+    ],
+    "wikitext": "{{Party_Leader_Template|class=Bard|animal_type=Squirrel|affect=Each time you roll to use a Hero card's effect, +1 to your roll.|image1=The Chatismatic Song.png}}\n[[Category:Bards]]\n[[Category:Party Leaders]]"
+  },
+  {
+    "title": "The Cloaked Sage",
+    "pageid": 179,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Cloaked_Sage",
+    "images": [
+      "File:The Cloacked Sage.jpeg"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Party Leaders",
+      "Category:Wizards"
+    ],
+    "wikitext": "{{Party_Leader_Template|class=Wizard|animal_type=Jackalope|affect=Each time you play a Magic card, DRAW a card.|image1=The Cloacked Sage.jpeg}}\n[[Category:Wizards]]\n[[Category:Party Leaders]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "The Divine Arrow",
+    "pageid": 182,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Divine_Arrow",
+    "images": [
+      "File:The Divine Arrow Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Party Leaders",
+      "Category:Rangers"
+    ],
+    "wikitext": "{{Party_Leader_Template|image1=The Divine Arrow Here to Slay.png|class=Ranger|animal_type=Kitsune|affect=Each time you roll to ATTACK a Monster card, +1 to your roll}}The Divine Arrow is the Ranger Party Leader in Here to Slay. They are in the base game, but you can also get them in the Kickstarter Exclusive Edition.\n[[Category:Rangers]]\n[[Category:Party Leaders]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "The Fearless Flame",
+    "pageid": 231,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Fearless_Flame",
+    "images": [
+      "File:The Fearless Flame Party Leader Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Party Leaders"
+    ],
+    "wikitext": "{{Party_Leader_Expiation_Template|class=Sorcerer|animal_type=Dragon|affect=Each time you roll the dice, you may DISCARD a card. If you do, +1 to your roll.|expansion=Dragon Sorcerer|image1=The Fearless Flame Party Leader Here to Slay.png}}\n[[Category:Sorcerers]]\n[[Category:Party Leaders]]"
+  },
+  {
+    "title": "The Fierce Panguardian",
+    "pageid": 302,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Fierce_Panguardian",
+    "images": [
+      "File:200px-HtS-ConCard-01.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_Template|image1=200px-HtS-ConCard-01.png|class=Fighter/Guardian|animal_type=Pandaicorn|affect=At the beginning of your turn, you may switch The Fierce Panguardian between Guardian and Fighter.\nEach time you CHALLENGE another player's card, that player cannot play Modifier cards until the end of the turn.}}\n[[Category:Party Leaders]]\n[[Category:Hybrid Class]]"
+  },
+  {
+    "title": "The Fist of Reason",
+    "pageid": 173,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Fist_of_Reason",
+    "images": [
+      "File:The Fist of Reason Party Leader Card.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Fighters",
+      "Category:Party Leaders"
+    ],
+    "wikitext": "{{Party Leader Template|class=Warrior|animal_type=Hedgehog|affect=Ogni volta che tiri per sfidare,+2 a quel tiro|image1=The Fist of Reason Party Leader Card.png|title1=Riccio Immortale|caption1=Il potere delle spine}}\n[[Category:Party Leaders]]\n[[Category:Fighters]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "The Gnawing Dread",
+    "pageid": 315,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Gnawing_Dread",
+    "images": [
+      "File:The Gnawing Dread.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_Expiation_Template|image1=The Gnawing Dread.png|class=Necromancer|animal_type=Dog|affect=Once per turn on your turn, you may spend 2 action points to search the discard pile for a card and add it to your hand.|expansion=Berserkers and Necromancers}}\n[[Category:Necromancer]]\n[[Category:Beserkers and Necromancers expansion]]"
+  },
+  {
+    "title": "The Illusive Trickster",
+    "pageid": 336,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Illusive_Trickster",
+    "images": [
+      "File:IllusiveTrickster.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_Template|title1=The Illusive Trickster|image1=IllusiveTrickster.png|class=Wizard/Thief|animal_type=Rabbit/Cat|affect=At the beginning of your turn, you may switch The Illusive Trickster between Wizard and Thief.\nOnce per turn on your turn you may DISCARD a Magic card, then DRAW 3 cards.}}\n[[Category:Hybrid Class]]\n[[Category:Party Leaders]]"
+  },
+  {
+    "title": "The Mystical Maestro",
+    "pageid": 234,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Mystical_Maestro",
+    "images": [
+      "File:The Mystical Maestro Here to Slay KSE.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party Leader KSE Template|class=Wizard/Bard|animal_type=Bunny Squirrel|affect=At the beginning of your turn, you may switch The Mystical Maestro's class between Bard and Wizard.\nEach time you roll 4 or less (including Modifier cards), you may DRAW a card|kse=Yes|image1=The Mystical Maestro Here to Slay KSE.png}}\n[[Category:Party Leaders]]\n[[Category:Hybrid Class]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "The Noble Shaman",
+    "pageid": 228,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Noble_Shaman",
+    "images": [
+      "File:The Noble Shaman Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Druids",
+      "Category:Party Leaders",
+      "Category:Warrior and Druid Expansion"
+    ],
+    "wikitext": "{{Party_Leader_Expiation_Template|class=Druid|animal_type=Deer|affect=Once per turn on each player's turn, you may choose any player's roll. -1 to that roll.|expansion=Warrior and Druid|image1=The Noble Shaman Here to Slay.png}}\n[[Category:Party Leaders]]\n[[Category:Druids]]\n[[Category:Warrior and Druid Expansion]]"
+  },
+  {
+    "title": "The Piercing Howl",
+    "pageid": 221,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Piercing_Howl",
+    "images": [
+      "File:The Piercing Howl Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Party Leaders",
+      "Category:Warrior",
+      "Category:Warrior and Druid Expansion"
+    ],
+    "wikitext": "{{Party Leader Expiation Template|class=Warrior|animal_type=Wolf|affect=Each time you roll, +1 to your roll for each Item card equipped to a Hero card in your Party.|expansion=Warrior and Druid|image1=The Piercing Howl Here to Slay.png}}\n[[Category:Party Leaders]]\n[[Category:Warrior]]\n[[Category:Warrior and Druid Expansion]]"
+  },
+  {
+    "title": "The Protecting Horn",
+    "pageid": 201,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Protecting_Horn",
+    "images": [
+      "File:The Protecting Horn Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Guardians",
+      "Category:Party Leaders"
+    ],
+    "wikitext": "{{Party_Leader_Template|class=Guardian|animal_type=Unicorn|affect=Each time you play a Modifier card on a roll, +1 or -1 to that roll.|image1=The Protecting Horn Here to Slay.png}}\n[[Category:Party Leaders]]\n[[Category:Guardians]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "The Raging Manticore",
+    "pageid": 313,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Raging_Manticore",
+    "images": [
+      "File:The Raging Manticore.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_Expiation_Template|image1=The Raging Manticore.png|class=Berserker|animal_type=Lion|affect=Each time you SLAY a Monster card, DRAW 2 cards.|expansion=Berserkers and Necromancers}}\n[[Category:Beserker]]\n[[Category:Beserkers and Necromancers expansion]]"
+  },
+  {
+    "title": "The Rhythmic Archer",
+    "pageid": 334,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Rhythmic_Archer",
+    "images": [
+      "File:RhythmicArcher.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_Template|title1=The Rhythmic Archer|image1=RhythmicArcher.png|class=Bard/Ranger|animal_type=Fox/Squirrel|affect=Convention Card: At the beginning of your turn, you may switch the Rhythmic Archer between Bard and Ranger. Each time any player (including you) unsuccessfully rolls to ATTACK a Monster card, you may DRAW a card.}}\n[[Category:Party Leaders]]\n[[Category:Hybrid Class]]"
+  },
+  {
+    "title": "The Shadow Claw",
+    "pageid": 174,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Shadow_Claw",
+    "images": [
+      "File:The Shadow Claw Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Party Leaders",
+      "Category:Thiefs"
+    ],
+    "wikitext": "{{Party_Leader_Template|class=Thief|animal_type=Cat|affect=Once per turn on your turn, you may spend an action point to pull a card from another player's hand.|image1=The Shadow Claw Here to Slay.png}}\n[[Category:Party Leaders]]\n[[Category:Thiefs]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "The Unstable Unicorn",
+    "pageid": 240,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Unstable_Unicorn",
+    "images": [
+      "File:The Unstable Unicorn Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Party_Leader_KSE_Template|class=None|animal_type=Unicorn|affect=The Unstable Unicorn has no class. At the beginning of your turn, you may choose another player's Party Leader card. The Unstable Unicorn's skill is that Party Leader card's skill until your next turn.|kse=Yes|image1=The Unstable Unicorn Here to Slay.png}}\n[[Category:KSE]]\n[[Category:Party Leaders]]"
+  },
+  {
+    "title": "The Veiled Raider",
+    "pageid": 238,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/The_Veiled_Raider",
+    "images": [
+      "File:The Veiled Raider Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hybrid Class",
+      "Category:KSE"
+    ],
+    "wikitext": "{{Party_Leader_KSE_Template|class=Guardian/Thief|animal_type=Caticorn|affect=At the beginning of your turn, you may switch The Veiled Raider's class between Guardian and Thief.\nEach time you roll 12 or more (including Modifier cards), you may STEAL a Hero card.|kse=Yes|image1=The Veiled Raider Here to Slay.png}}\n[[Category:Party Leaders]]\n[[Category:Hybrid Class]]\n[[Category:KSE]]"
+  },
+  {
+    "title": "Thief Mask",
+    "pageid": 205,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Thief_Mask",
+    "images": [
+      "File:Thief Mask Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Items",
+      "Category:Masks"
+    ],
+    "wikitext": "{{Item_Templete|type=Mask|affect=The equipped Hero card is considered a Thief instead of its original class.|image1=Thief Mask Here to Slay.png}}\n[[Category:Items]]\n[[Category:Masks]]"
+  },
+  {
+    "title": "Tipsy Tootie",
+    "pageid": 295,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Tipsy_Tootie",
+    "images": [
+      "File:Tipsy tootie.jpeg"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Bard|animal_type=Squirrel|roll_you_need_to_get_to_use_affect=6+|affect=Choose a player. STEAL a Hero from that player and move this card to their Party.|image1=Tipsy tootie.jpeg}}\n[[Category:Hero's]]\n[[Category:Bards]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Tough Teddy",
+    "pageid": 276,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Tough_Teddy",
+    "images": [
+      "File:Tough Teddy Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Fighter|animal_type=Bear|roll_you_need_to_get_to_use_affect=4+|affect=Each other player with a Fighter in their Party must DISCARD a card.|image1=Tough Teddy Here to Slay.png}}alastor\n[[Category:Fighters]]\n[[Category:Hero's]]"
+  },
+  {
+    "title": "Vibrant Glow",
+    "pageid": 188,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Vibrant_Glow",
+    "images": [
+      "File:Vibrant Glow Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Guardians",
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Guardian|animal_type=Unicorn|roll_you_need_to_get_to_use_affect=9+|affect=+5 to all your rolls until the end of your turn.|image1=Vibrant Glow Here to Slay.png}}\n[[Category:Hero's]]\n[[Category:Guardians]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Warworn Owlbear",
+    "pageid": 210,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Warworn_Owlbear",
+    "images": [
+      "File:Warworn Owlbear Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Monster",
+      "Category:Thief Required"
+    ],
+    "wikitext": "{{Monster Template|hero_requirement=One hero and one Thief|roll_you_need_to_slay=8+|roll_you_need_to_get_negitive_affect=4-|extra_benifits_from_slaying=None|negitive_affect_from_failing=DISCARD 2 cards|abilety_you_keep_from_slaying=Item cards you play cannot be challenged|image1=Warworn Owlbear Here to Slay.png}}\n[[Category:Monster]]\n[[Category:Thief Required]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Wiggles",
+    "pageid": 203,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Wiggles",
+    "images": [
+      "File:Wiggles Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Base Game",
+      "Category:Hero's",
+      "Category:Wizards"
+    ],
+    "wikitext": "{{Hero_Card_Template|class=Wizard|animal_type=Bunny|roll_you_need_to_get_to_use_affect=10+|affect=STEAL a Hero and roll to use its effect immediately|image1=Wiggles Here to Slay.png}}\n[[Category:Wizards]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Wildshot",
+    "pageid": 297,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Wildshot",
+    "images": [
+      "File:Wildshot Here to Slay card.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Ranger|animal_type=Fox|roll_you_need_to_get_to_use_affect=8+|affect=DRAW 3 cards and DISCARD a card.|image1=Wildshot Here to Slay card.png}}"
+  },
+  {
+    "title": "Wise Shield",
+    "pageid": 266,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Wise_Shield",
+    "images": [
+      "File:Wise Shield Here to Slay.png"
+    ],
+    "categories": [],
+    "wikitext": "{{Hero_Card_Template|class=Guardian|animal_type=Unicorn|roll_you_need_to_get_to_use_affect=6+|affect=+3 to all your rolls until the end of your turn.|image1=Wise Shield Here to Slay.png}}\n[[Category:Guardians]]\n[[Category:Hero's]]\n[[Category:Base Game]]"
+  },
+  {
+    "title": "Wolfgang Pack",
+    "pageid": 226,
+    "fullurl": "https://here-to-slay.fandom.com/wiki/Wolfgang_Pack",
+    "images": [
+      "File:Wolfgang Pack Here to Slay.png"
+    ],
+    "categories": [
+      "Category:Hero's"
+    ],
+    "wikitext": "{{Hero Expantion Template|class=Warrior|animal_type=Wolf|roll_you_need_to_get_to_use_affect=5+|affect=For each other Hero card in your party, +1 to all of your rolls until the end of your turn.|expantion=Warrior and Druid|image1=Wolfgang Pack Here to Slay.png}}\n[[Category:Warrior and Druid Expansion]]\n[[Category:Warrior]]\n[[Category:Hero's]]"
+  }
+]

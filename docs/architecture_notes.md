@@ -351,6 +351,7 @@ the moment its YAML and PNG exist.
 here-to-slay/
 ├─ pyproject.toml            # uv-managed
 ├─ docs/                     # this directory — living memory
+│  └─ ui_guide.md            # the PyGame board: layout, hotkeys, console
 ├─ data/
 │  ├─ base/                  # the official game as a content pack
 │  │  ├─ pack.yaml           # id, name, version, load order, deps
@@ -364,7 +365,8 @@ here-to-slay/
 │  │             effects/ conditions/ selectors/ turn_machine.py
 │  │             rolls.py victory.py rng.py view.py engine.py
 │  ├─ ui/cli/    presenter.py render.py
-│  ├─ ui/pygame/ app.py scene.py widgets.py layout.py
+│  ├─ ui/pygame/ app.py scenes.py panels.py atmosphere.py
+│  │             layout.py widgets.py animations.py presenter.py
 │  ├─ ai/        random_agent.py heuristic_agent.py
 │  └─ cli.py     # entry point: validate | play | replay | gui
 └─ tests/

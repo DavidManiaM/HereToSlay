@@ -589,9 +589,9 @@ and 136 physical cards; `uv run pytest` runs **803 tests**, and the whole suite 
 `HTS_STRICT=1` (invariants checked after every mutation).
 
 **The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical
-client with responsive anchored layouts, procedural card rendering and caching, interactive zones,
-action selection menus, opponent overview badges, dice tumble / modifier pop-in animations,
-hot-seat transitions, and game over screens.
+client with a living tabletop (felt, motes, class constellation), hover-to-enlarge opponent
+parties in play order, tumbling pip-dice, action menus, hot-seat transitions and a
+`Ctrl+Shift+D` developer console. See `docs/ui_guide.md`.
 
 Next up is **Phase 10 — Modding Support**: modding guide, pack plugin loader, `hts new-pack`, and
 the sample variant proving engine modifiability with zero edits to `core/`.

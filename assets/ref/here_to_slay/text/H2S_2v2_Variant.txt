@@ -1,0 +1,180 @@
+ 
+Here to Slay: 2v2 Variant
+ 
+Victory Condition
+ 
+The combined team must do either of the following to win:
+ 
+●
+SLAY 5 Monsters
+ 
+●
+Collect 10 Heroes
+ 
+ 
+Notice that the “Collect 10 Heroes” victory condition mentions nothing about the class
+ 
+requirements of these Heroes. For this rules variant, the classes of the Heroes in your Party do
+ 
+not matter.
+ 
+ 
+ 
+Seating Arrangement and Teammate Interaction
+ 
+Players should alternate between teams each turn, never
+ 
+with the same team going twice in a row. (For example,
+ 
+Player 1 / Blue Team → Player 2 / Orange Team → Player
+ 
+3 / Blue Team → Player 4 / Orange Team, etc.)
+ 
+ 
+Teammates are allowed to discuss their plays, hands, and
+ 
+cards, although they cannot give each other cards from
+ 
+their hands.
+ 
+Team Monster Hunting
+ 
+ 
+To meet the Party requirements to ATTACK a Monster, a
+ 
+player may use the 
+​
+combined
+​
+ Heroes from both Parties of
+ 
+their team. (For example, if Monster X’s Party requirement
+ 
+is “4 Heroes,” and Red Player A and Red Player B each have 2 Heroes in their Party, then
+ 
+either Red Player may, on their turn, ATTACK Monster X.)
+ 
+●
+A player who wishes to use their teammate’s Heroes to meet the Party requirement for
+ 
+attacking a Monster 
+​
+must have the consent of their teammate
+​
+ to do so.
+ 
+This is because if a player uses Heroes from both of their team’s Parties to meet the
+ 
+Monster’s Party requirement and 
+​
+fails
+​
+ to SLAY the Monster, 
+​
+both
+​
+ players must pay the
+ 
+penalty for failing. (If a player can meet the Monster’s Party requirement strictly from
+ 
+their own Party, only that player pays the price for failing.)
+ 
+ 
+●
+A player cannot use their teammate’s Party Leader to meet the Monster-attacking
+ 
+requirements.
+ 
+
+ 
+Limitations
+ 
+●
+Each player may only have up to 5 Heroes in their Party.
+ 
+ 
+○
+If you wish to play a Hero into your Party when you already have 5, you
+ 
+must move one of your Party’s Heroes to the discard pile. (You 
+​
+cannot
+ 
+use this rule adjustment to play a Hero into another player’s Party and
+ 
+force them to move a Hero to the discard pile.)
+ 
+ 
+○
+A player 
+​
+may
+​
+ play a Hero card into their teammate’s Party; however, if
+ 
+they do so, they 
+​
+cannot
+​
+ activate the effect this turn.
+ 
+ 
+●
+Party Leader skills and Monster skills only apply to the player and Party they are
+ 
+in, not to both members of the team.
+ 
+●
+You may not use a “Pull” effect on your teammate. This includes effects of the
+ 
+“Pull a card from each player…” variety; you can still play those effects, but your
+ 
+teammate is excluded from their effects.
+ 
+Banned Cards
+ 
+Remove the following cards from the game during setup:
+ 
+ 
+Item cards:
+ 
+●
+Fighter Mask
+ 
+●
+Ranger Mask
+ 
+●
+Thief Mask
+ 
+●
+Guardian Mask
+ 
+●
+Wizard Mask
+ 
+●
+Bard Mask
+ 
+●
+Sorcerer Mask (Dragon Sorcerers Expansion)
+ 
+●
+Mask of Misfortune (Kickstarter Exclusive)
+ 
+ 
+Monster cards:
+ 
+●
+Mega Slime
+ 
+●
+Wandering Behemoth (Monster Expansion Pack)
+ 
+●
+Saffyre Phoenix (Monster Expansion Pack)
+ 
+●
+Venomous Gemini (Monster Expansion Pack)
+ 
+ 

@@ -9,6 +9,20 @@ import pytest
 from here_to_slay.cli import EXIT_CONTENT_ERROR, EXIT_OK, EXIT_USAGE, main
 
 
+@pytest.fixture(autouse=True)
+def wide_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the report width so assertions do not depend on the shell.
+
+    ``rich`` folds a long cell to fit the terminal, which splits a file path
+    across two lines and hides it from a substring check. Without this a
+    developer in a narrow window — or in one advertising ``TERM=dumb``, where
+    rich assumes 80 columns and ignores ``COLUMNS`` — sees these tests fail on
+    code they never touched.
+    """
+    monkeypatch.delenv("TERM", raising=False)
+    monkeypatch.setenv("COLUMNS", "200")
+
+
 def test_no_command_prints_usage(capsys: pytest.CaptureFixture[str]) -> None:
     assert main([]) == EXIT_USAGE
     assert "usage: hts" in capsys.readouterr().out

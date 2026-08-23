@@ -1,0 +1,487 @@
+[
+  {
+    "name": "The Charismatic Song",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-106.png"
+  },
+  {
+    "name": "The Cloaked Sage",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-104.png"
+  },
+  {
+    "name": "The Divine Arrow",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-105.png"
+  },
+  {
+    "name": "The Fist of Reason",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-103.png"
+  },
+  {
+    "name": "The Protecting Horn",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-101.png"
+  },
+  {
+    "name": "The Shadow Claw",
+    "section": "Party Leaders",
+    "scan_file": "HtS-Base-102.png"
+  },
+  {
+    "name": "Abyss Queen",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-213.png"
+  },
+  {
+    "name": "Anuran Cauldron",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-211.png"
+  },
+  {
+    "name": "Artic Aries",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-210.png"
+  },
+  {
+    "name": "Bloodwing",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-212.png"
+  },
+  {
+    "name": "Corrupted Sabretooth",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-207.png"
+  },
+  {
+    "name": "Crowned Serpent",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-205.png"
+  },
+  {
+    "name": "Dark Dragon King",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-203.png"
+  },
+  {
+    "name": "Dracos",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-201.png"
+  },
+  {
+    "name": "Malamammoth",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-214.png"
+  },
+  {
+    "name": "Mega Slime",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-208.png"
+  },
+  {
+    "name": "Orthus",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-202.png"
+  },
+  {
+    "name": "Rex Major",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-215.png"
+  },
+  {
+    "name": "Terratuga",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-204.png"
+  },
+  {
+    "name": "Titan Wyvern",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-206.png"
+  },
+  {
+    "name": "Warworn Owlbear",
+    "section": "Monsters",
+    "scan_file": "HtS-Base-209.png"
+  },
+  {
+    "name": "Bad Axe",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-034.png"
+  },
+  {
+    "name": "Bear Claw",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-033.png"
+  },
+  {
+    "name": "Beary Wise",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-030.png"
+  },
+  {
+    "name": "Fury Knuckle",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-032.png"
+  },
+  {
+    "name": "Heavy Bear",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-028.png"
+  },
+  {
+    "name": "Pan Chucks",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-027.png"
+  },
+  {
+    "name": "Qi Bear",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-029.png"
+  },
+  {
+    "name": "Tough Teddy",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-031.png"
+  },
+  {
+    "name": "Dodgy Dealer",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-041.png"
+  },
+  {
+    "name": "Fuzzy Cheeks",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-039.png"
+  },
+  {
+    "name": "Greedy Cheeks",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-038.png"
+  },
+  {
+    "name": "Lucky Bucky",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-042.png"
+  },
+  {
+    "name": "Mellow Dee",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-037.png"
+  },
+  {
+    "name": "Napping Nibbles",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-036.png"
+  },
+  {
+    "name": "Peanut",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-035.png"
+  },
+  {
+    "name": "Tipsy Tootie",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-040.png"
+  },
+  {
+    "name": "Calming Voice",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-043.png"
+  },
+  {
+    "name": "Guiding Light",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-050.png"
+  },
+  {
+    "name": "Holy Curselifter",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-048.png"
+  },
+  {
+    "name": "Iron Resolve",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-047.png"
+  },
+  {
+    "name": "Mighty Blade",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-045.png"
+  },
+  {
+    "name": "Radiant Horn",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-046.png"
+  },
+  {
+    "name": "Vibrant Glow",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-049.png"
+  },
+  {
+    "name": "Wise Shield",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-044.png"
+  },
+  {
+    "name": "Bullseye",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-055.png"
+  },
+  {
+    "name": "Hook",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-057.png"
+  },
+  {
+    "name": "Lookie Rookie",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-054.png"
+  },
+  {
+    "name": "Quick Draw",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-056.png"
+  },
+  {
+    "name": "Serious Grey",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-058.png"
+  },
+  {
+    "name": "Sharp Fox",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-051.png"
+  },
+  {
+    "name": "Wildshot",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-052.png"
+  },
+  {
+    "name": "Wily Red",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-053.png"
+  },
+  {
+    "name": "Kit Napper",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-065.png"
+  },
+  {
+    "name": "Meowzio",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-062.png"
+  },
+  {
+    "name": "Plundering Puma",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-060.png"
+  },
+  {
+    "name": "Shurikitty",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-061.png"
+  },
+  {
+    "name": "Silent Shadow",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-066.png"
+  },
+  {
+    "name": "Slippery Paws",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-063.png"
+  },
+  {
+    "name": "Sly Pickings",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-064.png"
+  },
+  {
+    "name": "Smooth Mimimeow",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-059.png"
+  },
+  {
+    "name": "Bun Bun",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-068.png"
+  },
+  {
+    "name": "Buttons",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-072.png"
+  },
+  {
+    "name": "Fluffy",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-071.png"
+  },
+  {
+    "name": "Hopper",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-074.png"
+  },
+  {
+    "name": "Snowball",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-067.png"
+  },
+  {
+    "name": "Spooky",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-070.png"
+  },
+  {
+    "name": "Whiskers",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-073.png"
+  },
+  {
+    "name": "Wiggles",
+    "section": "Heroes",
+    "scan_file": "HtS-Base-069.png"
+  },
+  {
+    "name": "Bard Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-004.png"
+  },
+  {
+    "name": "Decoy Doll",
+    "section": "Items",
+    "scan_file": "HtS-Base-012.png"
+  },
+  {
+    "name": "Fighter Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-007.png"
+  },
+  {
+    "name": "Guardian Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-008.png"
+  },
+  {
+    "name": "Particularly Rusty Coin",
+    "section": "Items",
+    "scan_file": "HtS-Base-011.png"
+  },
+  {
+    "name": "Ranger Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-005.png"
+  },
+  {
+    "name": "Really Big Ring",
+    "section": "Items",
+    "scan_file": "HtS-Base-010.png"
+  },
+  {
+    "name": "Thief Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-009.png"
+  },
+  {
+    "name": "Wizard Mask",
+    "section": "Items",
+    "scan_file": "HtS-Base-006.png"
+  },
+  {
+    "name": "Curse of the Snake&#39;s Eyes",
+    "section": "Cursed Items",
+    "scan_file": null
+  },
+  {
+    "name": "Curse of the Snake's Eyes",
+    "section": "Cursed Items",
+    "scan_file": "HtS-Base-002.png"
+  },
+  {
+    "name": "Sealing Key",
+    "section": "Cursed Items",
+    "scan_file": "HtS-Base-001.png"
+  },
+  {
+    "name": "Suspiciously Shiny Coin",
+    "section": "Cursed Items",
+    "scan_file": "HtS-Base-003.png"
+  },
+  {
+    "name": "Modifier +1/-3",
+    "section": "Modifiers",
+    "scan_file": null
+  },
+  {
+    "name": "Modifier +2/-2",
+    "section": "Modifiers",
+    "scan_file": null
+  },
+  {
+    "name": "Modifier +3/-1",
+    "section": "Modifiers",
+    "scan_file": null
+  },
+  {
+    "name": "Modifier +4",
+    "section": "Modifiers",
+    "scan_file": null
+  },
+  {
+    "name": "Modifier -4",
+    "section": "Modifiers",
+    "scan_file": "HtS-Base-022.png"
+  },
+  {
+    "name": "Call to the Fallen",
+    "section": "Magic",
+    "scan_file": "HtS-Base-019.png"
+  },
+  {
+    "name": "Critical Boost",
+    "section": "Magic",
+    "scan_file": "HtS-Base-017.png"
+  },
+  {
+    "name": "Destructive Spell",
+    "section": "Magic",
+    "scan_file": "HtS-Base-018.png"
+  },
+  {
+    "name": "Enchanted Spell",
+    "section": "Magic",
+    "scan_file": "HtS-Base-013.png"
+  },
+  {
+    "name": "Entangling Trap",
+    "section": "Magic",
+    "scan_file": "HtS-Base-015.png"
+  },
+  {
+    "name": "Forced Exchange",
+    "section": "Magic",
+    "scan_file": "HtS-Base-020.png"
+  },
+  {
+    "name": "Forceful Winds",
+    "section": "Magic",
+    "scan_file": "HtS-Base-014.png"
+  },
+  {
+    "name": "Winds of Change",
+    "section": "Magic",
+    "scan_file": "HtS-Base-016.png"
+  },
+  {
+    "name": "Challenge",
+    "section": "Challenges",
+    "scan_file": "HtS-Base-026.png"
+  },
+  {
+    "name": "Rule Card",
+    "section": "Rule Card",
+    "scan_file": "HtS-Base-000b.png"
+  }
+]

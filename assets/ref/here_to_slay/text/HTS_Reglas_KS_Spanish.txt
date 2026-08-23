@@ -1,0 +1,323 @@
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+REGLAS 
+ 
+ 
+ 
+ 
+INTRODUCCIÓN  
+ 
+Bienvenido a Here to Slay! 
+ 
+En este juego , armarás un gru po complete de heroes para matar monstrous peligrosis mientras trabajas para 
+evitar el sa botaje de tus amigos enemigos. El juego también incluye equipo para  tus héroes, cartas de desafío 
+1vs1 y modificadores para inclinar las probabilidades a tu favor. 
+ 
+¡El primer jugador en matar a tres monstruos  o formar un grupo completo con seis clases diferentes , gana el 
+juego! 
+ 
+Una partida típica de Here to Slay tarda aproximadamente entre 30 y 60 minutos en finalizar.   
+ 
+ 
+¿QUÉ HAY EN LA CAJA? 
+     
+115 
+Standard Cards 
+6 Oversized  
+Party Leader cards 
+15 Oversized 
+Monster cards 
+6 Rules  
+reference cards 
+2  
+Six-sided dice 
+ 
+¿CÓMO EMPEZAR? 
+ 
+Inside this box, you’ll find the following components: 
+ 
+• 115 tarjetas estándar (Standard Cards). 
+• 6 cartas de líder de grupo de gran tamaño (Oversized Party Leader cards). 
+• 15 cartas de Monstruo de gran tamaño (Oversized Monster cards). 
+• 6 tarjetas de referencia de reglas (Rules reference cards). 
+• 2 dados de seis caras (Six-sided dice). 
+ 
+Empiece por hacer que cada jugador elija un personaje líder de grupo  para representarlos a lo largo del 
+juego. Coloque su carta de líder de grup o en su grupo, que es el área de juego frente a usted. Puedes tirar 
+dados para determinar quién elige primero su carta de Líder de partido (o simplemente elegir libremente sin 
+ley, porque eso siempre es divertido). 
+ 
+Cada jugador también puede tomar una tarjeta de referencia de reglas para consultar rápidamente las reglas. 
+Vuelve a colocar las cartas de líder de grupo y las cartas de referencia de reglas restantes en la caja; no se 
+utilizarán durante el resto del juego. 
+ 
+A continuación, separe los diferentes tipos de tarjetas en la caja. Mezcla las cartas estándar y reparte 5 
+cartas a cada jugador . Coloque el resto de la pila de cartas boca abajo  en el centro de la mesa para 
+formar el mazo principal  (DRA en la imagen). Deje espacio junto al mazo para una pila de descarte  (DISC en 
+la imagen), que es donde colocará las cartas que se sacrifican, destruyen y descartan durante el juego.  
+ 
+Baraja las cartas de Monstruo y voltea las 3 cartas de Monstruo superiores  boca arriba en el centro de la 
+mesa. (Monsters en la imagen). Coloca las carta s de Monstruo restantes boca abajo  para formar el mazo 
+de Monstruos. (Monster Draw Pil en la imagen). 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+¡Ahora estás listo para jugar Here to Slay! Quien haya elegido la última carta de Líder de Grupo será el primero en ir  y el 
+juego continuará en el sentido de las agujas del reloj. 
+ 
+¿CÓMO JUGAR? 
+ 
+Los jugadores se turnan en el sentido de las agujas del reloj alrededor de l a mesa. Obtienes tres puntos de acción para 
+gastar en tu turno, y puedes usarlos para realizar las siguientes acciones en cualquier orden. Puedes realizar la misma 
+acción más de una vez en tu turno si aún tienes suficientes puntos de acción para hacerlo.  
+ 
+Las siguientes acciones cuestan un punto de acción: 
+
+ 
+• ROBAR una carta de la baraja. 
+• Juega una carta de Héroe, Objeto o Magia de tu mano. 
+• Tira dos dados para usar el efecto de una carta de Héroe en tu Grupo. No puedes tirar para usar el efecto 
+de la misma carta de Héroe más de una vez en un solo turno, incluso si tiras sin éxito la primera vez.  
+ 
+Las siguientes acciones cuestan dos puntos de acción: 
+ 
+• ATACAR una carta de Monstruo. 
+ 
+Las siguientes acciones cuestan tres puntos de acción: 
+ 
+• DESCARTAR todas las cartas en su mano (si tiene alguna) y ROBAR 5 cartas nuevas.  
+ 
+Si el efecto de un a carta te dice que realices una acción inmediatamente, esto significa que no tienes que gastar un 
+punto de acción adicional para realizar esa acción. 
+Tu turno termina cuando no te quedan puntos de acción o eliges no realizar ninguna acción adicional.   
+ 
+ 
+SÍMBOLOS DE CLASES 
+ 
+Cada carta de Héroe y Líder de Grupo tiene una clase. En este juego, encontrarás seis clases, y cada clase está representada por un 
+símbolo de color. 
+ 
+Se utiliza un símbolo gris en el juego para indicar una carta de Héroe de cualquier clase:  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Fighter   Guardian Ranger Thief Wizard Bard Any 
+Hero 
+(Luchador)  (Guardián)   (Cazador)    (Ladrón)     (Mago)          (Bardo)       (Cualquier 
+                                                                                                                              Héroe) 
+ 
+Estas clases son importantes porque puedes ganar el juego armando una fiesta completa que incluya seis clases diferentes. Algunas 
+cartas de Monstruo requieren que t engas una carta de Héroe o Líder de Grupo de una determinada clase  en tu grupo para 
+poder ATACARLOS. 
+ 
+TIPOS DE CARTAS 
+El mazo principal , que se compone de todas las cartas de tamaño estándar con el dorso de color crema, 
+contiene cinco tipos diferentes de cartas: cartas de Héroe, Objeto, Magia, Modificadora y Desafío. 
+ 
+ 
+CARTAS DE HÉROE: Tus Héroes son valientes aventureros  y cada carta de Héroe tiene una clase y un efecto. 
+Solo puedes jugar cartas de Héroe de tu mano durante tu turno , jugar una carta de Héroe  cuesta un punto 
+de acción. El efecto de cada carta de Héroe tiene un requisito de tirada. Para usar el efecto de una carta de 
+Héroe, debes lanzar dos dados y obtener una puntuación igual o superior al requisito de tirada de ese efecto. 
+ 
+Cuando juegas una carta de Héroe de tu mano en tu Grupo, puedes lanzar inmediatamente dos dados para usar 
+su efecto. Una vez que esa carta de Héroe esté en tu Grupo, puedes usar un punto de acción para intentar usar 
+su efecto una vez por turno. Si tira sin éxito, no recupera el punto de acción. 
+ 
+No hay límite para la cantidad de cartas de Héroe que puedes tener en tu grupo. 
+ 
+CARTAS DE OBJETO: las cartas de objeto son armas y objetos encantados que pueden equiparse con una 
+carta de héroe. Solo puedes jugar cartas de Objeto de tu mano du rante tu turno, y jugar una carta de Objeto 
+cuesta un punto de acción. La mayoría de las cartas de Objeto otorgan beneficios positivos, como bonificaciones 
+a las tiradas o protecciones para la carta de Héroe equipada; sin embargo, algunas cartas de Objeto,  llamadas 
+cartas de Objeto Maldito, proporcionan efectos negativos y pueden equiparse con cartas de Héroe enemigo para 
+darles desventajas. Las cartas de Objeto Maldito todavía se consideran cartas de Objeto a efectos de efectos de 
+cartas. 
+ 
+Cuando juegas una carta de Objeto, debes equiparla inmediatamente con una carta de Héroe. Para equipar una 
+carta de Objeto, selecciona una carta de Héroe y desliza esa carta de Objeto debajo con el texto de la carta de 
+Objeto todavía visible. 
+ 
+Las cartas de objetos solo p ueden equiparse con cartas de héroe (y no con cartas de líder de grupo). Solo se 
+puede equipar una carta de Objeto a una carta de Héroe a la vez, y no puedes reemplazar una carta de Objeto 
+por otra. Si una carta de Héroe con una carta de Objeto equipada es destruida, robada o devuelta a tu mano, esa 
+carta de Objeto también se mueve con la carta de Héroe.  
+ 
+CARTAS MÁGICAS: Las cartas mágicas son poderosos hechizos con un efecto de una sola vez. Solo puedes 
+jugar cartas Magic de tu mano durante tu turno , jugar una carta Magic cuesta un punto de acción. Si juegas 
+una carta de Magia, muévela a la pila de descarte inmediatamente después de usar su efecto. 
+ 
+CARTAS MODIFICADORAS: Las tarjetas modificadoras se pueden usar para inclinar las probabilidades a su 
+favor. Puedes jugar una carta de Modificador instantáneamente desde tu mano cuando cualquier jugador 
+tira los dados (incluyéndote a ti) para modificar la tirada por la cantidad indicada en la carta de Modificador. Si 
+juegas una carta de Modificador, muévela a la pila de descarte inmediatamente después de usar su efecto. Jugar 
+una carta de Modificador no cuesta ningún punto de acción. 
+ 
+Algunas cartas de Modificador te dan dos opciones (ej. +1 o -3). Cuando juegue una carta de Modificador con 
+dos opciones, simplemente declare la opción que desea usar en la tirada actual. 
+Al decidir si modificar o no la tirada de otro jugador, puede esperar hasta que ese jugador elija sus objetivos (si 
+corresponde) antes de decidir si usar o no su carta de Modificador. 
+Al modificar un a tirada de desafío, puedes esperar hasta que ambos jugadores hayan tirado antes de decidir si 
+usar o no tu carta de Modificador. 
+ 
+Puedes jugar varias cartas de Modificador en la misma tirada, y varios jugadores también pueden jugar cartas de 
+Modificador e n la misma tirada. Una vez que todos los jugadores hayan terminado de jugar sus cartas 
+modificadoras, combine el cambio total de todas las cartas modificadoras y ajuste el total de la tirada en 
+consecuencia. 
+ 
+CARTAS DE DESAFÍO : Las cartas de desafío se pueden usar para intentar detener a otro jugador en su 
+camino. Puedes jugar una Carta de Desafío  en el turno de otro jugador  inmediatamente después de que 
+intente jugar una carta de Héroe, Objeto o Magia de su mano . Jugar una carta de desafío no cuesta puntos 
+de acción. 
+ 
+Cuando RETAS a otro jugador, cada uno  de vosotros debe tirar dos dados. Si tú tirada es mayor o igual  que la 
+tirada del jugador retado, el jugador retado debe mover inmediatamente la carta que intentó jugar a la pila de 
+descarte (y ese jugador no recupera un punto de acción). Si la tirada de l jugador retado es mayor, puede 
+continuar jugando su carta según lo planeado. 
+Solo se puede desafiar una vez la carta jugada por el jugador retado; esto significa qué, otro jugador no puede 
+tirar Cartar de Desafío contra la misma jugada del jugador retado. 
+ 
+TARJETAS DE LÍDER DE PARTIDA 
+ 
+Las cartas de Líder de Grupo son cartas de gran tamaño con el dorso de color crema, y cada carta de Líder de grupo tiene 
+una clase y una habilidad que te da una ventaja única durante todo el juego. 
+ 
+Las cartas de líder de grupo no se consideran car tas de héroe. A diferencia de los efectos de las cartas de Héroe, que solo se 
+pueden usar una vez por turno, la habilidad de tu carta de Líder de grupo se puede usar cada vez que se cumplan las 
+condiciones para esa habilidad. 
+ 
+ 
+Por ejemplo, una tarjeta de líder de partido puede indicar lo siguiente: 
+Cada vez que juegues una carta de Magic, ROBA una carta. 
+ 
+Esta habilidad se puede usar cada vez que juegas una carta de Magic, incluso si juegas 
+varias cartas de Magic en el mismo turno. Sin embargo, si no usa la ha bilidad en el 
+momento en que se cumple la condición, no puede volver más tarde y hacerlo, ¡así que no 
+lo olvide! 
+ 
+Tu tarjeta de líder de grupo está permanentemente en tu grupo y no se puede sacrificar, 
+destruir, robar ni devolver a tu mano. 
+ 
+NOTA: No puede usarla
+  como su tarjeta de líder de grupo en juegos de 2 jugadores.  
+ 
+ 
+ 
+ 
+CARTAS DE MONSTRUOS 
+Si ACABAS con éxito a tres Monstruos, ganas el juego, pero atacar a un Monstruo pu ede 
+tener un precio. 
+ 
+Las cartas de Monstruo son cartas de gran tamaño con el dorso az ul marino, para 
+ATACAR una carta de Monstruo, primero debes cumplir con los requisitos de Grupo 
+que se enumeran en esa carta de Monstruo . Algunas cartas de Monstruo requieren que 
+tengas un cierto número de cartas de Héroe en tu Grupo, mientras que otras pueden 
+requerir que tengas una determinada clase representada en tu Grupo para ATACAR esa 
+carta de Monstruo. 
+ 
+Por ejemplo, si un requisito de Grupo para ATA CAR un Monstruo es           , debes tener 
+un Mago     en tu Grupo (ya sea una carta de Héroe o la carta de Líder del Grupo de 
+Hechiceros) además de una carta de Héroe de cualquier clas e     . Tenga en cuenta que 
+una tarjeta Wizard Hero puede cumplir con los requisitos o, pero no con ambos. 
+ 
+Algunas cartas de Monstruo también requieren varias cartas de Héroe en tu G rupo. Por 
+ejemplo, si una carta de Monstruo requiere que tengas al menos tres cartas de Héroe de 
+cualquier clase en tu Grupo para ATACARLO, verás en esa carta de Monstruo. 
+Tenga en cuenta que su tarjeta de líder de grupo no se considera una tarjeta de héro e y no cuenta para este requisito de 
+grupo. 
+Solo puedes ATACAR cartas de Monstruo que estén boca arriba en el centro de la mesa. Atacar una carta de Monstruo 
+cuesta dos puntos de acción. 
+ 
+Cada carta de Monstruo también tiene un requisito de tirada.  Para MATAR esa carta de Monstruo, debes lanzar dos dados y 
+obtener una puntuación igual o superior al requisito de tirada de esa carta de Monstruo. Pero ten cuidado: cada carta de 
+Monstruo tiene un rango de lanzamiento en el que lucharán, y si puntúas dentro de ese rango, tendrás que pagar el precio. 
+ 
+Por ejemplo, una carta de Monstruo puede indicar lo siguiente: 
+5-: SACRIFICIO una carta de héroe. 
+8+: SLAY esta carta de Monstruo. 
+ 
+En este ejemplo, si sacas un 8 o más (incluidas las cartas de Modificador), MATAS con éxito la carta de Monstruo. Si sacas un 
+5 o menos (incluidas las cartas de Modificador), debes SACRIFICAR una carta de Héroe y la carta de Monstruo permanece 
+ileso. Si sacas un 6 o un 7 (incluidas las cartas de Modificador), no pasa nada, pero no recuperas tus puntos de acción. 
+ 
+Cada vez que MATAS con éxito una carta de Monstruo, tu Grupo gana una nueva habilidad  (que aparece en la parte 
+inferior de la carta de Monstruo) para el resto del juego. Agrega la carta de Monstruo asesinado junto a tu carta de Líder del 
+Partido. Las habilidades de las cartas de monstruo funcionan igual que la habilidad de tu carta de Líder de grupo. L as cartas 
+de Monstruo de tu Grupo no se pueden robar, destruir, atacar ni devolver a tu mano. 
+ 
+Cada vez que MATAS con éxito una carta de Monstruo, voltea otra carta de Monstruo del mazo de Monstruos boca arriba en 
+el centro de la mesa. 
+ 
+ 
+TÉRMINOS IMPORTANTES 
+ 
+Aquí hay una lista de términos definidos que verá en el juego. 
+ 
+TÉRMINOS DE CONFIGURACIÓN 
+• EQUIPO: el área frente a ti en la que juegas cartas de Héroe y Objeto. 
+• BARAJA: La pila de cartas de tamaño estándar con dorso de color crema de la que los jugadores ROBAN durante el 
+juego. 
+• PILA DE DESCARTE: El montón de cartas boca arriba que han sido sacrificadas, destruidas y descartadas a lo largo 
+del juego. 
+• MAZO DE MONSTRUOS : La pila de cartas de gran tamaño con el dorso azul marino desde el que se pone boca 
+arriba una nueva carta de Monstruo cada vez que un jugador MATA una carta de Monstruo. 
+ 
+TÉRMINOS DE JUEGO 
+• ROBAR: Toma la carta superior del mazo y agrégala a tu mano. 
+• DESCARTAR: Mueve una carta de tu mano a la pila de descarte. 
+• DESTRUIR: Mueve una carta del grupo de otro jugador a la pila de descarte. 
+• SACRIFICIO: Mueve una carta de tu propio Grupo a la pila de descarte. 
+• ROBAR: Mueve una carta del grupo de otro jugador a tu propio grupo. 
+• RETO: Intenta evitar que otro jugador juegue una carta de Héroe, Objeto o Magia. Tú y ese jugador deben tirar los 
+dados dos veces. Si tu tirad a es igual o mayor que la tirada del otro jugador, la carta que se desafía se mueve a la 
+pila de descarte. Si la tirada de ese jugador es mayor, puede continuar jugando su carta de Héroe, Objeto o Magia. 
+• ATAQUE: Tira para MATAR una carta de Monstruo. 
+• MATAR: Agrega una carta de Monstruo que hayas atacado exitosamente a tu Grupo. 
+ 
+ 
+¿CÓMO GANAR? 
+Hay dos formas de ganar el juego: 
+• Opción 1: MATAR tres cartas de Monstruo. 
+• Opción 2: Termina tu turno con un grupo completo, lo que significa que tu grupo (incluida tu carta de líder de grupo)  
+representa seis clases diferentes. 
+¡Felicidades, puedes presumir oficialmente de que eres el mejor aventurero y cazador de monstruos del mundo entero! 
+Pero no seas demasiado presumido, porque tu estado de campeón se restablece la próxima vez que barajas el mazo. 

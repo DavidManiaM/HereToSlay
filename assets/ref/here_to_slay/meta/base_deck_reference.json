@@ -1,0 +1,1290 @@
+{
+  "base_deck_sections": {
+    "Party Leaders": [
+      "The Charismatic Song",
+      "The Cloaked Sage",
+      "The Divine Arrow",
+      "The Fist of Reason",
+      "The Protecting Horn",
+      "The Shadow Claw"
+    ],
+    "Monsters": [
+      "Abyss Queen",
+      "Anuran Cauldron",
+      "Artic Aries",
+      "Bloodwing",
+      "Corrupted Sabretooth",
+      "Crowned Serpent",
+      "Dark Dragon King",
+      "Dracos",
+      "Malamammoth",
+      "Mega Slime",
+      "Orthus",
+      "Rex Major",
+      "Terratuga",
+      "Titan Wyvern",
+      "Warworn Owlbear"
+    ],
+    "Heroes": [
+      "Bad Axe",
+      "Bear Claw",
+      "Beary Wise",
+      "Fury Knuckle",
+      "Heavy Bear",
+      "Pan Chucks",
+      "Qi Bear",
+      "Tough Teddy",
+      "Dodgy Dealer",
+      "Fuzzy Cheeks",
+      "Greedy Cheeks",
+      "Lucky Bucky",
+      "Mellow Dee",
+      "Napping Nibbles",
+      "Peanut",
+      "Tipsy Tootie",
+      "Calming Voice",
+      "Guiding Light",
+      "Holy Curselifter",
+      "Iron Resolve",
+      "Mighty Blade",
+      "Radiant Horn",
+      "Vibrant Glow",
+      "Wise Shield",
+      "Bullseye",
+      "Hook",
+      "Lookie Rookie",
+      "Quick Draw",
+      "Serious Grey",
+      "Sharp Fox",
+      "Wildshot",
+      "Wily Red",
+      "Kit Napper",
+      "Meowzio",
+      "Plundering Puma",
+      "Shurikitty",
+      "Silent Shadow",
+      "Slippery Paws",
+      "Sly Pickings",
+      "Smooth Mimimeow",
+      "Bun Bun",
+      "Buttons",
+      "Fluffy",
+      "Hopper",
+      "Snowball",
+      "Spooky",
+      "Whiskers",
+      "Wiggles"
+    ],
+    "Items": [
+      "Bard Mask",
+      "Decoy Doll",
+      "Fighter Mask",
+      "Guardian Mask",
+      "Particularly Rusty Coin",
+      "Ranger Mask",
+      "Really Big Ring",
+      "Thief Mask",
+      "Wizard Mask"
+    ],
+    "Cursed Items": [
+      "Curse of the Snake&#39;s Eyes",
+      "Curse of the Snake's Eyes",
+      "Sealing Key",
+      "Suspiciously Shiny Coin"
+    ],
+    "Modifiers": [
+      "Modifier +1/-3",
+      "Modifier +2/-2",
+      "Modifier +3/-1",
+      "Modifier +4",
+      "Modifier -4"
+    ],
+    "Magic": [
+      "Call to the Fallen",
+      "Critical Boost",
+      "Destructive Spell",
+      "Enchanted Spell",
+      "Entangling Trap",
+      "Forced Exchange",
+      "Forceful Winds",
+      "Winds of Change"
+    ],
+    "Challenges": [
+      "Challenge"
+    ],
+    "Rule Card": [
+      "Rule Card"
+    ]
+  },
+  "scans": [
+    {
+      "filename": "HtS-Base-000.png",
+      "title": "Rule Card",
+      "section": "Card_Backs_&amp;_Rule_Card",
+      "wiki_path": "/images/1/12/HtS-Base-000.png",
+      "original_url": "https://unstablegameswiki.com/images/1/12/HtS-Base-000.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/12/HtS-Base-000.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/12/HtS-Base-000.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-000.png"
+    },
+    {
+      "filename": "HtS-Base-000b.png",
+      "title": "Rule Card",
+      "section": "Card_Backs_&amp;_Rule_Card",
+      "wiki_path": "/images/1/1b/HtS-Base-000b.png",
+      "original_url": "https://unstablegameswiki.com/images/1/1b/HtS-Base-000b.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/1b/HtS-Base-000b.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/1b/HtS-Base-000b.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-000b.png"
+    },
+    {
+      "filename": "HtS-Base-001.png",
+      "title": "Sealing Key",
+      "section": "Cursed_Items",
+      "wiki_path": "/images/1/18/HtS-Base-001.png",
+      "original_url": "https://unstablegameswiki.com/images/1/18/HtS-Base-001.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/18/HtS-Base-001.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/18/HtS-Base-001.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-001.png"
+    },
+    {
+      "filename": "HtS-Base-002.png",
+      "title": "Curse of the Snake's Eyes",
+      "section": "Cursed_Items",
+      "wiki_path": "/images/2/2f/HtS-Base-002.png",
+      "original_url": "https://unstablegameswiki.com/images/2/2f/HtS-Base-002.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/2/2f/HtS-Base-002.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/2/2f/HtS-Base-002.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-002.png"
+    },
+    {
+      "filename": "HtS-Base-003.png",
+      "title": "Suspiciously Shiny Coin",
+      "section": "Cursed_Items",
+      "wiki_path": "/images/0/01/HtS-Base-003.png",
+      "original_url": "https://unstablegameswiki.com/images/0/01/HtS-Base-003.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/0/01/HtS-Base-003.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/0/01/HtS-Base-003.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-003.png"
+    },
+    {
+      "filename": "HtS-Base-004.png",
+      "title": "Bard Mask",
+      "section": "Items",
+      "wiki_path": "/images/0/0e/HtS-Base-004.png",
+      "original_url": "https://unstablegameswiki.com/images/0/0e/HtS-Base-004.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/0/0e/HtS-Base-004.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/0/0e/HtS-Base-004.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-004.png"
+    },
+    {
+      "filename": "HtS-Base-005.png",
+      "title": "Ranger Mask",
+      "section": "Items",
+      "wiki_path": "/images/9/99/HtS-Base-005.png",
+      "original_url": "https://unstablegameswiki.com/images/9/99/HtS-Base-005.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/9/99/HtS-Base-005.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/9/99/HtS-Base-005.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-005.png"
+    },
+    {
+      "filename": "HtS-Base-006.png",
+      "title": "Wizard Mask",
+      "section": "Items",
+      "wiki_path": "/images/e/ee/HtS-Base-006.png",
+      "original_url": "https://unstablegameswiki.com/images/e/ee/HtS-Base-006.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/ee/HtS-Base-006.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/ee/HtS-Base-006.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-006.png"
+    },
+    {
+      "filename": "HtS-Base-007.png",
+      "title": "Fighter Mask",
+      "section": "Items",
+      "wiki_path": "/images/b/b4/HtS-Base-007.png",
+      "original_url": "https://unstablegameswiki.com/images/b/b4/HtS-Base-007.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/b/b4/HtS-Base-007.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/b/b4/HtS-Base-007.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-007.png"
+    },
+    {
+      "filename": "HtS-Base-008.png",
+      "title": "Guardian Mask",
+      "section": "Items",
+      "wiki_path": "/images/2/2d/HtS-Base-008.png",
+      "original_url": "https://unstablegameswiki.com/images/2/2d/HtS-Base-008.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/2/2d/HtS-Base-008.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/2/2d/HtS-Base-008.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-008.png"
+    },
+    {
+      "filename": "HtS-Base-009.png",
+      "title": "Thief Mask",
+      "section": "Items",
+      "wiki_path": "/images/f/ff/HtS-Base-009.png",
+      "original_url": "https://unstablegameswiki.com/images/f/ff/HtS-Base-009.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/ff/HtS-Base-009.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/ff/HtS-Base-009.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-009.png"
+    },
+    {
+      "filename": "HtS-Base-010.png",
+      "title": "Really Big Ring",
+      "section": "Items",
+      "wiki_path": "/images/6/64/HtS-Base-010.png",
+      "original_url": "https://unstablegameswiki.com/images/6/64/HtS-Base-010.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/64/HtS-Base-010.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/64/HtS-Base-010.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-010.png"
+    },
+    {
+      "filename": "HtS-Base-011.png",
+      "title": "Particularly Rusty Coin",
+      "section": "Items",
+      "wiki_path": "/images/a/a7/HtS-Base-011.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a7/HtS-Base-011.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a7/HtS-Base-011.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a7/HtS-Base-011.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-011.png"
+    },
+    {
+      "filename": "HtS-Base-012.png",
+      "title": "Decoy Doll",
+      "section": "Items",
+      "wiki_path": "/images/8/8d/HtS-Base-012.png",
+      "original_url": "https://unstablegameswiki.com/images/8/8d/HtS-Base-012.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/8d/HtS-Base-012.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/8d/HtS-Base-012.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-012.png"
+    },
+    {
+      "filename": "HtS-Base-013.png",
+      "title": "Enchanted Spell",
+      "section": "Magic",
+      "wiki_path": "/images/5/55/HtS-Base-013.png",
+      "original_url": "https://unstablegameswiki.com/images/5/55/HtS-Base-013.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/5/55/HtS-Base-013.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/5/55/HtS-Base-013.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-013.png"
+    },
+    {
+      "filename": "HtS-Base-014.png",
+      "title": "Forceful Winds",
+      "section": "Magic",
+      "wiki_path": "/images/e/e7/HtS-Base-014.png",
+      "original_url": "https://unstablegameswiki.com/images/e/e7/HtS-Base-014.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/e7/HtS-Base-014.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/e7/HtS-Base-014.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-014.png"
+    },
+    {
+      "filename": "HtS-Base-015.png",
+      "title": "Entangling Trap",
+      "section": "Magic",
+      "wiki_path": "/images/4/46/HtS-Base-015.png",
+      "original_url": "https://unstablegameswiki.com/images/4/46/HtS-Base-015.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/46/HtS-Base-015.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/46/HtS-Base-015.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-015.png"
+    },
+    {
+      "filename": "HtS-Base-016.png",
+      "title": "Winds of Change",
+      "section": "Magic",
+      "wiki_path": "/images/5/51/HtS-Base-016.png",
+      "original_url": "https://unstablegameswiki.com/images/5/51/HtS-Base-016.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/5/51/HtS-Base-016.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/5/51/HtS-Base-016.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-016.png"
+    },
+    {
+      "filename": "HtS-Base-017.png",
+      "title": "Critical Boost",
+      "section": "Magic",
+      "wiki_path": "/images/7/77/HtS-Base-017.png",
+      "original_url": "https://unstablegameswiki.com/images/7/77/HtS-Base-017.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/77/HtS-Base-017.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/77/HtS-Base-017.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-017.png"
+    },
+    {
+      "filename": "HtS-Base-018.png",
+      "title": "Destructive Spell",
+      "section": "Magic",
+      "wiki_path": "/images/2/2b/HtS-Base-018.png",
+      "original_url": "https://unstablegameswiki.com/images/2/2b/HtS-Base-018.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/2/2b/HtS-Base-018.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/2/2b/HtS-Base-018.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-018.png"
+    },
+    {
+      "filename": "HtS-Base-019.png",
+      "title": "Call to the Fallen",
+      "section": "Magic",
+      "wiki_path": "/images/f/f5/HtS-Base-019.png",
+      "original_url": "https://unstablegameswiki.com/images/f/f5/HtS-Base-019.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/f5/HtS-Base-019.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/f5/HtS-Base-019.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-019.png"
+    },
+    {
+      "filename": "HtS-Base-020.png",
+      "title": "Forced Exchange",
+      "section": "Magic",
+      "wiki_path": "/images/5/51/HtS-Base-020.png",
+      "original_url": "https://unstablegameswiki.com/images/5/51/HtS-Base-020.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/5/51/HtS-Base-020.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/5/51/HtS-Base-020.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-020.png"
+    },
+    {
+      "filename": "HtS-Base-021.png",
+      "title": "Modifier %2B2/-2",
+      "section": "Modifiers",
+      "wiki_path": "/images/4/46/HtS-Base-021.png",
+      "original_url": "https://unstablegameswiki.com/images/4/46/HtS-Base-021.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/46/HtS-Base-021.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/46/HtS-Base-021.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-021.png"
+    },
+    {
+      "filename": "HtS-Base-022.png",
+      "title": "Modifier -4",
+      "section": "Modifiers",
+      "wiki_path": "/images/f/f6/HtS-Base-022.png",
+      "original_url": "https://unstablegameswiki.com/images/f/f6/HtS-Base-022.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/f6/HtS-Base-022.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/f6/HtS-Base-022.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-022.png"
+    },
+    {
+      "filename": "HtS-Base-023.png",
+      "title": "Modifier %2B4",
+      "section": "Modifiers",
+      "wiki_path": "/images/f/f4/HtS-Base-023.png",
+      "original_url": "https://unstablegameswiki.com/images/f/f4/HtS-Base-023.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/f4/HtS-Base-023.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/f4/HtS-Base-023.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-023.png"
+    },
+    {
+      "filename": "HtS-Base-024.png",
+      "title": "Modifier %2B1/-3",
+      "section": "Modifiers",
+      "wiki_path": "/images/6/6b/HtS-Base-024.png",
+      "original_url": "https://unstablegameswiki.com/images/6/6b/HtS-Base-024.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/6b/HtS-Base-024.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/6b/HtS-Base-024.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-024.png"
+    },
+    {
+      "filename": "HtS-Base-025.png",
+      "title": "Modifier %2B3/-1",
+      "section": "Modifiers",
+      "wiki_path": "/images/b/be/HtS-Base-025.png",
+      "original_url": "https://unstablegameswiki.com/images/b/be/HtS-Base-025.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/b/be/HtS-Base-025.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/b/be/HtS-Base-025.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-025.png"
+    },
+    {
+      "filename": "HtS-Base-026.png",
+      "title": "Challenge",
+      "section": "Challenges",
+      "wiki_path": "/images/6/6a/HtS-Base-026.png",
+      "original_url": "https://unstablegameswiki.com/images/6/6a/HtS-Base-026.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/6a/HtS-Base-026.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/6a/HtS-Base-026.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-026.png"
+    },
+    {
+      "filename": "HtS-Base-027.png",
+      "title": "Pan Chucks",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/4/4b/HtS-Base-027.png",
+      "original_url": "https://unstablegameswiki.com/images/4/4b/HtS-Base-027.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/4b/HtS-Base-027.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/4b/HtS-Base-027.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-027.png"
+    },
+    {
+      "filename": "HtS-Base-028.png",
+      "title": "Heavy Bear",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/4/4d/HtS-Base-028.png",
+      "original_url": "https://unstablegameswiki.com/images/4/4d/HtS-Base-028.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/4d/HtS-Base-028.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/4d/HtS-Base-028.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-028.png"
+    },
+    {
+      "filename": "HtS-Base-029.png",
+      "title": "Qi Bear",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/9/9c/HtS-Base-029.png",
+      "original_url": "https://unstablegameswiki.com/images/9/9c/HtS-Base-029.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/9/9c/HtS-Base-029.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/9/9c/HtS-Base-029.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-029.png"
+    },
+    {
+      "filename": "HtS-Base-030.png",
+      "title": "Beary Wise",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/8/86/HtS-Base-030.png",
+      "original_url": "https://unstablegameswiki.com/images/8/86/HtS-Base-030.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/86/HtS-Base-030.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/86/HtS-Base-030.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-030.png"
+    },
+    {
+      "filename": "HtS-Base-031.png",
+      "title": "Tough Teddy",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/d/db/HtS-Base-031.png",
+      "original_url": "https://unstablegameswiki.com/images/d/db/HtS-Base-031.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/d/db/HtS-Base-031.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/d/db/HtS-Base-031.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-031.png"
+    },
+    {
+      "filename": "HtS-Base-032.png",
+      "title": "Fury Knuckle",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/f/fe/HtS-Base-032.png",
+      "original_url": "https://unstablegameswiki.com/images/f/fe/HtS-Base-032.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/fe/HtS-Base-032.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/fe/HtS-Base-032.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-032.png"
+    },
+    {
+      "filename": "HtS-Base-033.png",
+      "title": "Bear Claw",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/0/06/HtS-Base-033.png",
+      "original_url": "https://unstablegameswiki.com/images/0/06/HtS-Base-033.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/0/06/HtS-Base-033.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/0/06/HtS-Base-033.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-033.png"
+    },
+    {
+      "filename": "HtS-Base-034.png",
+      "title": "Bad Axe",
+      "section": "Fighter_Heroes",
+      "wiki_path": "/images/6/64/HtS-Base-034.png",
+      "original_url": "https://unstablegameswiki.com/images/6/64/HtS-Base-034.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/64/HtS-Base-034.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/64/HtS-Base-034.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-034.png"
+    },
+    {
+      "filename": "HtS-Base-035.png",
+      "title": "Peanut",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/7/7a/HtS-Base-035.png",
+      "original_url": "https://unstablegameswiki.com/images/7/7a/HtS-Base-035.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/7a/HtS-Base-035.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/7a/HtS-Base-035.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-035.png"
+    },
+    {
+      "filename": "HtS-Base-036.png",
+      "title": "Napping Nibbles",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/c/c0/HtS-Base-036.png",
+      "original_url": "https://unstablegameswiki.com/images/c/c0/HtS-Base-036.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/c0/HtS-Base-036.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/c0/HtS-Base-036.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-036.png"
+    },
+    {
+      "filename": "HtS-Base-037.png",
+      "title": "Mellow Dee",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/3/35/HtS-Base-037.png",
+      "original_url": "https://unstablegameswiki.com/images/3/35/HtS-Base-037.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/35/HtS-Base-037.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/35/HtS-Base-037.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-037.png"
+    },
+    {
+      "filename": "HtS-Base-038.png",
+      "title": "Greedy Cheeks",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/7/76/HtS-Base-038.png",
+      "original_url": "https://unstablegameswiki.com/images/7/76/HtS-Base-038.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/76/HtS-Base-038.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/76/HtS-Base-038.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-038.png"
+    },
+    {
+      "filename": "HtS-Base-039.png",
+      "title": "Fuzzy Cheeks",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/3/31/HtS-Base-039.png",
+      "original_url": "https://unstablegameswiki.com/images/3/31/HtS-Base-039.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/31/HtS-Base-039.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/31/HtS-Base-039.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-039.png"
+    },
+    {
+      "filename": "HtS-Base-040.png",
+      "title": "Tipsy Tootie",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/a/a0/HtS-Base-040.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a0/HtS-Base-040.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a0/HtS-Base-040.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a0/HtS-Base-040.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-040.png"
+    },
+    {
+      "filename": "HtS-Base-041.png",
+      "title": "Dodgy Dealer",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/1/12/HtS-Base-041.png",
+      "original_url": "https://unstablegameswiki.com/images/1/12/HtS-Base-041.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/12/HtS-Base-041.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/12/HtS-Base-041.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-041.png"
+    },
+    {
+      "filename": "HtS-Base-042.png",
+      "title": "Lucky Bucky",
+      "section": "Bard_Heroes",
+      "wiki_path": "/images/a/a1/HtS-Base-042.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a1/HtS-Base-042.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a1/HtS-Base-042.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a1/HtS-Base-042.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-042.png"
+    },
+    {
+      "filename": "HtS-Base-043.png",
+      "title": "Calming Voice",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/e/e3/HtS-Base-043.png",
+      "original_url": "https://unstablegameswiki.com/images/e/e3/HtS-Base-043.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/e3/HtS-Base-043.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/e3/HtS-Base-043.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-043.png"
+    },
+    {
+      "filename": "HtS-Base-044.png",
+      "title": "Wise Shield",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/8/8a/HtS-Base-044.png",
+      "original_url": "https://unstablegameswiki.com/images/8/8a/HtS-Base-044.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/8a/HtS-Base-044.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/8a/HtS-Base-044.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-044.png"
+    },
+    {
+      "filename": "HtS-Base-045.png",
+      "title": "Mighty Blade",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/2/28/HtS-Base-045.png",
+      "original_url": "https://unstablegameswiki.com/images/2/28/HtS-Base-045.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/2/28/HtS-Base-045.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/2/28/HtS-Base-045.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-045.png"
+    },
+    {
+      "filename": "HtS-Base-046.png",
+      "title": "Radiant Horn",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/d/d9/HtS-Base-046.png",
+      "original_url": "https://unstablegameswiki.com/images/d/d9/HtS-Base-046.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/d/d9/HtS-Base-046.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/d/d9/HtS-Base-046.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-046.png"
+    },
+    {
+      "filename": "HtS-Base-047.png",
+      "title": "Iron Resolve",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/e/ec/HtS-Base-047.png",
+      "original_url": "https://unstablegameswiki.com/images/e/ec/HtS-Base-047.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/ec/HtS-Base-047.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/ec/HtS-Base-047.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-047.png"
+    },
+    {
+      "filename": "HtS-Base-048.png",
+      "title": "Holy Curselifter",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/b/b3/HtS-Base-048.png",
+      "original_url": "https://unstablegameswiki.com/images/b/b3/HtS-Base-048.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/b/b3/HtS-Base-048.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/b/b3/HtS-Base-048.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-048.png"
+    },
+    {
+      "filename": "HtS-Base-049.png",
+      "title": "Vibrant Glow",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/1/1c/HtS-Base-049.png",
+      "original_url": "https://unstablegameswiki.com/images/1/1c/HtS-Base-049.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/1c/HtS-Base-049.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/1c/HtS-Base-049.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-049.png"
+    },
+    {
+      "filename": "HtS-Base-050.png",
+      "title": "Guiding Light",
+      "section": "Guardian_Heroes",
+      "wiki_path": "/images/0/06/HtS-Base-050.png",
+      "original_url": "https://unstablegameswiki.com/images/0/06/HtS-Base-050.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/0/06/HtS-Base-050.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/0/06/HtS-Base-050.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-050.png"
+    },
+    {
+      "filename": "HtS-Base-051.png",
+      "title": "Sharp Fox",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/1/1a/HtS-Base-051.png",
+      "original_url": "https://unstablegameswiki.com/images/1/1a/HtS-Base-051.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/1a/HtS-Base-051.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/1a/HtS-Base-051.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-051.png"
+    },
+    {
+      "filename": "HtS-Base-052.png",
+      "title": "Wildshot",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/6/6d/HtS-Base-052.png",
+      "original_url": "https://unstablegameswiki.com/images/6/6d/HtS-Base-052.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/6d/HtS-Base-052.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/6d/HtS-Base-052.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-052.png"
+    },
+    {
+      "filename": "HtS-Base-053.png",
+      "title": "Wily Red",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/a/a7/HtS-Base-053.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a7/HtS-Base-053.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a7/HtS-Base-053.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a7/HtS-Base-053.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-053.png"
+    },
+    {
+      "filename": "HtS-Base-054.png",
+      "title": "Lookie Rookie",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/f/f5/HtS-Base-054.png",
+      "original_url": "https://unstablegameswiki.com/images/f/f5/HtS-Base-054.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/f/f5/HtS-Base-054.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/f/f5/HtS-Base-054.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-054.png"
+    },
+    {
+      "filename": "HtS-Base-055.png",
+      "title": "Bullseye",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/c/cd/HtS-Base-055.png",
+      "original_url": "https://unstablegameswiki.com/images/c/cd/HtS-Base-055.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/cd/HtS-Base-055.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/cd/HtS-Base-055.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-055.png"
+    },
+    {
+      "filename": "HtS-Base-056.png",
+      "title": "Quick Draw",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/a/a8/HtS-Base-056.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a8/HtS-Base-056.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a8/HtS-Base-056.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a8/HtS-Base-056.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-056.png"
+    },
+    {
+      "filename": "HtS-Base-057.png",
+      "title": "Hook",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/d/d8/HtS-Base-057.png",
+      "original_url": "https://unstablegameswiki.com/images/d/d8/HtS-Base-057.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/d/d8/HtS-Base-057.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/d/d8/HtS-Base-057.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-057.png"
+    },
+    {
+      "filename": "HtS-Base-058.png",
+      "title": "Serious Grey",
+      "section": "Ranger_Heroes",
+      "wiki_path": "/images/6/6a/HtS-Base-058.png",
+      "original_url": "https://unstablegameswiki.com/images/6/6a/HtS-Base-058.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/6a/HtS-Base-058.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/6a/HtS-Base-058.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-058.png"
+    },
+    {
+      "filename": "HtS-Base-059.png",
+      "title": "Smooth Mimimeow",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/8/84/HtS-Base-059.png",
+      "original_url": "https://unstablegameswiki.com/images/8/84/HtS-Base-059.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/84/HtS-Base-059.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/84/HtS-Base-059.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-059.png"
+    },
+    {
+      "filename": "HtS-Base-060.png",
+      "title": "Plundering Puma",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/6/60/HtS-Base-060.png",
+      "original_url": "https://unstablegameswiki.com/images/6/60/HtS-Base-060.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/60/HtS-Base-060.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/60/HtS-Base-060.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-060.png"
+    },
+    {
+      "filename": "HtS-Base-061.png",
+      "title": "Shurikitty",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/3/33/HtS-Base-061.png",
+      "original_url": "https://unstablegameswiki.com/images/3/33/HtS-Base-061.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/33/HtS-Base-061.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/33/HtS-Base-061.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-061.png"
+    },
+    {
+      "filename": "HtS-Base-062.png",
+      "title": "Meowzio",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/5/50/HtS-Base-062.png",
+      "original_url": "https://unstablegameswiki.com/images/5/50/HtS-Base-062.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/5/50/HtS-Base-062.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/5/50/HtS-Base-062.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-062.png"
+    },
+    {
+      "filename": "HtS-Base-063.png",
+      "title": "Slippery Paws",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/8/8f/HtS-Base-063.png",
+      "original_url": "https://unstablegameswiki.com/images/8/8f/HtS-Base-063.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/8f/HtS-Base-063.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/8f/HtS-Base-063.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-063.png"
+    },
+    {
+      "filename": "HtS-Base-064.png",
+      "title": "Sly Pickings",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/4/49/HtS-Base-064.png",
+      "original_url": "https://unstablegameswiki.com/images/4/49/HtS-Base-064.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/49/HtS-Base-064.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/49/HtS-Base-064.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-064.png"
+    },
+    {
+      "filename": "HtS-Base-065.png",
+      "title": "Kit Napper",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/7/79/HtS-Base-065.png",
+      "original_url": "https://unstablegameswiki.com/images/7/79/HtS-Base-065.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/79/HtS-Base-065.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/79/HtS-Base-065.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-065.png"
+    },
+    {
+      "filename": "HtS-Base-066.png",
+      "title": "Silent Shadow",
+      "section": "Thief_Heroes",
+      "wiki_path": "/images/3/31/HtS-Base-066.png",
+      "original_url": "https://unstablegameswiki.com/images/3/31/HtS-Base-066.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/31/HtS-Base-066.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/31/HtS-Base-066.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-066.png"
+    },
+    {
+      "filename": "HtS-Base-067.png",
+      "title": "Snowball",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/7/72/HtS-Base-067.png",
+      "original_url": "https://unstablegameswiki.com/images/7/72/HtS-Base-067.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/72/HtS-Base-067.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/72/HtS-Base-067.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-067.png"
+    },
+    {
+      "filename": "HtS-Base-068.png",
+      "title": "Bun Bun",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/3/3a/HtS-Base-068.png",
+      "original_url": "https://unstablegameswiki.com/images/3/3a/HtS-Base-068.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/3a/HtS-Base-068.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/3a/HtS-Base-068.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-068.png"
+    },
+    {
+      "filename": "HtS-Base-069.png",
+      "title": "Wiggles",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/1/10/HtS-Base-069.png",
+      "original_url": "https://unstablegameswiki.com/images/1/10/HtS-Base-069.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/10/HtS-Base-069.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/10/HtS-Base-069.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-069.png"
+    },
+    {
+      "filename": "HtS-Base-070.png",
+      "title": "Spooky",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/a/ab/HtS-Base-070.png",
+      "original_url": "https://unstablegameswiki.com/images/a/ab/HtS-Base-070.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/ab/HtS-Base-070.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/ab/HtS-Base-070.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-070.png"
+    },
+    {
+      "filename": "HtS-Base-071.png",
+      "title": "Fluffy",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/4/42/HtS-Base-071.png",
+      "original_url": "https://unstablegameswiki.com/images/4/42/HtS-Base-071.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/42/HtS-Base-071.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/42/HtS-Base-071.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-071.png"
+    },
+    {
+      "filename": "HtS-Base-072.png",
+      "title": "Buttons",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/2/20/HtS-Base-072.png",
+      "original_url": "https://unstablegameswiki.com/images/2/20/HtS-Base-072.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/2/20/HtS-Base-072.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/2/20/HtS-Base-072.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-072.png"
+    },
+    {
+      "filename": "HtS-Base-073.png",
+      "title": "Whiskers",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/1/1a/HtS-Base-073.png",
+      "original_url": "https://unstablegameswiki.com/images/1/1a/HtS-Base-073.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/1a/HtS-Base-073.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/1a/HtS-Base-073.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-073.png"
+    },
+    {
+      "filename": "HtS-Base-074.png",
+      "title": "Hopper",
+      "section": "Wizard_Heroes",
+      "wiki_path": "/images/0/02/HtS-Base-074.png",
+      "original_url": "https://unstablegameswiki.com/images/0/02/HtS-Base-074.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/0/02/HtS-Base-074.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/0/02/HtS-Base-074.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-074.png"
+    },
+    {
+      "filename": "HtS-Base-101.png",
+      "title": "The Protecting Horn",
+      "section": "personal-inner",
+      "wiki_path": "/images/e/ee/HtS-Base-101.png",
+      "original_url": "https://unstablegameswiki.com/images/e/ee/HtS-Base-101.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/ee/HtS-Base-101.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/ee/HtS-Base-101.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-101.png"
+    },
+    {
+      "filename": "HtS-Base-102.png",
+      "title": "The Shadow Claw",
+      "section": "personal-inner",
+      "wiki_path": "/images/4/40/HtS-Base-102.png",
+      "original_url": "https://unstablegameswiki.com/images/4/40/HtS-Base-102.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/40/HtS-Base-102.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/40/HtS-Base-102.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-102.png"
+    },
+    {
+      "filename": "HtS-Base-103.png",
+      "title": "The Fist of Reason",
+      "section": "personal-inner",
+      "wiki_path": "/images/6/69/HtS-Base-103.png",
+      "original_url": "https://unstablegameswiki.com/images/6/69/HtS-Base-103.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/6/69/HtS-Base-103.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/6/69/HtS-Base-103.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-103.png"
+    },
+    {
+      "filename": "HtS-Base-104.png",
+      "title": "The Cloaked Sage",
+      "section": "personal-inner",
+      "wiki_path": "/images/4/43/HtS-Base-104.png",
+      "original_url": "https://unstablegameswiki.com/images/4/43/HtS-Base-104.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/43/HtS-Base-104.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/43/HtS-Base-104.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-104.png"
+    },
+    {
+      "filename": "HtS-Base-105.png",
+      "title": "The Divine Arrow",
+      "section": "personal-inner",
+      "wiki_path": "/images/9/9f/HtS-Base-105.png",
+      "original_url": "https://unstablegameswiki.com/images/9/9f/HtS-Base-105.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/9/9f/HtS-Base-105.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/9/9f/HtS-Base-105.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-105.png"
+    },
+    {
+      "filename": "HtS-Base-106.png",
+      "title": "The Charismatic Song",
+      "section": "personal-inner",
+      "wiki_path": "/images/a/a1/HtS-Base-106.png",
+      "original_url": "https://unstablegameswiki.com/images/a/a1/HtS-Base-106.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/a/a1/HtS-Base-106.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/a/a1/HtS-Base-106.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-106.png"
+    },
+    {
+      "filename": "HtS-Base-201.png",
+      "title": "Dracos",
+      "section": "Monsters",
+      "wiki_path": "/images/1/10/HtS-Base-201.png",
+      "original_url": "https://unstablegameswiki.com/images/1/10/HtS-Base-201.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/1/10/HtS-Base-201.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/1/10/HtS-Base-201.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-201.png"
+    },
+    {
+      "filename": "HtS-Base-202.png",
+      "title": "Orthus",
+      "section": "Monsters",
+      "wiki_path": "/images/e/e6/HtS-Base-202.png",
+      "original_url": "https://unstablegameswiki.com/images/e/e6/HtS-Base-202.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/e/e6/HtS-Base-202.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/e/e6/HtS-Base-202.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-202.png"
+    },
+    {
+      "filename": "HtS-Base-203.png",
+      "title": "Dark Dragon King",
+      "section": "Monsters",
+      "wiki_path": "/images/d/de/HtS-Base-203.png",
+      "original_url": "https://unstablegameswiki.com/images/d/de/HtS-Base-203.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/d/de/HtS-Base-203.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/d/de/HtS-Base-203.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-203.png"
+    },
+    {
+      "filename": "HtS-Base-204.png",
+      "title": "Terratuga",
+      "section": "Monsters",
+      "wiki_path": "/images/3/39/HtS-Base-204.png",
+      "original_url": "https://unstablegameswiki.com/images/3/39/HtS-Base-204.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/39/HtS-Base-204.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/39/HtS-Base-204.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-204.png"
+    },
+    {
+      "filename": "HtS-Base-205.png",
+      "title": "Crowned Serpent",
+      "section": "Monsters",
+      "wiki_path": "/images/4/47/HtS-Base-205.png",
+      "original_url": "https://unstablegameswiki.com/images/4/47/HtS-Base-205.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/4/47/HtS-Base-205.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/4/47/HtS-Base-205.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-205.png"
+    },
+    {
+      "filename": "HtS-Base-206.png",
+      "title": "Titan Wyvern",
+      "section": "Monsters",
+      "wiki_path": "/images/c/ca/HtS-Base-206.png",
+      "original_url": "https://unstablegameswiki.com/images/c/ca/HtS-Base-206.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/ca/HtS-Base-206.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/ca/HtS-Base-206.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-206.png"
+    },
+    {
+      "filename": "HtS-Base-207.png",
+      "title": "Corrupted Sabretooth",
+      "section": "Monsters",
+      "wiki_path": "/images/7/77/HtS-Base-207.png",
+      "original_url": "https://unstablegameswiki.com/images/7/77/HtS-Base-207.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/7/77/HtS-Base-207.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/7/77/HtS-Base-207.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-207.png"
+    },
+    {
+      "filename": "HtS-Base-208.png",
+      "title": "Mega Slime",
+      "section": "Monsters",
+      "wiki_path": "/images/8/85/HtS-Base-208.png",
+      "original_url": "https://unstablegameswiki.com/images/8/85/HtS-Base-208.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/85/HtS-Base-208.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/85/HtS-Base-208.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-208.png"
+    },
+    {
+      "filename": "HtS-Base-209.png",
+      "title": "Warworn Owlbear",
+      "section": "Monsters",
+      "wiki_path": "/images/3/34/HtS-Base-209.png",
+      "original_url": "https://unstablegameswiki.com/images/3/34/HtS-Base-209.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/3/34/HtS-Base-209.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/3/34/HtS-Base-209.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-209.png"
+    },
+    {
+      "filename": "HtS-Base-210.png",
+      "title": "Artic Aries",
+      "section": "Monsters",
+      "wiki_path": "/images/c/c2/HtS-Base-210.png",
+      "original_url": "https://unstablegameswiki.com/images/c/c2/HtS-Base-210.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/c2/HtS-Base-210.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/c2/HtS-Base-210.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-210.png"
+    },
+    {
+      "filename": "HtS-Base-211.png",
+      "title": "Anuran Cauldron",
+      "section": "Monsters",
+      "wiki_path": "/images/c/ca/HtS-Base-211.png",
+      "original_url": "https://unstablegameswiki.com/images/c/ca/HtS-Base-211.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/ca/HtS-Base-211.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/ca/HtS-Base-211.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-211.png"
+    },
+    {
+      "filename": "HtS-Base-212.png",
+      "title": "Bloodwing",
+      "section": "Monsters",
+      "wiki_path": "/images/c/c4/HtS-Base-212.png",
+      "original_url": "https://unstablegameswiki.com/images/c/c4/HtS-Base-212.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/c/c4/HtS-Base-212.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/c/c4/HtS-Base-212.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-212.png"
+    },
+    {
+      "filename": "HtS-Base-213.png",
+      "title": "Abyss Queen",
+      "section": "Monsters",
+      "wiki_path": "/images/5/53/HtS-Base-213.png",
+      "original_url": "https://unstablegameswiki.com/images/5/53/HtS-Base-213.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/5/53/HtS-Base-213.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/5/53/HtS-Base-213.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-213.png"
+    },
+    {
+      "filename": "HtS-Base-214.png",
+      "title": "Malamammoth",
+      "section": "Monsters",
+      "wiki_path": "/images/8/84/HtS-Base-214.png",
+      "original_url": "https://unstablegameswiki.com/images/8/84/HtS-Base-214.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/8/84/HtS-Base-214.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/8/84/HtS-Base-214.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-214.png"
+    },
+    {
+      "filename": "HtS-Base-215.png",
+      "title": "Rex Major",
+      "section": "Monsters",
+      "wiki_path": "/images/9/9e/HtS-Base-215.png",
+      "original_url": "https://unstablegameswiki.com/images/9/9e/HtS-Base-215.png",
+      "wayback_candidates": [
+        "https://web.archive.org/web/20250207233553id_/https://unstablegameswiki.com/images/9/9e/HtS-Base-215.png",
+        "https://web.archive.org/web/2024id_/https://unstablegameswiki.com/images/9/9e/HtS-Base-215.png"
+      ],
+      "local_scan": "images/scans/HtS-Base-215.png"
+    }
+  ],
+  "notes": [
+    "Official Unstable Games Wiki is Cloudflare-protected; HTML recovered via Wayback.",
+    "Full-resolution scan binaries may need manual download if Wayback image CDN is unreachable.",
+    "Per-card art also available under images/cards/ from here-to-slay.fandom.com."
+  ]
+}

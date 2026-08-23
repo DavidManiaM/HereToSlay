@@ -1,0 +1,49 @@
+{
+  "total_cards": 71,
+  "by_kind": {
+    "monster": 5,
+    "hero": 28,
+    "item": 6,
+    "unknown": 19,
+    "magic": 1,
+    "leader": 12
+  },
+  "matched_to_game_yaml": 41,
+  "unmatched_names": [
+    "Bard Mask",
+    "Bearserker",
+    "Bottomless Bag",
+    "Complex Illusion",
+    "Critical Fang",
+    "Cursed Glove",
+    "Doe Fallow",
+    "Gruesome Gladiator",
+    "Guardian Mask",
+    "Hollow Husk",
+    "Mimi",
+    "Oracon",
+    "Purring Bandit",
+    "Rabid Beast",
+    "Smok",
+    "Tenacious Timber",
+    "The Brutal Bow",
+    "The Fearless Flame",
+    "The Fierce Panguardian",
+    "The Gnawing Dread",
+    "The Illusive Trickster",
+    "The Mystical Maestro",
+    "The Noble Shaman",
+    "The Piercing Howl",
+    "The Raging Manticore",
+    "The Rhythmic Archer",
+    "The Unstable Unicorn",
+    "The Veiled Raider",
+    "Thief Mask",
+    "Wolfgang Pack"
+  ],
+  "sources": [
+    "https://here-to-slay.fandom.com/",
+    "https://web.archive.org/ (unstablegameswiki.com snapshots)",
+    "https://www.unstablegameswiki.com/ (blocked by Cloudflare for bots)"
+  ]
+}

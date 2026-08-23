@@ -1,8 +1,9 @@
 """``hts`` — the command line entry point.
 
-Phase 1 ships ``hts validate``. Phase 5 adds ``hts play`` and ``hts replay``.
-``hts gui`` arrives with Phase 9 and is deliberately *not* declared yet, so
-``--help`` never advertises a command that does not run.
+``validate`` checks a content pack, ``play`` runs the terminal client, ``gui``
+opens the pygame client, ``replay`` re-runs a saved decision log, and ``sim``
+fuzzes headless games. Every command loads content the same way, so a variant
+pack works everywhere the base game does.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from here_to_slay.content.validate import validate_registry
 EXIT_OK = 0
 EXIT_CONTENT_ERROR = 1
 EXIT_USAGE = 2
+EXIT_RUNTIME_ERROR = 3
 
 
 def _random_seed() -> str:
@@ -173,18 +175,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="stop after N turns (0 = no limit)",
     )
     gui.add_argument(
+        "--ai",
+        type=int,
+        default=0,
+        metavar="N",
+        help="let the agent play the last N seats (default: 0 — pass the mouse round)",
+    )
+    gui.add_argument(
         "--width",
         type=int,
-        default=1280,
+        default=1600,
         metavar="W",
-        help="window width (default: 1280)",
+        help="window width (default: 1600)",
     )
     gui.add_argument(
         "--height",
         type=int,
-        default=800,
+        default=900,
         metavar="H",
-        help="window height (default: 800)",
+        help="window height (default: 900)",
+    )
+    gui.add_argument(
+        "--fullscreen", action="store_true", help="start fullscreen (F11 toggles)"
+    )
+    gui.add_argument(
+        "--no-sound", action="store_true", help="start with the procedural cues muted"
+    )
+    gui.add_argument(
+        "--reveal-all",
+        action="store_true",
+        help="spectator mode: show every hand (for demos and debugging)",
     )
     gui.set_defaults(func=cmd_gui)
 
@@ -488,15 +508,37 @@ def cmd_gui(args: argparse.Namespace, console: Console) -> int:
         )
         return EXIT_USAGE
 
+    ai_seats = max(0, min(args.ai, n_players - 1))
+    if args.ai > ai_seats:
+        console.print(
+            f"[yellow]Only {ai_seats} of {n_players} seats can be AI — "
+            f"somebody has to hold the mouse.[/yellow]"
+        )
+
     seed: int | str = args.seed if args.seed is not None else _random_seed()
 
-    from here_to_slay.core.engine import Engine
-    from here_to_slay.ui.pygame import PygameApp
+    from here_to_slay.ui.pygame import launch
 
-    engine = Engine.new(registry, names, seed=seed, max_turns=args.max_turns)
-    app = PygameApp(engine, registry, width=args.width, height=args.height)
-    app.run()
-    return EXIT_OK
+    console.print(
+        f"[bold bright_green]Here to Slay[/bold bright_green]  "
+        f"[dim]seed={seed!r}  {n_players} players"
+        f"{f', {ai_seats} AI' if ai_seats else ''}[/dim]"
+    )
+    console.print("[dim]I = rules  ·  L = log  ·  Esc = menu  ·  Ctrl+Shift+D = dev console[/dim]")
+
+    code = launch(
+        registry,
+        names,
+        seed=seed,
+        max_turns=args.max_turns,
+        ai_seats=ai_seats,
+        width=args.width,
+        height=args.height,
+        fullscreen=args.fullscreen,
+        reveal_all=args.reveal_all,
+        sound=not args.no_sound,
+    )
+    return EXIT_OK if code == 0 else EXIT_RUNTIME_ERROR
 
 
 # ---------------------------------------------------------------------------
