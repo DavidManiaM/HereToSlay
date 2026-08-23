@@ -1,0 +1,19 @@
+# AI scoring weights for Here to Slay base game.
+# Variants can override or extend these weights in their own pack.
+
+weights:
+  action.attack_monster: 6.0
+  action.play_hero: 5.0
+  action.use_leader_ability: 4.5
+  action.use_hero_ability: 4.0
+  action.cast_magic: 3.5
+  action.equip_item: 3.0
+  action.draw: 1.5
+  action.discard_and_draw: 0.5
+
+  reaction.challenge: 3.0
+  reaction.modifier: 4.0
+  reaction.pass: 2.0
+
+  confirm.yes: 1.0
+  confirm.no: 1.0

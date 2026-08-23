@@ -20,6 +20,7 @@ SRC = Path(__file__).resolve().parent.parent / "src" / "here_to_slay"
 FORBIDDEN: dict[str, tuple[str, ...]] = {
     "content": ("here_to_slay.core", "here_to_slay.ui", "here_to_slay.ai", "pygame", "rich"),
     "core": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich", "random"),
+    "ai": ("here_to_slay.ui", "pygame", "rich"),
 }
 
 

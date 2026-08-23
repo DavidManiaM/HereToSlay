@@ -55,7 +55,7 @@ class AutoSource(DecisionSource):
     def answer(self, request: Request) -> Decision:
         match request.kind:
             case "choose_intent":
-                return IntentChosen(list(request.intents)[0])  # type: ignore[attr-defined]
+                return IntentChosen(next(iter(request.intents)))  # type: ignore[attr-defined]
             case "choose_cards":
                 min_ = request.minimum  # type: ignore[attr-defined]
                 return CardsChosen(tuple(request.candidates[:min_]))  # type: ignore[attr-defined]
@@ -178,7 +178,7 @@ class TestCliPresenter:
         assert isinstance(status, Awaiting)
         assert isinstance(status.request, ChooseIntent)
 
-        presenter, buf, _ = self._make_presenter(engine, cardless_content, [])
+        presenter, _buf, _ = self._make_presenter(engine, cardless_content, [])
 
         with patch("builtins.input", side_effect=["1", ""]):
             decision = presenter.answer(status.request)
@@ -191,6 +191,7 @@ class TestCliPresenter:
         self, cardless_content: ContentRegistry
     ) -> None:
         """When the requester changes, the presenter outputs the seat-change message."""
+        import contextlib
         from io import StringIO
 
         from rich.console import Console
@@ -210,11 +211,11 @@ class TestCliPresenter:
             inputs_used.append(prompt)
             return "1"
 
-        with patch("builtins.input", side_effect=mock_input):
-            try:
-                engine.run(presenter)
-            except (StopIteration, EOFError, Exception):
-                pass
+        with (
+            patch("builtins.input", side_effect=mock_input),
+            contextlib.suppress(StopIteration, EOFError, Exception),
+        ):
+            engine.run(presenter)
 
         output = buf.getvalue()
         # "Passing to" message should appear when Bob's turn arrives

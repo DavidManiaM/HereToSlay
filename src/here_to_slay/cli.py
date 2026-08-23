@@ -8,6 +8,7 @@ Phase 1 ships ``hts validate``. Phase 5 adds ``hts play`` and ``hts replay``.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from collections.abc import Sequence
 
@@ -155,6 +156,84 @@ def build_parser() -> argparse.ArgumentParser:
     )
     replay.set_defaults(func=cmd_replay)
 
+    # ------------------------------------------------------------------
+    # sim
+    # ------------------------------------------------------------------
+    sim = subparsers.add_parser(
+        "sim",
+        help="run headless games to fuzz for bugs and invariant violations",
+        description=(
+            "Simulate multiple games headlessly with AI agents to test stability, "
+            "balance, termination, and state invariants."
+        ),
+    )
+    sim.add_argument(
+        "packs",
+        nargs="*",
+        metavar="PACK",
+        default=["data/base"],
+        help="content packs to load (default: data/base)",
+    )
+    sim.add_argument(
+        "--search-path",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="extra directory to search for required packs (repeatable)",
+    )
+    sim.add_argument(
+        "--games",
+        type=int,
+        default=1000,
+        metavar="N",
+        help="number of games to simulate (default: 1000)",
+    )
+    sim.add_argument(
+        "--players",
+        type=int,
+        default=3,
+        metavar="N",
+        help="number of players per game (default: 3)",
+    )
+    sim.add_argument(
+        "--agent",
+        choices=["random", "heuristic"],
+        default="random",
+        help="agent type to use: random or heuristic (default: random)",
+    )
+    sim.add_argument(
+        "--seed-start",
+        type=int,
+        default=0,
+        metavar="SEED",
+        help="starting seed integer (default: 0)",
+    )
+    sim.add_argument(
+        "--max-turns",
+        type=int,
+        default=60,
+        metavar="N",
+        help="maximum turns per game (default: 60)",
+    )
+    sim.add_argument(
+        "--ai-weights",
+        default=None,
+        metavar="PATH",
+        help="path to custom AI weights YAML (heuristic agent only)",
+    )
+    sim.add_argument(
+        "--strict",
+        action="store_true",
+        help="enable continuous invariant checks after every mutation",
+    )
+    sim.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="suppress progress bar and per-game logs",
+    )
+    sim.set_defaults(func=cmd_sim)
+
     return parser
 
 
@@ -261,7 +340,7 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
     min_p = registry.rules.setup.min_players
     if not (min_p <= n_players <= max_p):
         console.print(
-            f"[red]This rule set requires {min_p}–{max_p} players; "
+            f"[red]This rule set requires {min_p}-{max_p} players; "
             f"got {n_players}.[/red]"
         )
         return EXIT_USAGE
@@ -370,10 +449,8 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
     def _step_pause() -> None:
         if args.step:
             console.print("[dim]Press Enter to continue…[/dim]")
-            try:
+            with contextlib.suppress(EOFError, KeyboardInterrupt):
                 input()
-            except (EOFError, KeyboardInterrupt):
-                pass
 
     class ReplayViewer(DecisionSource):
         """Renders the board before every logged decision, then answers from it.
@@ -423,6 +500,173 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
     return EXIT_OK
 
 
+# ---------------------------------------------------------------------------
+# sim
+# ---------------------------------------------------------------------------
+
+
+def cmd_sim(args: argparse.Namespace, console: Console) -> int:
+    import os
+    import time
+
+    from rich.progress import (
+        BarColumn,
+        MofNCompleteColumn,
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        TimeElapsedColumn,
+        TimeRemainingColumn,
+    )
+
+    if args.strict:
+        os.environ["HTS_STRICT"] = "1"
+
+    # -- load content ------------------------------------------------------
+    try:
+        registry = load_packs(args.packs, search_paths=args.search_path)
+    except ContentError as exc:
+        console.print(f"[bold red]Content error:[/bold red] {exc}")
+        return EXIT_CONTENT_ERROR
+
+    from here_to_slay.ai.heuristic_agent import HeuristicAgent
+    from here_to_slay.ai.random_agent import RandomAgent
+    from here_to_slay.core.engine import Engine
+    from here_to_slay.core.invariants import find_violations
+    from here_to_slay.core.victory import satisfied_by
+
+    n_players = max(2, args.players)
+    players = [f"Player {i}" for i in range(1, n_players + 1)]
+
+    # Locate default weights if using heuristic and none specified
+    weights_path = args.ai_weights
+    if args.agent == "heuristic" and weights_path is None:
+        # Check standard location in pack roots
+        for root in registry.roots:
+            candidate = root / "ai_weights.yaml"
+            if candidate.exists():
+                weights_path = candidate
+                break
+
+    console.print()
+    console.print(
+        f"[bold bright_cyan]Simulation[/bold bright_cyan]  "
+        f"[dim]{args.games} games · {n_players} players · agent: {args.agent} "
+        f"· max_turns: {args.max_turns} · strict: {args.strict}[/dim]"
+    )
+    console.print()
+
+    # -- run simulation ----------------------------------------------------
+    wins_by_condition: dict[str, int] = {}
+    wins_by_seat: dict[str, int] = {}
+    timeouts = 0
+    errors = 0
+    invariant_violations = 0
+    total_turns = 0
+    first_error_msg: str | None = None
+
+    start_time = time.perf_counter()
+
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        disable=args.quiet,
+    )
+
+    with progress:
+        task_id = progress.add_task("Simulating games...", total=args.games)
+        for i in range(args.games):
+            seed = args.seed_start + i
+            try:
+                engine = Engine.new(
+                    registry,
+                    players,
+                    seed=seed,
+                    max_turns=args.max_turns,
+                )
+                if args.agent == "random":
+                    agent = RandomAgent(seed=seed)
+                else:
+                    agent = HeuristicAgent(seed=seed, weights_path=weights_path)
+
+                engine.run(agent)
+                total_turns += engine.state.turn_number
+
+                # Invariant checks
+                violations = find_violations(engine.state)
+                if violations or not engine.state.zone("limbo").is_empty:
+                    invariant_violations += 1
+                    if first_error_msg is None:
+                        first_error_msg = f"Seed {seed} invariant violations: {violations}"
+
+                # Victory tracking
+                if engine.state.winner is not None:
+                    winner_id = engine.state.winner
+                    wins_by_seat[winner_id] = wins_by_seat.get(winner_id, 0) + 1
+                    conds = satisfied_by(engine.state, winner_id)
+                    cond_name = conds[0].id if conds else "unknown"
+                    wins_by_condition[cond_name] = wins_by_condition.get(cond_name, 0) + 1
+                else:
+                    timeouts += 1
+
+            except Exception as exc:
+                errors += 1
+                if first_error_msg is None:
+                    first_error_msg = f"Seed {seed} raised: {type(exc).__name__}: {exc}"
+
+            progress.advance(task_id)
+
+    elapsed = time.perf_counter() - start_time
+    rate = args.games / elapsed if elapsed > 0 else 0.0
+    avg_turns = total_turns / args.games if args.games > 0 else 0.0
+
+    # -- print results table -----------------------------------------------
+    table = Table(title="Simulation Summary", show_header=True, header_style="bold cyan")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", style="green")
+
+    table.add_row("Total Games", str(args.games))
+    table.add_row("Completed", str(args.games - errors))
+    table.add_row("Timeouts (reached turn cap)", str(timeouts))
+    table.add_row(
+        "Errors",
+        f"[bold red]{errors}[/bold red]" if errors else "[green]0[/green]",
+    )
+    table.add_row(
+        "Invariant Violations",
+        f"[bold red]{invariant_violations}[/bold red]"
+        if invariant_violations
+        else "[green]0[/green]",
+    )
+    table.add_row("Avg Turns / Game", f"{avg_turns:.1f}")
+    table.add_row("Elapsed Time", f"{elapsed:.2f}s ({rate:.1f} games/s)")
+
+    for cond, count in sorted(wins_by_condition.items()):
+        pct = (count / args.games) * 100
+        table.add_row(f"Won by '{cond}'", f"{count} ({pct:.1f}%)")
+
+    console.print()
+    console.print(table)
+    console.print()
+
+    if first_error_msg:
+        console.print(f"[bold red]First issue:[/bold red] {first_error_msg}")
+        return 1
+
+    if errors or invariant_violations:
+        return 1
+
+    console.print(
+        "[bold green]Acceptance test PASSED: 0 errors, 0 invariant violations.[/bold green]\n"
+    )
+    return EXIT_OK
+
+
 def _make_console() -> Console:
     """A console that cannot die of an unencodable character.
 
@@ -432,10 +676,8 @@ def _make_console() -> Console:
     icon fallback in ``ui/cli/render.py`` keeps the *common* glyphs readable, so
     in practice only rare decoration is affected.
     """
-    try:
+    with contextlib.suppress(AttributeError, OSError, ValueError):
         sys.stdout.reconfigure(errors="replace")  # type: ignore[union-attr]
-    except (AttributeError, OSError, ValueError):  # pragma: no cover - exotic stdout
-        pass
     return Console()
 
 

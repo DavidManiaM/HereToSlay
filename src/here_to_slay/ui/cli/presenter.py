@@ -23,6 +23,7 @@ Design points
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 from typing import TYPE_CHECKING, Any
@@ -56,74 +57,64 @@ if TYPE_CHECKING:
 
 
 class CliPresenter(DecisionSource):
-    """A human player at a terminal.
-
-    Parameters
-    ----------
-    engine:
-        The running game. The presenter reads ``engine.view(seat)`` before
-        each prompt and ``engine.state`` for roll history.
-    registry:
-        Content registry, used by the renderer to resolve card names.
-    console:
-        The ``rich`` console to write to. Defaults to stdout.
-    silent:
-        If ``True``, never clear the screen, never block for Enter on seat
-        change. Used by the replay driver.
-    """
+    """A human player at a terminal."""
 
     def __init__(
         self,
         engine: Engine,
-        registry: ContentRegistry,
+        registry: ContentRegistry | None = None,
         *,
         console: Console | None = None,
+        clear_screen: bool = True,
         silent: bool = False,
     ) -> None:
         self.engine = engine
         self.registry = registry
-        self.console = console or Console()
+        self.console = console if console is not None else Console()
+        self.clear_screen = clear_screen
         self.silent = silent
         self._last_seat: str | None = None
-        #: how many of ``engine.recent_rolls`` this terminal has already drawn
+        # How many rolls from `engine.recent_rolls` we have already shown.
+        # Tracked here (not on the state) because "how much of the board the UI
+        # has drawn" is presenter state, not game state.
         self._rolls_shown = 0
 
     # -- DecisionSource implementation ------------------------------------
 
     def answer(self, request: Request) -> Decision:
         """Render the board, print the prompt, read a valid decision."""
-        self._maybe_seat_change(request)
+        self._maybe_privacy_gate(request)
         view = self.engine.view(request.requester)
         self._render(view)
         self._print_last_rolls()
         return self._prompt(request, view)
 
-    # -- seat change gate -------------------------------------------------
+    # -- seat-transition privacy gate -------------------------------------
 
-    def _maybe_seat_change(self, request: Request) -> None:
-        if self.silent:
+    def _maybe_privacy_gate(self, request: Request) -> None:
+        """Clear screen and pause for Enter when control passes to a new seat."""
+        if not self.clear_screen or self.silent:
             return
         if request.requester == self._last_seat:
             return
         # Different player — privacy gate
         if self._last_seat is not None:
             self._clear()
+            name = self._player_name(request.requester)
             self.console.print(
                 Rule(
-                    f"[bold bright_yellow]Passing to {self._player_name(request.requester)}[/bold bright_yellow]",
+                    f"[bold bright_yellow]Passing to {name}[/bold bright_yellow]",
                     style="yellow",
                 )
             )
             self.console.print(
                 Text(
-                    f"Press Enter when {self._player_name(request.requester)} is ready...",
+                    f"Press Enter when {name} is ready...",
                     style="dim",
                 )
             )
-            try:
+            with contextlib.suppress(EOFError, KeyboardInterrupt):
                 input()
-            except (EOFError, KeyboardInterrupt):
-                pass
         self._last_seat = request.requester
 
     def _player_name(self, seat: str) -> str:
@@ -365,12 +356,7 @@ class CliPresenter(DecisionSource):
                 self.console.print("  [red]Please enter a number.[/red]")
 
     def _read_raw(self) -> str | None:
-        """A line of input, or ``None`` once the stream is exhausted.
-
-        ``None`` and ``''`` mean different things — "there will never be more
-        input" versus "the player pressed Enter" — and collapsing them is what
-        made a closed stdin loop forever.
-        """
+        """A line of input, or None once the stream is exhausted."""
         try:
             return input()
         except (EOFError, KeyboardInterrupt):

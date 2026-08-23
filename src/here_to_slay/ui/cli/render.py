@@ -249,7 +249,11 @@ def _render_shared_decks(view: GameView) -> Text:
 def _render_all_players(view: GameView, registry: Any = None) -> list[Panel]:
     # You first, then opponents in seat order
     order = [view.seat, *[p.id for p in view.opponents()]]
-    return [_render_player(view, view.players[pid], registry) for pid in order if pid in view.players]
+    return [
+        _render_player(view, view.players[pid], registry)
+        for pid in order
+        if pid in view.players
+    ]
 
 
 def _render_player(view: GameView, player: PlayerView, registry: Any = None) -> Panel:
@@ -372,14 +376,15 @@ def render_roll(roll: Any) -> Text:
 def render_roll_result(roll: Any, band_label: str = "") -> Text:
     """One-line summary shown after the outcome band runs."""
     t = Text()
-    dice_str = "+".join(str(d) for d in roll.raw) or "–"
+    dice_str = "+".join(str(d) for d in roll.raw) or "-"
     t.append(f"  {_ROLL_ICON} {roll.dice}: ", style="dim")
     t.append(f"[{dice_str}]", style="bold")
     if roll.modifiers:
         for mod in roll.modifiers:
             sign = "+" if mod.amount >= 0 else ""
             source = mod.label or mod.source or "?"
-            t.append(f" {sign}{mod.amount}", style="bright_green" if mod.amount >= 0 else "bright_red")
+            style = "bright_green" if mod.amount >= 0 else "bright_red"
+            t.append(f" {sign}{mod.amount}", style=style)
             t.append(f"({source})", style="dim")
     t.append(f" = {roll.total}", style="bold bright_cyan")
     if band_label:

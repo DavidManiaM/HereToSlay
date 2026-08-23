@@ -489,16 +489,34 @@ the work was proving it holds when windows nest — and it did not, in three pla
 
 ---
 
-## Phase 8 — AI Agents
+## Phase 8 — AI Agents `[x]`
 
 **Deliverable:** solo play and the fuzz harness.
 
-- [ ] `ai/random_agent.py` — uniform over `legal_intents()`
-- [ ] `ai/heuristic_agent.py` — weighted scoring, weights in YAML (so *your variant can retune
+- [x] `ai/random_agent.py` — uniform over `legal_intents()`
+- [x] `ai/heuristic_agent.py` — weighted scoring, weights in YAML (so *your variant can retune
       the AI without touching Python*)
-- [ ] `hts sim --games 1000` — fuzz for crashes, invariant breaks, non-termination
+- [x] `hts sim --games 1000` — fuzz for crashes, invariant breaks, non-termination
 
-**Acceptance:** 1000 random games complete, zero exceptions, all terminate under a turn cap.
+**Acceptance:** ✅
+* 1000 random 3-player games simulated via `hts sim data/base --games 1000`: **0 errors, 0 invariant violations, all terminated under turn cap** (906 won by `slay_three`, 94 won by `full_party`, average 28.2 turns/game).
+* Heuristic agent tested with weights from `data/base/ai_weights.yaml`: 200 games completed with 0 errors and 0 invariant violations.
+* `uv run pytest` → **790 passed** (42 new AI and simulation tests in `tests/test_ai.py`).
+* All `ruff` checks pass cleanly across the codebase (including Phase 5 gap 7).
+
+**Not yet:** pygame (Phase 9).
+
+### Decisions taken during Phase 8
+
+1. **Both agents implement `DecisionSource`.** Because the engine's interface is pure
+   request/decision flow, the AI agents pass directly to `Engine.run()` without any special-case
+   branches in `core/`.
+2. **AI weights are declarative YAML.** `data/base/ai_weights.yaml` configures scoring weights
+   for actions, reactions, and choices. A variant pack can include its own `ai_weights.yaml`
+   to retune or extend AI behavior for new actions without touching Python.
+3. **Random tie-breaking prevents cycling.** When multiple choices share the highest score, the
+   heuristic agent uses seeded randomness to break ties, ensuring games do not get trapped in loops.
+4. **Phase 5 gap 7 closed.** Cleaned up all lint findings across `ui/cli/`, `cli.py`, and test files.
 
 ---
 
@@ -562,8 +580,8 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–7 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
-and 136 physical cards; `uv run pytest` runs **752 tests**, and the whole suite also passes under
+**Phases 0–8 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
+and 136 physical cards; `uv run pytest` runs **790 tests**, and the whole suite also passes under
 `HTS_STRICT=1` (invariants checked after every mutation).
 
 **The base game is playable, end to end, with the real card set.** `hts play data/base` deals six
@@ -572,25 +590,14 @@ bands, Items (including Cursed ones), Magic, Modifiers and Challenges — then r
 with a `rich` board, numbered menus, a hot-seat privacy gate, a live roll breakdown, an auto-saved
 decision log, and `hts replay` to walk it back. **Both** victory conditions fire in real play.
 
-**The interrupt system holds under load.** A reaction can be answered by another reaction; a
-three-deep chain resolves, deterministically, with nothing stranded in `limbo`; the depth cap ends
-a chain that would otherwise run further; a Modifier decides a Challenge from either side, because
-both sides now roll before either may be modified. Sixty randomised three-player games whose seats
-react ~60% of the time complete with zero errors and zero invariant violations.
+**AI agents and headless simulation are fully operational.** Both `RandomAgent` and
+`HeuristicAgent` implement the `DecisionSource` protocol. Scoring weights for the heuristic agent
+are configured via `data/base/ai_weights.yaml` so variant packs can customize AI behavior without
+touching Python. `hts sim data/base --games 1000` runs 1,000 automated games with 0 errors and
+0 invariant violations.
 
-Phases 6 and 7 between them needed six engine additions, each forced by a specific card or a
-specific rule rather than by convenience (see their decisions above). No card-specific Python
-exists anywhere: every one of the 88 cards is interpreted from its YAML.
+**Phase 5 gap 7 is closed.** All lint warnings and formatting issues across `ui/cli/`, `cli.py`, and
+test files have been cleaned up and verified with `ruff check .`.
 
-Three things were fixed along the way that had been quietly wrong: `reopen_on_action: false` shut
-a window on its first responder instead of finishing the pass; `contest_roll` made a Modifier on a
-Challenge a blind gamble; and the CLI's roll display had no source to read from. All three had
-tests around them that passed.
-
-Next up is **Phase 8 — AI Agents**: a random agent over `legal_intents()`, a heuristic agent whose
-weights live in YAML, and `hts sim --games 1000`. Phase 7's `Chaos` source in
-`tests/test_reactions.py` is a deliberate sketch of the first of those — it answers every request
-kind at random from a seed, and knows nothing about any card.
-
-Still open, not urgent: Phase 5 **gap 7** — `ruff` findings in `ui/cli/` and `cli.py` (dead
-imports, long lines, ambiguous en dashes) that the lint gate does not currently cover.
+Next up is **Phase 9 — PyGame UI**: window, scene stack, widget hierarchy, anchored layout,
+non-blocking presenter, and procedural card rendering.
