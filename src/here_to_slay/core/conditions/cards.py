@@ -71,6 +71,17 @@ def _card_tapped(ctx: EffectContext, params: Params) -> bool:
     return bool(ctx.state.card(subject(ctx, params)).tapped)
 
 
+@condition("card_entered_play_this_turn")
+def _card_entered_play_this_turn(ctx: EffectContext, params: Params) -> bool:
+    """"Did this card arrive on the board this turn?"
+
+    Stamped by the ``hero.entered_party`` mutator, so it is true for a Hero you
+    played *and* for one that arrived by any other route this turn (a steal).
+    """
+    instance = ctx.state.card(subject(ctx, params))
+    return instance.state.get("entered_turn") == ctx.state.turn_number
+
+
 @condition("card_has_ability")
 def _card_has_ability(ctx: EffectContext, params: Params) -> bool:
     """Does this card declare an activated ability?

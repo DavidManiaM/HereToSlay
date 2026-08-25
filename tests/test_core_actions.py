@@ -10,13 +10,15 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import Place, RunEffect
+from conftest import Place, RunEffect, empty_hands
+from here_to_slay.content import ContentRegistry
 from here_to_slay.core import (
     EffectError,
     EngineError,
     GameState,
     Intent,
     PlayerId,
+    new_game,
     zone_id,
 )
 from here_to_slay.core.actions import (
@@ -29,12 +31,20 @@ from here_to_slay.core.actions import (
 from here_to_slay.core.context import EffectContext
 from here_to_slay.core.interpreter import Interpreter, ScriptedSource, drive
 
+P1 = PlayerId("p1")
+
 
 def in_main(state: GameState, action_points: int = 3) -> GameState:
     """Put a dealt game where the menu is meaningful: the main phase, with AP."""
     state.phase = "main"
     state.player(state.active_player).action_points = action_points
     return state
+
+
+def declare(state: GameState, intent: Intent, player: PlayerId = P1) -> None:
+    """Drive one action to completion, answering nothing."""
+    ctx = EffectContext.root(state, player=player)
+    drive(Interpreter(state), perform_action(ctx, intent, player=player), ScriptedSource([]))
 
 
 class TestTheMenu:
@@ -211,6 +221,126 @@ class TestCosts:
                 perform_action(ctx, Intent(action="shipped_off"), player=PlayerId("p1")),
                 ScriptedSource([]),
             )
+
+
+class TestPromptCosts:
+    """What each menu entry actually charges.
+
+    The shipping numbers are draw 1, Hero 1, ability 1, Monster 2, burn-and-draw
+    3, out of 3 points a turn. The ability is the interesting one: the action is
+    free (``cost: {}``) and the ability's own ``cost:`` is the single charge, so
+    a Hero cannot be billed twice for one activation. ``turn.ability_free_when``
+    then waives even that for a Hero that arrived this turn.
+
+    These use the *base* pack deliberately: the play fixture's Heroes declare no
+    ability cost, so only the shipping cards can show a double charge.
+    """
+
+    @staticmethod
+    def _table(base_content: ContentRegistry, action_points: int = 3) -> GameState:
+        """A dealt base game with empty hands, so no window can interrupt."""
+        state = new_game(base_content, ["Ann", "Bob"], seed="costs")
+        empty_hands(state)
+        return in_main(state, action_points)
+
+    def test_an_ability_costs_one_point_not_two(
+        self, base_content: ContentRegistry, place: Place
+    ) -> None:
+        """The regression: ``use_hero_ability`` used to charge 1 *and* the
+        ability's own ``cost: {action_points: 1}`` on top of it."""
+        state = self._table(base_content)
+        hero = place(state, "base.hero.peanut", "party", P1)
+        # Placed, not played, so it belongs to an earlier turn and pays.
+        assert state.card(hero).state.get("entered_turn") is None
+
+        declare(state, Intent(action="use_hero_ability", card=hero))
+
+        assert state.player(P1).action_points == 2
+
+    def test_a_hero_played_this_turn_activates_for_free(
+        self, base_content: ContentRegistry, place: Place
+    ) -> None:
+        state = self._table(base_content)
+        hero = place(state, "base.hero.peanut", "hand", P1)
+
+        declare(state, Intent(action="play_hero", card=hero))
+        assert state.player(P1).action_points == 2
+        assert state.card(hero).state["entered_turn"] == state.turn_number
+
+        declare(state, Intent(action="use_hero_ability", card=hero))
+        assert state.player(P1).action_points == 2
+
+    def test_the_free_activation_still_taps_the_hero(
+        self, base_content: ContentRegistry, place: Place
+    ) -> None:
+        """Free is not unlimited: ``once_per_turn`` still spends the Hero."""
+        state = self._table(base_content)
+        hero = place(state, "base.hero.peanut", "hand", P1)
+        declare(state, Intent(action="play_hero", card=hero))
+        declare(state, Intent(action="use_hero_ability", card=hero))
+
+        assert state.card(hero).tapped
+        assert intents_for(state, P1, "use_hero_ability") == ()
+
+    def test_the_menu_never_offers_an_ability_that_cannot_be_paid_for(
+        self, base_content: ContentRegistry, place: Place
+    ) -> None:
+        """The action is free, so ``legal_intents`` cannot screen it — the
+        target's ``where`` filter does, by reading ``$action_points``."""
+        state = self._table(base_content, action_points=0)
+        old = place(state, "base.hero.peanut", "party", P1)
+        assert intents_for(state, P1, "use_hero_ability") == ()
+
+        # …unless it arrived this turn, in which case it needs no points.
+        state.card(old).state["entered_turn"] = state.turn_number
+        assert [i.card for i in intents_for(state, P1, "use_hero_ability")] == [old]
+
+    def test_a_hero_carried_over_to_the_next_turn_pays_again(
+        self, base_content: ContentRegistry, place: Place
+    ) -> None:
+        """The waiver is stamped with a turn number, not a boolean."""
+        state = self._table(base_content)
+        hero = place(state, "base.hero.peanut", "hand", P1)
+        declare(state, Intent(action="play_hero", card=hero))
+
+        state.turn_number += 1
+        state.card(hero).tapped = False
+        state.player(P1).action_points = 3
+        declare(state, Intent(action="use_hero_ability", card=hero))
+
+        assert state.player(P1).action_points == 2
+
+    def test_attacking_a_monster_costs_two(self, quiet_state: GameState, place: Place) -> None:
+        in_main(quiet_state)
+        place(quiet_state, "play.hero.striker", "party", "p1")  # meets the gate
+        wall = place(quiet_state, "play.monster.wall", "monster_row")
+
+        declare(quiet_state, Intent(action="attack_monster", target=wall))
+
+        assert quiet_state.player(P1).action_points == 1
+
+    def test_discarding_your_hand_and_drawing_five_costs_three(
+        self, quiet_state: GameState, place: Place
+    ) -> None:
+        in_main(quiet_state)
+        place(quiet_state, "play.hero.lump", "hand", "p1")  # requires a hand
+
+        declare(quiet_state, Intent(action="discard_and_draw"))
+
+        assert quiet_state.player(P1).action_points == 0
+        assert len(quiet_state.zone(zone_id("hand", P1))) == 5
+
+    def test_drawing_and_playing_a_hero_cost_one_each(
+        self, quiet_state: GameState, place: Place
+    ) -> None:
+        in_main(quiet_state)
+        hero = place(quiet_state, "play.hero.lump", "hand", "p1")
+
+        declare(quiet_state, Intent(action="draw"))
+        assert quiet_state.player(P1).action_points == 2
+
+        declare(quiet_state, Intent(action="play_hero", card=hero))
+        assert quiet_state.player(P1).action_points == 1
 
 
 class TestResolution:

@@ -27,6 +27,7 @@ from typing import Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.art import library
 from here_to_slay.ui.pygame.icons import card_icon_name, draw_icon
@@ -47,6 +48,9 @@ LOD_TINY = 58
 LOD_SMALL = 96
 LOD_FULL = 118
 
+#: Draw faces at this multiple then smoothscale down (anti-pixelation).
+_SUPERSAMPLE = 2
+
 
 # ---------------------------------------------------------------------------
 # Facts extracted from a definition
@@ -64,6 +68,7 @@ class CardFacts:
 
     kind: str = "hero"
     card_class: str | None = None
+    tags: tuple[str, ...] = ()
     threshold: int | None = None
     threshold_label: str = ""
     requirement: str = ""
@@ -78,10 +83,7 @@ class CardFacts:
 
     @property
     def type_line(self) -> str:
-        if self.card_class:
-            label = "Leader" if self.kind == "party_leader" else self.kind.replace("_", " ")
-            return f"{self.card_class.title()} {label.title()}"
-        return self.kind.replace("_", " ").title()
+        return L.type_line(self.kind, self.card_class, tags=self.tags)
 
 
 def _band_threshold(roll: Any, tags: tuple[str, ...]) -> tuple[int | None, str]:
@@ -123,9 +125,13 @@ def card_facts(card_def: Any) -> CardFacts:
     slot = ""
     equip = getattr(card_def, "equip", None)
     if equip is not None:
-        slot = "Equip"
+        tags = tuple(str(t) for t in (getattr(card_def, "tags", ()) or ()))
+        slot = L.HACK if "cursed" in {t.lower() for t in tags} else L.CHEAT
     elif kind == "item":
-        slot = "Item"
+        tags = tuple(str(t) for t in (getattr(card_def, "tags", ()) or ()))
+        slot = L.HACK if "cursed" in {t.lower() for t in tags} else L.CHEAT
+    else:
+        tags = tuple(str(t) for t in (getattr(card_def, "tags", ()) or ()))
 
     reaction = getattr(card_def, "reaction", None)
     window = str(getattr(reaction, "window", "") or "") if reaction is not None else ""
@@ -133,6 +139,7 @@ def card_facts(card_def: Any) -> CardFacts:
     return CardFacts(
         kind=kind,
         card_class=card_class,
+        tags=tags,
         threshold=threshold,
         threshold_label=label,
         requirement=str(getattr(card_def, "requirement_text", "") or ""),
@@ -193,11 +200,15 @@ def render_card(
 
     if face_down or card_def is None:
         surf = render_card_back(width, height)
+    elif width >= LOD_TINY and _SUPERSAMPLE > 1:
+        hi_w, hi_h = width * _SUPERSAMPLE, height * _SUPERSAMPLE
+        hi = _face(card_def, hi_w, hi_h, detail=detail)
+        surf = pygame.transform.smoothscale(hi, (width, height))
     else:
         surf = _face(card_def, width, height, detail=detail)
 
     if dimmed:
-        surf = _dim(surf, 118)
+        surf = _dim(surf)
     if highlighted or selected:
         surf = _with_target_ring(surf, selected=selected)
     if tapped:
@@ -217,9 +228,9 @@ def render_card_back(width: int = CARD_W, height: int = CARD_H, *, tone: int = 0
 
     radius = _radius(width)
     surf = T.surface((width, height))
-    base_a = (C.CARD_BACK_A, (96, 46, 58), (34, 62, 96))[tone % 3]
-    base_b = (C.CARD_BACK_B, (44, 18, 30), (16, 30, 56))[tone % 3]
-    mark = (C.CARD_BACK_MARK, (238, 152, 150), (150, 196, 240))[tone % 3]
+    base_a = (C.CARD_BACK_A, (72, 120, 168), (48, 88, 140))[tone % 3]
+    base_b = (C.CARD_BACK_B, (28, 56, 92), (18, 36, 64))[tone % 3]
+    mark = (C.CARD_BACK_MARK, (220, 236, 250), (186, 216, 240))[tone % 3]
 
     T.round_rect(surf, pygame.Rect(0, 0, width, height), base_b, radius=radius)
     body = pygame.Rect(2, 2, width - 4, height - 4)
@@ -286,60 +297,72 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
     radius = _radius(w)
     surf = T.surface((w, h))
 
-    # -- body -------------------------------------------------------------
-    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.shade(accent, 0.42), radius=radius)
-    paper = pygame.Rect(2, 2, w - 4, h - 4)
+    # Clean white body, thin class-coloured rim (readable, not cluttered).
+    T.round_rect(surf, pygame.Rect(0, 0, w, h), accent, radius=radius)
+    paper = pygame.Rect(3, 3, w - 6, h - 6)
     body = T.surface(paper.size)
-    body.blit(T.vgradient(paper.width, paper.height, C.CARD_PAPER,
-                          T.mix(C.CARD_PAPER, accent, 0.20)), (0, 0))
+    body.fill((*C.CARD_PAPER, 255))
+    body.blit(
+        T.vgradient(paper.width, paper.height, C.CARD_PAPER,
+                    T.mix(C.CARD_PAPER, accent, 0.08)),
+        (0, 0),
+    )
     _apply_round_mask(body, max(2, radius - 2))
     surf.blit(body, paper.topleft)
+    # Outer card edge + inner paper bevel — reads as solid paper on dark felt.
+    T.round_rect(surf, pygame.Rect(0, 0, w, h), C.CARD_EDGE, radius=radius, width=1)
+    T.round_rect(surf, pygame.Rect(2, 2, w - 4, h - 4), T.alpha(C.CARD_PAPER, 180),
+                 radius=max(2, radius - 2), width=1)
+    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.alpha(accent, 220), radius=radius, width=2)
 
     if w < LOD_TINY:
         _mini_face(surf, card_def, facts, w, h, radius)
         return surf
 
+    # Static foil strip under the rim (baked into the face — no per-frame wash).
+    if w >= LOD_SMALL:
+        foil = pygame.Rect(6, max(4, h // 14), w - 12, max(5, h // 18))
+        strip = T.surface(foil.size)
+        for x in range(foil.width):
+            t = x / max(1, foil.width - 1)
+            col = T.lerp_colour(T.shade(accent, 0.5), (255, 255, 255),
+                                0.35 + 0.4 * abs(math.sin(t * math.pi)))
+            pygame.draw.line(strip, (*col[:3], 140), (x, 0), (x, foil.height))
+        surf.blit(strip, foil.topleft)
+
     # -- art window -------------------------------------------------------
     pad = max(3, w // 24)
-    # The detail view gives the art a little back to the rules text: it is
-    # opened *to read the card*, and a clipped ability is the one thing it
-    # must not do.
     art_h = int(h * (0.40 if detail else (0.44 if w >= LOD_FULL else 0.58)))
-    art_rect = pygame.Rect(pad, pad, w - pad * 2, art_h)
+    art_top = pad + (max(5, h // 18) if w >= LOD_SMALL else 0)
+    art_rect = pygame.Rect(pad, art_top, w - pad * 2, art_h)
     art = library().art(card_def, art_rect.size)
     framed = art.copy()
     _apply_round_mask(framed, max(2, radius - 3))
     surf.blit(framed, art_rect.topleft)
-    T.round_rect(surf, art_rect, T.alpha(T.shade(accent, 0.5), 190),
+    T.round_rect(surf, art_rect, T.alpha(accent, 120),
                  radius=max(2, radius - 3), width=1)
-    # A gradient hem under the art so the name plate does not float.
-    hem_h = max(4, art_h // 5)
-    surf.blit(
-        T.vgradient(art_rect.width, hem_h, (0, 0, 0, 0), T.alpha(T.shade(accent, 0.3), 170)),
-        (art_rect.left, art_rect.bottom - hem_h),
-    )
 
     # -- class pip --------------------------------------------------------
     if w >= LOD_SMALL:
         pip_r = max(8, w // 11)
         pip_c = (art_rect.left + pip_r + 2, art_rect.top + pip_r + 2)
-        pygame.draw.circle(surf, T.shade(accent, 0.3), pip_c, pip_r + 2)
+        pygame.draw.circle(surf, T.shade(accent, 0.35), pip_c, pip_r + 2)
         pygame.draw.circle(surf, accent, pip_c, pip_r)
-        pygame.draw.circle(surf, T.alpha(C.INK_BRIGHT, 90), pip_c, pip_r, 1)
+        pygame.draw.circle(surf, T.alpha(C.INK_BRIGHT, 120), pip_c, pip_r, 1)
         draw_icon(
             surf, card_icon_name(facts.kind, facts.card_class), pip_c,
             int(pip_r * 1.25), T.readable_ink(accent),
         )
 
     # -- name plate -------------------------------------------------------
-    name = str(getattr(card_def, "name", "?"))
+    name = L.card_name(card_def)
     plate_h = max(14, int(h * 0.11))
     plate = pygame.Rect(pad, art_rect.bottom + max(1, pad // 2), w - pad * 2, plate_h)
-    T.round_rect(surf, plate, T.alpha(T.shade(accent, 0.55), 235), radius=max(2, radius - 4))
+    T.round_rect(surf, plate, T.alpha(accent, 230), radius=max(2, radius - 4))
     name_font = T.fit_line(name.upper(), max(9, int(plate_h * 0.78)), 7, plate.width - 10,
                            family=T.FONT_DISPLAY, bold=True)
     T.text(surf, name.upper(), plate.center, name_font, C.INK_BRIGHT, anchor="center",
-           max_width=plate.width - 6, shadow=(0, 0, 0, 160))
+           max_width=plate.width - 6, shadow=(0, 0, 0, 140))
 
     if w < LOD_FULL:
         _footer_strip(surf, facts, w, h, pad, compact=True)
@@ -353,13 +376,11 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
     )
     blocks: list[tuple[str, tuple[int, int, int], bool]] = []
     if facts.requirement:
-        blocks.append((f"Requires: {facts.requirement}", T.shade(accent, 0.75), True))
-    text_value = str(getattr(card_def, "text", "") or "")
+        blocks.append((f"Necesită: {facts.requirement}", T.shade(accent, 0.7), True))
+    text_value = L.card_text(card_def) or L.retheme_prompt(str(getattr(card_def, "text", "") or ""))
     if text_value:
-        blocks.append((text_value, C.CARD_INK, False))
+        blocks.append((L.retheme_prompt(text_value), C.CARD_INK, False))
 
-    # Scaled with the card, but capped: past ~17px the words stop fitting and
-    # start being elided, which is the opposite of what a bigger card is for.
     size = max(8, min(17, int(w * (0.085 if detail else 0.079))))
     y = text_rect.top
     for value, colour, is_bold in blocks:
@@ -446,36 +467,49 @@ def _apply_round_mask(surf: pygame.Surface, radius: int) -> None:
     surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
 
-def _dim(surf: pygame.Surface, strength: int) -> pygame.Surface:
+def _dim(surf: pygame.Surface, *, mix: float = 0.55, shade: float = 0.88) -> pygame.Surface:
+    """Desaturate and darken while keeping the face fully opaque.
+
+    Ghostly whole-surface alpha made unplayable cards look transparent; a grey
+    multiply keeps them solid paper that simply is not in play. Uses blend
+    modes only (no numpy / surfarray).
+    """
     out = surf.copy()
-    veil = T.surface(out.get_size())
-    veil.fill((6, 6, 16, strength))
-    veil.blit(out, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
-    out.blit(veil, (0, 0))
+    w, h = out.get_size()
+    # Pull toward grey, then darken — both stay fully opaque.
+    grey = int(128 + 40 * (1.0 - mix))
+    level = max(40, min(255, int(255 * shade)))
+    desat = T.surface((w, h))
+    desat.fill((grey, grey, grey, 255))
+    out.blit(desat, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    dark = T.surface((w, h))
+    dark.fill((level, level, level, 255))
+    out.blit(dark, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    # Darker rim so dimmed cards still read as solid objects.
+    T.round_rect(
+        out, pygame.Rect(0, 0, w, h), T.alpha(C.INK_DARK, 90),
+        radius=_radius(w), width=2,
+    )
     return out
 
 
 def _with_target_ring(surf: pygame.Surface, *, selected: bool) -> pygame.Surface:
-    """Paint a glowing ring *inside* the card bounds.
+    """Paint a crisp selection ring *inside* the card bounds.
 
-    Deliberately size-preserving: every caller lays cards out on a grid, and a
-    surface that grew when highlighted would shift its neighbours. The glow
-    that bleeds *outside* a card is drawn by the sprite (which knows where the
-    card sits on screen) rather than baked into the face.
+    Size-preserving so layout grids do not shift. No additive halo — the face
+    stays opaque paper with a solid cyan/green rim.
     """
     w, h = surf.get_size()
     out = surf.copy()
-    colour = C.GOOD if selected else C.GOLD
+    colour = C.GOOD if selected else C.CYAN
     radius = _radius(w)
-    band = max(2, w // 26)
-
-    for i in range(band, 0, -1):
-        a = int(120 * (1 - i / (band + 1)) ** 1.4) + (70 if selected else 45)
-        T.round_rect(
-            out, pygame.Rect(i - 1, i - 1, w - (i - 1) * 2, h - (i - 1) * 2),
-            T.alpha(colour, min(235, a)), radius=max(2, radius - i + 1), width=2,
-        )
-    T.round_rect(out, pygame.Rect(0, 0, w, h), colour, radius=radius, width=2)
+    width = 3 if selected else 2
+    # Outer crisp stroke, then a slightly inset underline stroke for weight.
+    T.round_rect(out, pygame.Rect(0, 0, w, h), colour, radius=radius, width=width)
+    T.round_rect(
+        out, pygame.Rect(2, 2, w - 4, h - 4),
+        T.alpha(colour, 200), radius=max(2, radius - 2), width=1,
+    )
     if selected and w >= LOD_TINY:
         r = max(7, w // 11)
         centre = (w - r - 4, r + 4)
@@ -488,7 +522,7 @@ def _with_target_ring(surf: pygame.Surface, *, selected: bool) -> pygame.Surface
 def _tapped(surf: pygame.Surface) -> pygame.Surface:
     """Rotate 90 degrees and dim — the tabletop convention for "used"."""
     rotated = pygame.transform.rotate(surf, -90)
-    return _dim(rotated, 76)
+    return _dim(rotated, mix=0.35, shade=0.88)
 
 
 __all__ = [

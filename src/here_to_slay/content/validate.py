@@ -139,6 +139,11 @@ class _Validator:
         for index, step in enumerate(self.rules.turn.after_action):
             self.effect(step, f"{path}.turn.after_action[{index}]", scope)
 
+        if self.rules.turn.ability_free_when is not None:
+            self.condition(
+                self.rules.turn.ability_free_when, f"{path}.turn.ability_free_when", scope
+            )
+
         for name, window in sorted(self.rules.windows.items()):
             self.check_window(name, window, f"{path}.windows.{name}", scope)
 

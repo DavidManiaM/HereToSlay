@@ -184,16 +184,24 @@ def build_parser() -> argparse.ArgumentParser:
     gui.add_argument(
         "--width",
         type=int,
-        default=1600,
+        default=1920,
         metavar="W",
-        help="window width (default: 1600)",
+        help="window width (default: 1920, clamped to the desktop)",
     )
     gui.add_argument(
         "--height",
         type=int,
-        default=900,
+        default=1080,
         metavar="H",
-        help="window height (default: 900)",
+        help="window height (default: 1080, clamped to the desktop)",
+    )
+    gui.add_argument(
+        "--ui-scale",
+        type=float,
+        default=0.85,
+        metavar="F",
+        help="chrome scale — below 1.0 shrinks the HUD so the board grows "
+             "(default: 0.85)",
     )
     gui.add_argument(
         "--fullscreen", action="store_true", help="start fullscreen (F11 toggles)"
@@ -534,6 +542,7 @@ def cmd_gui(args: argparse.Namespace, console: Console) -> int:
         ai_seats=ai_seats,
         width=args.width,
         height=args.height,
+        ui_scale=args.ui_scale,
         fullscreen=args.fullscreen,
         reveal_all=args.reveal_all,
         sound=not args.no_sound,

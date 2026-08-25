@@ -457,12 +457,15 @@ setup:
 turn:
   action_points_per_turn: 3
   hand_limit: null              # null = no limit
+  ability_free_when:            # optional — waives ability.cost on the turn a Hero entered party
+    op: card_entered_play_this_turn
   after_action:                 # runs after every resolved action
     - {op: refill_monster_row}
 
 actions:                        # THE action menu; add/remove/re-cost freely
   - id: draw
     label: "Draw a card"
+    hotkey: d                     # optional — pygame action bar falls back to defaults
     cost: {action_points: 1}
     effect: {op: draw, target: $self, count: 1}
   - id: play_hero
@@ -475,7 +478,7 @@ actions:                        # THE action menu; add/remove/re-cost freely
         prompt: "Play which Hero?"
     effect: {op: play_card_from_hand, card: $intent.card, kind: hero, challengeable: true}
   - id: use_hero_ability
-    cost: {action_points: 1}
+    cost: {}                      # ability's own cost: pays; turn.ability_free_when may waive
   - id: attack_monster
     cost: {action_points: 2}
   - id: equip_item

@@ -25,7 +25,6 @@ from typing import TYPE_CHECKING, Any
 import pygame
 
 from here_to_slay.ui.pygame import theme as T
-from here_to_slay.ui.pygame.atmosphere import blit_card_sheen
 from here_to_slay.ui.pygame.card_renderer import (
     CARD_H,
     CARD_W,
@@ -62,10 +61,10 @@ class Button:
         on_click: Callable[[], None] | None = None,
         *,
         enabled: bool = True,
-        bg_colour: tuple[int, int, int] = (58, 54, 92),
-        hover_colour: tuple[int, int, int] = (82, 76, 130),
-        text_colour: tuple[int, int, int] = C.INK,
-        border_colour: tuple[int, int, int] = (118, 110, 178),
+        bg_colour: tuple[int, int, int] = (32, 44, 56),
+        hover_colour: tuple[int, int, int] = (48, 68, 86),
+        text_colour: tuple[int, int, int] = C.INK_BRIGHT,
+        border_colour: tuple[int, int, int] = (90, 120, 150),
         icon: str | None = None,
         accent: tuple[int, int, int] | None = None,
         shortcut: str = "",
@@ -210,11 +209,11 @@ class IconButton(Button):
 
         if lit > 0.04:
             T.blit_glow(screen, centre, int(radius * 2.1), T.alpha(accent, int(70 * lit)))
-        pygame.draw.circle(screen, T.mix((44, 40, 74), T.shade(accent, 0.5), lit * 0.75),
+        pygame.draw.circle(screen, T.mix((28, 38, 48), T.shade(accent, 0.55), lit * 0.75),
                            centre, radius)
         pygame.draw.circle(screen, T.alpha(T.mix(accent, C.INK_BRIGHT, lit * 0.4),
                                            int(110 + 130 * lit)), centre, radius, 1)
-        ink = T.mix(C.INK_DIM, C.INK_BRIGHT, 0.35 + 0.65 * lit) if self.enabled else C.INK_FAINT
+        ink = T.mix(C.INK_DIM, C.INK_BRIGHT, 0.45 + 0.55 * lit) if self.enabled else C.INK_FAINT
         draw_icon(screen, self.icon or "info", centre, int(radius * 1.25), ink)
 
         if self.badge_text:
@@ -265,9 +264,9 @@ class Chip:
             T.round_rect(screen, self.rect, self.colour, radius=radius)
             ink = T.readable_ink(self.colour)
         else:
-            T.round_rect(screen, self.rect, T.alpha(self.colour, 40), radius=radius)
-            T.round_rect(screen, self.rect, T.alpha(self.colour, 170), radius=radius, width=1)
-            ink = T.mix(self.colour, C.INK_BRIGHT, 0.45)
+            T.round_rect(screen, self.rect, T.alpha((10, 16, 22), 220), radius=radius)
+            T.round_rect(screen, self.rect, T.alpha(self.colour, 200), radius=radius, width=1)
+            ink = T.mix(self.colour, C.INK_BRIGHT, 0.55)
         x = self.rect.left + 7
         if self.icon:
             size = self.icon_size(self.rect.height)
@@ -309,6 +308,7 @@ class CardSprite:
         rotation: float = 0.0,
         lift_on_hover: int = 14,
         owner_colour: tuple[int, int, int] | None = None,
+        depth: float = 0.7,
     ) -> None:
         self.card_id = card_id
         self.card_def = card_def
@@ -324,6 +324,7 @@ class CardSprite:
         self.rotation = rotation
         self.lift_on_hover = lift_on_hover
         self.owner_colour = owner_colour
+        self.depth = max(0.0, min(1.0, depth))
         self.hovered = False
         self.hover = 0.0
         self.enter = 0.0  # 0..1 entrance animation
@@ -362,38 +363,47 @@ class CardSprite:
         if w < 4 or h < 4:
             return
 
+        # Far rows sit slightly squashed to imply table plane.
+        squash = 1.0 - (1.0 - self.depth) * 0.04
+        draw_h = max(4, int(h * squash))
+        y_off = h - draw_h
+
         entering = self.enter < 0.999
         if entering:
             k = T.ease_out_back(self.enter)
-            grow = int((1.0 - k) * -h * 0.12)
+            grow = int((1.0 - k) * -draw_h * 0.12)
             rect = rect.inflate(grow, grow)
+            draw_h = max(4, int(rect.height * squash))
+            y_off = rect.height - draw_h
 
         surf = render_card(
-            self.card_def, rect.width, rect.height,
+            self.card_def, rect.width, draw_h,
             tapped=self.tapped, highlighted=self.highlighted,
             face_down=self.face_down, dimmed=self.dimmed, selected=self.selected,
         )
+        # Never ADD-blit white onto card faces: paper is already near-white, so
+        # even a one-frame brighten saturates to a blank rectangle.
 
-        # Outer glow lives here, not in the cached face, so a highlighted card
-        # can bleed light onto the table without changing its own size.
-        if self.highlighted or self.selected or self.hover > 0.1:
-            glow = C.GOOD if self.selected else (C.GOLD if self.highlighted else C.INK_BRIGHT)
-            strength = 120 if (self.highlighted or self.selected) else int(70 * self.hover)
-            T.blit_glow(screen, rect.center, int(max(w, h) * 0.72), T.alpha(glow, strength))
+        # Depth-driven contact shadow.
+        hover_k = T.ease_out_cubic(self.hover)
+        shadow_off = int(2 + (1.0 - self.depth) * 6 + hover_k * 3)
+        shadow_spread = int(6 + (1.0 - self.depth) * 8 + hover_k * 4)
+        T.drop_shadow(
+            screen, pygame.Rect(rect.left, rect.top + y_off, rect.width, draw_h),
+            radius=9,
+            spread=shadow_spread,
+            offset=(0, shadow_off),
+            strength=int(70 + 50 * self.depth + 30 * hover_k),
+        )
 
-        if self.hover > 0.05 or self.rotation:
-            T.drop_shadow(screen, rect, radius=9, spread=int(8 + 12 * self.hover),
-                          offset=(0, int(4 + 8 * self.hover)), strength=110)
-
+        blit_rect = pygame.Rect(rect.left, rect.top + y_off, rect.width, draw_h)
         if self.rotation:
             surf = pygame.transform.rotate(surf, self.rotation)
-            rect = surf.get_rect(center=rect.center)
+            blit_rect = surf.get_rect(center=blit_rect.center)
         if entering:
             surf = surf.copy()
             surf.set_alpha(int(255 * min(1.0, self.enter * 1.6)))
-        screen.blit(surf, rect.topleft)
-        if self.hover > 0.08 and not self.face_down:
-            blit_card_sheen(screen, rect, self.hover)
+        screen.blit(surf, blit_rect.topleft)
 
         if self.owner_colour is not None and rect.width >= LOD_TINY:
             strip = pygame.Rect(rect.left + 4, rect.bottom - 4, rect.width - 8, 3)
@@ -556,7 +566,7 @@ class ZoneWidget:
 
     def draw(self, screen: pygame.Surface) -> None:
         if self.panel:
-            T.glass(screen, self.rect, radius=M.RADIUS_L, fill=C.GLASS_SOFT)
+            pass  # no frosted panel — cards sit on the table
         if self.title:
             T.text(screen, self.title.upper(), (self.rect.left + 12, self.rect.top + 6),
                    T.ui(10, bold=True), T.alpha(C.INK_DIM, 235), shadow=None)
@@ -752,8 +762,8 @@ class Toast:
 
         layer = T.surface(rect.size)
         local = pygame.Rect(0, 0, rect.width, rect.height)
-        T.round_rect(layer, local, (18, 16, 34, 238), radius=M.RADIUS)
-        T.round_rect(layer, local, T.alpha(self.colour, 170), radius=M.RADIUS, width=1)
+        T.round_rect(layer, local, C.GLASS_DEEP, radius=M.RADIUS)
+        T.round_rect(layer, local, T.alpha(self.colour, 220), radius=M.RADIUS, width=1)
         T.round_rect(layer, pygame.Rect(0, 0, 4, rect.height), self.colour, radius=2)
 
         x = 16
@@ -761,7 +771,7 @@ class Toast:
             draw_icon(layer, self.icon, (x + 10, local.centery), 20, self.colour)
             x += 30
         T.text(layer, self.message, (x, local.centery), T.ui(14, bold=True), C.INK_BRIGHT,
-               anchor="midleft", max_width=local.width - x - 12)
+               anchor="midleft", max_width=local.width - x - 12, shadow=None)
         layer.set_alpha(int(255 * fade))
         screen.blit(layer, rect.topleft)
 
@@ -793,9 +803,9 @@ class Tooltip:
         if y + h > sh - 8:
             y = self.pos[1] - h - 12
         rect = pygame.Rect(x, max(4, y), w, h)
-        T.drop_shadow(screen, rect, radius=8, spread=10, offset=(0, 3), strength=130)
-        T.round_rect(screen, rect, (14, 12, 26, 246), radius=8)
-        T.round_rect(screen, rect, T.alpha(C.GOLD, 120), radius=8, width=1)
+        T.drop_shadow(screen, rect, radius=8, spread=10, offset=(0, 3), strength=90)
+        T.round_rect(screen, rect, C.GLASS, radius=8)
+        T.round_rect(screen, rect, T.alpha(C.GOLD, 140), radius=8, width=1)
         for i, line in enumerate(lines):
             T.text(screen, line, (rect.left + 10, rect.top + 6 + i * (fnt.get_linesize() + 1)),
                    fnt, C.INK, shadow=None)
@@ -957,7 +967,7 @@ class TextField:
         self._caret = (self._caret + dt) % 1.0
 
     def draw(self, screen: pygame.Surface) -> None:
-        T.inset(screen, self.rect, radius=8, fill=(8, 7, 18, 190))
+        T.inset(screen, self.rect, radius=8, fill=(236, 244, 252, 220))
         rim = C.GOLD if self.focused else T.alpha(C.GLASS_RIM, 110)
         T.round_rect(screen, self.rect, rim, radius=8, width=1)
         fnt = T.ui(13)

@@ -208,7 +208,14 @@ def _use_ability(ctx: EffectContext, params: Params) -> Flow:
     if ability.once_per_turn and instance.tapped:
         raise EffectError(f"'{definition.name}' has already been used this turn")
 
-    paid = yield from pay_costs(ctx, ability.cost, user)
+    # The action that offered this ability charges nothing (`rules.yaml`
+    # `use_hero_ability`, `cost: {}`); the ability's own `cost:` is the single
+    # charge, and `turn.ability_free_when` is the rule set's chance to waive it.
+    costs = ability.cost
+    waiver = ctx.rules.turn.ability_free_when
+    if waiver is not None and ctx.derive(self_player=user, source=card).test(waiver):
+        costs = {}
+    paid = yield from pay_costs(ctx, costs, user)
     if not paid:
         return Outcome.CANCELLED
     if ability.once_per_turn:

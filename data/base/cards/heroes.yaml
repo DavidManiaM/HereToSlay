@@ -9,6 +9,11 @@
 # used once per turn, and a failed roll still spends the action point (the
 # engine taps before resolving, see core/effects/actions.py:_use_ability).
 #
+# The `cost:` below is the *only* charge — the `use_hero_ability` action itself
+# costs nothing. A Hero that entered your party this turn activates for free:
+# `turn.ability_free_when` in rules.yaml waives this block on the turn the Hero
+# arrived, so playing a Hero and using it costs 1 point in total, not 2.
+#
 # Recurring idioms worth knowing before reading:
 #   * "pull a card"  -> steal_card with random: true. A pull is blind; a
 #     *chosen* take out of a hidden hand would be `random: false`.

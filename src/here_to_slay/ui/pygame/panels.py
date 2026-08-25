@@ -6,9 +6,9 @@ they are drawn and *what a click means*; a panel never touches the engine.
 
 The regions, and why each is where it is:
 
-* :class:`TopBar` — turn, phase, seat pips, and the info / log / menu buttons.
-  Seat pips carry each player's initial and light up on their turn, which is
-  the fastest possible answer to "whose go is it?".
+* :class:`CornerButtons` (top right) — rules, log and menu. Deliberately the
+  only permanent chrome along the top edge: whose go it is is told by the
+  table, not by a status bar.
 * :class:`OpponentRail` (right) — every opponent's deployed cards, always
   visible, ordered so the **next** player is at the top and play runs downward
   back to you. Hovering a rail expands it.
@@ -29,13 +29,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
-from here_to_slay.ui.pygame.animations import die_face
 from here_to_slay.ui.pygame.card_renderer import card_facts, render_card, render_card_back
 from here_to_slay.ui.pygame.icons import card_icon_name, draw_icon
 from here_to_slay.ui.pygame.theme import C, M
@@ -68,54 +68,39 @@ def _panel_title(
     screen: pygame.Surface, rect: pygame.Rect, title: str, *, icon: str | None = None,
     right: str = "", colour: tuple[int, int, int] = C.INK_DIM,
 ) -> pygame.Rect:
-    """Draw a panel heading; returns the rect left for content."""
-    x = rect.left + 12
+    """Floating caption — no panel chrome. Returns the content rect below."""
+    x = rect.left + 8
     if icon:
-        draw_icon(screen, icon, (x + 7, rect.top + 13), 15, colour)
-        x += 21
-    T.text(screen, title.upper(), (x, rect.top + 7), T.ui(10, bold=True),
-           T.alpha(colour, 240), shadow=None)
+        draw_icon(screen, icon, (x + 7, rect.top + 10), 14, colour)
+        x += 20
+    T.text(screen, title.upper(), (x, rect.top + 4), T.ui(10, bold=True),
+           T.alpha(colour, 220), shadow=None)
     if right:
-        T.text(screen, right, (rect.right - 12, rect.top + 7), T.ui(10, bold=True),
-               T.alpha(C.INK_FAINT, 235), anchor="topright", shadow=None)
-    return pygame.Rect(rect.left, rect.top + 24, rect.width, rect.height - 24)
+        T.text(screen, right, (rect.right - 8, rect.top + 4), T.ui(10, bold=True),
+               T.alpha(C.INK_FAINT, 220), anchor="topright", shadow=None)
+    return pygame.Rect(rect.left, rect.top + 22, rect.width, rect.height - 22)
 
 
 # ---------------------------------------------------------------------------
-# Top bar
+# Corner buttons
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class SeatPip:
-    """One player's marker in the turn strip."""
+class CornerButtons:
+    """Rules, log and menu, floating in the top-right corner.
 
-    player_id: str
-    name: str
-    initials: str
-    colour: tuple[int, int, int]
-    is_active: bool
-    is_you: bool
-    slain: int
-    party: int
-    rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
-    order: int = 0
-
-
-class TopBar:
-    """Title, turn, phase, the seat pips, and the three corner buttons."""
+    All that survives of the old full-width top bar. Turn, phase and whose go
+    it is are told by the table itself now, not by a strip of chrome.
+    """
 
     def __init__(self, layout: Any) -> None:
         self.layout = layout
-        self.pips: list[SeatPip] = []
-        self.hovered_pip: SeatPip | None = None
         self.info_button = IconButton(layout.info_button_rect, "info",
                                       tooltip="Rules & help  (F1)")
         self.log_button = IconButton(layout.log_button_rect, "scroll",
                                      tooltip="Game log  (L)")
         self.menu_button = IconButton(layout.menu_button_rect, "gear",
                                       tooltip="Settings & keys  (Esc)")
-        self.pulse = 0.0
 
     @property
     def buttons(self) -> tuple[IconButton, ...]:
@@ -126,114 +111,216 @@ class TopBar:
         self.log_button.rect = pygame.Rect(self.layout.log_button_rect)
         self.menu_button.rect = pygame.Rect(self.layout.menu_button_rect)
 
-    def sync(self, view: Any, *, slay_target: int = DEFAULT_SLAY_TARGET) -> None:
-        """Build the pip strip in *play order starting after the viewer*.
-
-        This is the ordering the whole client uses: your turn, then the pip
-        below/right of you, and so on back round to you. It matches the
-        opponent rail, so the player learns one mental model, not two.
-        """
-        order = _play_order(view)
-        self.pips = []
-        for index, pid in enumerate(order):
-            player = view.players[pid]
-            slain = player.zone("slain")
-            party = player.zone("party")
-            self.pips.append(SeatPip(
-                player_id=pid,
-                name=player.name,
-                initials=_initials(player.name),
-                colour=T.seat_colour(player.seat),
-                is_active=player.is_active,
-                is_you=player.is_you,
-                slain=len(slain.cards) if slain else 0,
-                party=len(party.cards) if party else 0,
-                order=index,
-            ))
-        self._place_pips(slay_target)
-
-    def _place_pips(self, slay_target: int) -> None:
-        strip = self.layout.turn_pips_rect
-        n = max(1, len(self.pips))
-        size = min(strip.height, max(26, (strip.width - (n - 1) * 8) // n))
-        step = size + 8
-        total = size + step * (n - 1)
-        x0 = strip.right - total
-        for pip in self.pips:
-            pip.rect = pygame.Rect(int(x0 + pip.order * step), strip.centery - size // 2,
-                                   size, size)
-
     def update(self, dt: float) -> None:
-        self.pulse += dt
         for button in self.buttons:
             button.update(dt)
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered_pip = next(
-                (p for p in self.pips if p.rect.collidepoint(event.pos)), None
-            )
         return any(button.handle_event(event) for button in self.buttons)
 
-    def draw(self, screen: pygame.Surface, view: Any, *, subtitle: str = "") -> None:
-        rect = self.layout.topbar_rect
-        screen.blit(T.vgradient(rect.width, rect.height, (30, 26, 54, 246),
-                                (18, 16, 36, 232)), rect.topleft)
-        T.hairline(screen, (0, rect.bottom - 1), (rect.right, rect.bottom - 1),
-                   T.alpha(C.GOLD, 46))
-
-        # Wordmark
-        T.text(screen, "HERE TO SLAY", (16, rect.centery - 8), T.display(17), C.GOLD,
-               anchor="midleft")
-        turn = f"Turn {view.turn_number}"
-        phase = str(view.phase).replace("_", " ").title()
-        T.text(screen, f"{turn}  \u00b7  {phase}", (16, rect.centery + 11),
-               T.ui(10, bold=True), C.INK_FAINT, anchor="midleft", shadow=None)
-
-        if subtitle:
-            T.text(screen, subtitle, (rect.centerx, rect.centery), T.ui(13, bold=True),
-                   C.INK, anchor="center",
-                   max_width=max(60, self.layout.turn_pips_rect.left - 230))
-
-        self._draw_pips(screen)
+    def draw(self, screen: pygame.Surface) -> None:
+        cluster = self.layout.corner_buttons_rect.inflate(T.s(10), T.s(10))
+        T.round_rect(screen, cluster, (12, 18, 24, 130), radius=cluster.height // 2)
         for button in self.buttons:
             button.draw(screen)
 
-    def _draw_pips(self, screen: pygame.Surface) -> None:
-        for pip in self.pips:
-            rect = pip.rect
-            centre = rect.center
-            radius = rect.width // 2
-            active = pip.is_active
 
-            if active:
-                beat = T.pulse(self.pulse, period=1.6, low=0.45, high=1.0)
-                T.blit_glow(screen, centre, int(radius * 2.4),
-                            T.alpha(pip.colour, int(120 * beat)))
-            fill = T.mix((36, 32, 60), pip.colour, 0.85 if active else 0.22)
-            pygame.draw.circle(screen, fill, centre, radius)
-            pygame.draw.circle(
-                screen,
-                pip.colour if active else T.alpha(pip.colour, 130),
-                centre, radius, 3 if active else 1,
+# ---------------------------------------------------------------------------
+# Turn chip — quiet "whose turn" pill
+# ---------------------------------------------------------------------------
+
+
+class TurnChip:
+    """Small top-left pill: seat colour, name, turn number, AP pips."""
+
+    def __init__(self, layout: Any) -> None:
+        self.layout = layout
+        self.name = ""
+        self.colour: tuple[int, int, int] = C.GOLD
+        self.turn_number = 0
+        self.action_points = 0
+        self.max_points = 3
+
+    def sync(self, view: Any) -> None:
+        player = view.players.get(view.active_player)
+        self.name = player.name if player else str(view.active_player)
+        self.colour = T.seat_colour(player.seat) if player else C.GOLD
+        self.turn_number = int(getattr(view, "turn_number", 0) or 0)
+        self.action_points = int(player.action_points) if player else 0
+
+    def draw(self, screen: pygame.Surface) -> None:
+        rect = pygame.Rect(self.layout.turn_chip_rect)
+        T.pill(screen, rect, "", bg=T.alpha((16, 24, 28), 160),
+               fg=C.INK_DIM, border=T.alpha(C.INK_FAINT, 80), fnt=T.ui(T.s(9)))
+        dot_r = max(4, T.s(5))
+        dot_c = (rect.left + T.s(10), rect.centery)
+        pygame.draw.circle(screen, self.colour, dot_c, dot_r)
+        label = f"{self.name}  T{self.turn_number}"
+        T.text(screen, label, (rect.left + T.s(20), rect.centery), T.ui(T.s(9)),
+               T.alpha(C.INK_DIM, 210), anchor="midleft", shadow=None)
+        # AP pips on the right
+        pip_r = max(3, T.s(3))
+        x = rect.right - T.s(8)
+        for i in range(self.max_points):
+            filled = i < self.action_points
+            cx = x - i * (pip_r * 2 + T.s(4))
+            col = self.colour if filled else T.alpha(C.INK_FAINT, 120)
+            pygame.draw.circle(screen, col, (cx, rect.centery), pip_r)
+
+
+# ---------------------------------------------------------------------------
+# Action bar — one chip per legal action
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ActionChip:
+    action_id: str
+    key: str
+    label: str
+    cost: str
+    enabled: bool
+    rect: pygame.Rect
+    on_click: Callable[[], None]
+
+
+class ActionBar:
+    """Bottom-centre row of action chips with keys and AP costs."""
+
+    def __init__(self, layout: Any) -> None:
+        self.layout = layout
+        self.chips: list[ActionChip] = []
+        self._hover: ActionChip | None = None
+
+    def build(
+        self,
+        entries: list[tuple[str, str, str, str, bool, Callable[[], None]]],
+    ) -> None:
+        """Each entry: (action_id, key, label, cost, enabled, callback)."""
+        rect = pygame.Rect(self.layout.action_bar_rect)
+        if not entries or rect.width < 40:
+            self.chips = []
+            return
+        gap = T.s(4)
+        chip_h = rect.height
+        # Measure widths
+        widths: list[int] = []
+        for _aid, key, label, cost, _en, _cb in entries:
+            text = f"[{key.upper()}] {label} ({cost})"
+            widths.append(T.s(12) + T.ui(T.s(10), bold=True).size(text)[0] + T.s(10))
+        total = sum(widths) + gap * max(0, len(entries) - 1)
+        x = rect.centerx - total // 2
+        chips: list[ActionChip] = []
+        for (action_id, key, label, cost, enabled, cb), w in zip(entries, widths, strict=True):
+            chip_rect = pygame.Rect(x, rect.top, w, chip_h)
+            chips.append(ActionChip(action_id, key, label, cost, enabled, chip_rect, cb))
+            x += w + gap
+        self.chips = chips
+
+    def update(self, dt: float) -> None:
+        del dt
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        if event.type == pygame.MOUSEMOTION:
+            pos = event.pos
+            self._hover = next((c for c in self.chips if c.enabled and c.rect.collidepoint(pos)), None)
+            return False
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            chip = self._hover or next(
+                (c for c in self.chips if c.enabled and c.rect.collidepoint(event.pos)), None
             )
-            T.text(screen, pip.initials, centre, T.display(max(10, int(radius * 1.05))),
-                   T.readable_ink(fill) if active else C.INK, anchor="center", shadow=None)
+            if chip is not None:
+                chip.on_click()
+                return True
+        return False
 
-            # A ring of ticks around the pip: one per Monster this seat has slain.
-            for i in range(min(pip.slain, 6)):
-                a = -math.pi / 2 + (i - 1) * 0.5
-                px = centre[0] + math.cos(a) * (radius + 5)
-                py = centre[1] + math.sin(a) * (radius + 5)
-                pygame.draw.circle(screen, C.BLOOD, (int(px), int(py)), 2)
+    def draw(self, screen: pygame.Surface) -> None:
+        for chip in self.chips:
+            lit = chip is self._hover
+            if not chip.enabled:
+                bg = T.alpha((28, 32, 38), 120)
+            else:
+                bg = T.alpha((22, 30, 36), 220 if lit else 180)
+            border = T.alpha(C.CYAN if lit and chip.enabled else C.INK_FAINT, 180 if chip.enabled else 80)
+            fg = C.INK_BRIGHT if chip.enabled else C.INK_FAINT
+            accent = ACTION_STYLE.get(chip.action_id, ("bolt", C.GOLD))[1]
+            text = f"[{chip.key.upper()}] {chip.label} ({chip.cost})"
+            T.pill(screen, chip.rect, text, bg=bg, fg=fg, border=border,
+                   fnt=T.ui(T.s(10), bold=True))
+            if chip.enabled:
+                bar = pygame.Rect(chip.rect.left, chip.rect.top, 3, chip.rect.height)
+                T.round_rect(screen, bar, accent, radius=2)
 
-            if pip.is_you:
-                T.text(screen, "YOU", (centre[0], rect.bottom + 1), T.ui(8, bold=True),
-                       T.alpha(C.GOLD, 220), anchor="midtop", shadow=None)
-            # An arrow between pips shows which way play travels.
-            if pip.order < len(self.pips) - 1:
-                T.chevron(screen, (rect.right + 4, centre[1]), 7,
-                          T.alpha(C.INK_FAINT, 150), direction="right", width=2)
+
+#: Imported late to avoid circular imports — matches scenes.ACTION_STYLE.
+ACTION_STYLE: dict[str, tuple[str, tuple[int, int, int]]] = {
+    "draw": ("hand", C.FROST),
+    "play_hero": ("hero", C.GOOD),
+    "equip_item": ("item", C.GOLD),
+    "cast_magic": ("magic", C.ARCANE),
+    "use_hero_ability": ("bolt", C.GOLD),
+    "use_leader_ability": ("leader", C.GOLD),
+    "attack_monster": ("monster", C.BLOOD),
+    "discard_and_draw": ("discard", C.WARN),
+}
+
+
+# ---------------------------------------------------------------------------
+# Reaction timer — 3s auto-pass arc
+# ---------------------------------------------------------------------------
+
+REACTION_SECONDS = 3.0
+
+
+class ReactionTimer:
+    """Compact reaction panel with draining arc and option keys."""
+
+    def __init__(self) -> None:
+        self.visible = False
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.title = ""
+        self.fraction = 1.0
+        self.options: list[tuple[str, str, Callable[[], None]]] = ()
+
+    def sync(
+        self,
+        *,
+        visible: bool,
+        rect: pygame.Rect,
+        title: str,
+        fraction: float,
+        options: list[tuple[str, str, Callable[[], None]]],
+    ) -> None:
+        self.visible = visible
+        self.rect = pygame.Rect(rect)
+        self.title = title
+        self.fraction = max(0.0, min(1.0, fraction))
+        self.options = tuple(options)
+
+    def draw(self, screen: pygame.Surface) -> None:
+        if not self.visible or self.rect.width < 20:
+            return
+        T.glass(screen, self.rect, radius=T.s(10), fill=(18, 26, 32, 230),
+                rim=T.alpha(C.POISON, 180))
+        T.text(screen, self.title, (self.rect.left + T.s(12), self.rect.top + T.s(8)),
+               T.ui(T.s(11), bold=True), C.INK_BRIGHT, anchor="topleft", shadow=None,
+               max_width=self.rect.width - T.s(40))
+        # Draining arc
+        cx = self.rect.right - T.s(22)
+        cy = self.rect.centery
+        r = T.s(14)
+        arc_rect = pygame.Rect(cx - r, cy - r, r * 2, r * 2)
+        pygame.draw.circle(screen, T.alpha(C.INK_FAINT, 60), arc_rect.center, r, 2)
+        if self.fraction > 0.01:
+            end = -math.pi / 2 + self.fraction * math.tau
+            pygame.draw.arc(screen, C.POISON, arc_rect, -math.pi / 2, end, 3)
+        # Option chips
+        y = self.rect.top + T.s(28)
+        for i, (label, key, _cb) in enumerate(self.options):
+            chip = pygame.Rect(self.rect.left + T.s(8), y, self.rect.width - T.s(16), T.s(22))
+            T.pill(screen, chip, f"[{i + 1}] {label}  ({key})", bg=T.alpha(C.ARCANE, 50),
+                   fg=C.INK_BRIGHT, border=T.alpha(C.ARCANE, 120), fnt=T.ui(T.s(9), bold=True))
+            y += T.s(26)
 
 
 def _play_order(view: Any) -> list[str]:
@@ -312,31 +399,33 @@ class OpponentStrip:
     # -- layout ------------------------------------------------------------
 
     def layout_cards(self, base_card_w: int, highlight_ids: set[str]) -> None:
-        head = 46
+        # Compact header so cards have room inside the seat wedge.
+        head = 36 if self.rect.height >= 140 else max(22, self.rect.height // 5)
         grow = T.ease_out_cubic(self.expand)
-        card_w = int(base_card_w * (1.0 + 1.65 * grow))
+        card_w = int(base_card_w * (1.0 + 1.25 * grow))
         card_h = int(card_w * M.CARD_ASPECT)
-        body = pygame.Rect(self.rect.left + 8, self.rect.top + head,
-                           self.rect.width - 16, max(8, self.rect.height - head - 6))
+        body = pygame.Rect(self.rect.left + 6, self.rect.top + head,
+                           self.rect.width - 12, max(8, self.rect.height - head - 4))
 
-        lw = min(int(base_card_w * 1.25), body.width // 4)
+        lw = min(int(base_card_w * 1.15), max(28, body.width // 4))
         lh = int(lw * M.CARD_ASPECT)
         self.leader_sprite = None
         if self.leader is not None:
             cv, cdef = self.leader
             self.leader_sprite = CardSprite(
-                cv.id, cdef, pygame.Rect(body.left, body.top, lw, min(lh, body.height)),
+                cv.id, cdef,
+                pygame.Rect(body.left, body.top, lw, min(lh, body.height)),
                 highlighted=cv.id in highlight_ids, owner_colour=self.colour,
-                lift_on_hover=6,
+                lift_on_hover=6, depth=0.55,
             )
 
         self.sprites = []
         if not self.party:
             return
-        start_x = body.left + (lw + 8 if self.leader_sprite else 0)
+        start_x = body.left + (lw + 6 if self.leader_sprite else 0)
         room = max(card_w, body.right - start_x)
         n = len(self.party)
-        step = card_w + 4 if (card_w + 4) * n <= room else max(11, (room - card_w) // max(1, n - 1))
+        step = card_w + 4 if (card_w + 4) * n <= room else max(10, (room - card_w) // max(1, n - 1))
         rows = 1
         if grow > 0.4 and (card_w + 4) * n > room:
             rows = 2
@@ -346,12 +435,16 @@ class OpponentStrip:
             col = i // rows
             x = start_x + col * step
             y = body.top + row * int(card_h * 0.42)
+            # Fit cards inside the wedge so set_clip does not erase them.
+            draw_h = min(card_h, max(24, body.bottom - y))
+            draw_w = max(20, int(draw_h / M.CARD_ASPECT)) if draw_h < card_h else card_w
             self.sprites.append(CardSprite(
-                cv.id, cdef, pygame.Rect(int(x), int(y), card_w, card_h),
+                cv.id, cdef, pygame.Rect(int(x), int(y), draw_w, draw_h),
                 tapped=False, highlighted=cv.id in highlight_ids,
                 attachments=tuple(cv.attachments or ()),
                 badge_text="\u25cf" if cv.tapped else "",
                 badge_colour=C.IDLE, owner_colour=self.colour, lift_on_hover=8,
+                depth=0.5,
             ))
 
     @property
@@ -368,10 +461,10 @@ class OpponentStrip:
             C.GOLD if (self.highlighted or self.targetable)
             else (self.colour if self.is_active else T.alpha(C.GLASS_RIM, 80))
         )
-        fill = T.lerp_colour(C.GLASS_SOFT, C.GLASS, lit)
         if self.is_active:
             T.blit_glow(screen, rect.center, rect.width // 2 + 12, T.alpha(self.colour, 34))
-        T.glass(screen, rect, radius=M.RADIUS, fill=fill, rim=rim, shadow=lit > 0.02)
+        if lit > 0.02 or self.is_active or self.highlighted:
+            T.drop_shadow(screen, rect, radius=M.RADIUS, spread=10, offset=(0, 4), strength=50)
         if self.is_active or self.highlighted:
             T.round_rect(screen, rect, rim, radius=M.RADIUS, width=2)
             T.round_rect(screen, pygame.Rect(rect.left, rect.top + 6, 3, rect.height - 12),
@@ -380,16 +473,16 @@ class OpponentStrip:
         # Header: initial badge, name, AP, hand, slain.
         pip_r = 15
         pip_c = (rect.left + 8 + pip_r, rect.top + 8 + pip_r)
-        pygame.draw.circle(screen, T.mix((36, 32, 60), self.colour,
-                                         0.85 if self.is_active else 0.3), pip_c, pip_r)
+        pygame.draw.circle(screen, T.mix((220, 230, 240), self.colour,
+                                         0.85 if self.is_active else 0.35), pip_c, pip_r)
         pygame.draw.circle(screen, self.colour, pip_c, pip_r,
                            3 if self.is_active else 1)
         T.text(screen, self.initials, pip_c, T.display(15),
-               C.INK_BRIGHT if self.is_active else C.INK, anchor="center", shadow=None)
+               C.INK_DARK, anchor="center", shadow=None)
 
         x = pip_c[0] + pip_r + 8
         T.text(screen, self.name, (x, rect.top + 9), T.ui(12, bold=True),
-               C.INK_BRIGHT if self.is_active else C.INK, max_width=rect.right - x - 78)
+               C.INK_BRIGHT, max_width=rect.right - x - 78)
         stat_font = T.ui(10, bold=True)
         stats = pygame.Rect(rect.right - 74, rect.top + 7, 66, 17)
         draw_icon(screen, "bolt", (stats.left + 6, stats.centery), 12,
@@ -409,15 +502,15 @@ class OpponentStrip:
         for cls in T.CLASS_COLOURS:
             has = cls in self.classes
             pygame.draw.circle(
-                screen, T.CLASS_COLOURS[cls] if has else (58, 54, 82),
+                screen, T.CLASS_COLOURS[cls] if has else (190, 200, 212),
                 (dot_x + 4, rect.top + 33), 4,
             )
             if not has:
-                pygame.draw.circle(screen, (40, 37, 60), (dot_x + 4, rect.top + 33), 4, 1)
+                pygame.draw.circle(screen, (150, 162, 178), (dot_x + 4, rect.top + 33), 4, 1)
             dot_x += 12
 
         if not self.party and not self.leader_sprite:
-            T.text(screen, "no cards deployed", (rect.centerx, rect.centery + 10),
+            T.text(screen, L.NO_PARTY, (rect.centerx, rect.centery + 10),
                    T.ui(10, italic=True), T.alpha(C.INK_FAINT, 190), anchor="center",
                    shadow=None)
 
@@ -437,11 +530,11 @@ class OpponentStrip:
 
 
 class OpponentRail:
-    """The right-hand column of opponent strips, in play order."""
+    """Opponent seat wedges around the table (plus/hex), in play order.
 
-    #: Room at the top of the rail for its caption, so the caption is not
-    #: written over the top bar.
-    HEADER_H = 15
+    Index 0 of :meth:`layout.seats` is always the local player; opponents map
+    onto seats 1..n-1. The class name is historical — there is no right rail.
+    """
 
     def __init__(self, layout: Any) -> None:
         self.layout = layout
@@ -459,8 +552,10 @@ class OpponentRail:
         highlight_cards = highlight_cards or set()
         target_players = target_players or set()
         order = [pid for pid in _play_order(view) if pid != view.seat]
+        n_players = len(view.players)
+        if getattr(self.layout, "player_count", None) != n_players:
+            self.layout.rebuild(self.layout.width, self.layout.height, player_count=n_players)
 
-        rail = self.layout.right_rail_rect
         kept: dict[str, OpponentStrip] = {}
         self.strips = []
         for pid in order:
@@ -491,23 +586,27 @@ class OpponentRail:
             self.strips.append(strip)
             kept[pid] = strip
         self._by_id = kept
-        self._place(rail, highlight_cards)
+        self._place(highlight_cards)
 
-    def _place(self, rail: pygame.Rect, highlight_cards: set[str]) -> None:
-        n = max(1, len(self.strips))
-        gap = M.GAP_S
-        top = rail.top + self.HEADER_H
-        base = (rail.height - self.HEADER_H - gap * (n - 1)) / n
-        # Expanding a strip steals height from its neighbours rather than
-        # overflowing the rail, so the column never scrolls under the pointer.
-        extra = sum(s.wants_height for s in self.strips)
-        y = float(top)
-        for strip in self.strips:
-            share = base + strip.wants_height - extra / n
-            share = max(66.0, share)
-            strip.rect = pygame.Rect(rail.left, int(y), rail.width, int(share))
-            strip.layout_cards(self.layout.rail_card_w, highlight_cards)
-            y += share + gap
+    def _place(self, highlight_cards: set[str]) -> None:
+        focus = getattr(self.layout, "focus_rect", None)
+        focus_key = getattr(self.layout, "camera_key", "local")
+        seats = [s for s in getattr(self.layout, "seats", ()) if not s.is_local]
+
+        for i, strip in enumerate(self.strips):
+            focused = focus_key == strip.player_id and focus is not None and focus.width > 40
+            if focused:
+                strip.rect = pygame.Rect(focus)
+                card_w = max(110, getattr(self.layout, "seat_card_w", 140))
+                strip.expand = 1.0
+            elif i < len(seats):
+                anchor = seats[i]
+                strip.rect = pygame.Rect(anchor.rect)
+                card_w = max(36, getattr(anchor, "card_w", 48))
+            else:
+                strip.rect = pygame.Rect(12, self.layout.board_rect.top + 40 + i * 90, 140, 80)
+                card_w = 44
+            strip.layout_cards(card_w, highlight_cards)
 
     def update(self, dt: float) -> None:
         for strip in self.strips:
@@ -536,9 +635,6 @@ class OpponentRail:
         return self._by_id.get(player_id)
 
     def draw(self, screen: pygame.Surface) -> None:
-        rail = self.layout.right_rail_rect
-        T.text(screen, "OPPONENTS  \u00b7  PLAY ORDER", (rail.left + 2, rail.top),
-               T.ui(9, bold=True), T.alpha(C.INK_FAINT, 220), shadow=None)
         for strip in self.strips:
             strip.draw(screen)
 
@@ -598,6 +694,14 @@ class ActiveStack:
         rolls: Sequence[Any] = (),
     ) -> None:
         self.rect = pygame.Rect(self.layout.left_rail_rect)
+        # Float the active stack near the upper-left of the table, not a side column.
+        table = getattr(self.layout, "table_rect", self.layout.board_rect)
+        self.rect = pygame.Rect(
+            table.left + 8,
+            table.top + 8,
+            max(160, min(220, table.width // 5)),
+            max(180, min(320, table.height // 2)),
+        )
         limbo = view.zone("limbo")
         cards = list(limbo.cards) if limbo else []
         cards.extend(extra_cards)
@@ -643,10 +747,12 @@ class ActiveStack:
         if not self.occupied:
             return
         rect = self.rect
-        beat = T.pulse(self.pulse, period=2.2, low=0.5, high=1.0)
-        T.glass(screen, rect, radius=M.RADIUS_L, fill=(30, 22, 52, 226),
-                rim=T.alpha(C.ARCANE, int(120 * beat)))
-        _panel_title(screen, rect, "in play now", icon="bolt", colour=C.ARCANE)
+        # Static accent bar — no pulsing wash over the active stack.
+        T.round_rect(
+            screen, pygame.Rect(rect.left + 4, rect.top + 22, 3, max(12, rect.height - 30)),
+            C.ARCANE, radius=2,
+        )
+        _panel_title(screen, rect, L.IN_PLAY, icon="bolt", colour=C.ARCANE)
 
         hovered = None
         for sprite in self.sprites:
@@ -698,14 +804,14 @@ class DeckArea:
         entries: list[tuple[str, int, Any, str]] = []
 
         deck = view.zone("main_deck")
-        entries.append(("main_deck", deck.size if deck else 0, None, "Draw"))
+        entries.append(("main_deck", deck.size if deck else 0, None, L.DECK_DRAW))
         discard = view.zone("discard")
         self.discard_top = (
             registry.get(discard.cards[-1].def_id) if discard and discard.cards else None
         )
-        entries.append(("discard", discard.size if discard else 0, self.discard_top, "Burnt"))
+        entries.append(("discard", discard.size if discard else 0, self.discard_top, L.DECK_DISCARD))
         monsters = view.zone("monster_deck")
-        entries.append(("monster_deck", monsters.size if monsters else 0, None, "Monsters"))
+        entries.append(("monster_deck", monsters.size if monsters else 0, None, L.DECK_MONSTER))
 
         gap = 22
         total = len(entries) * cw + (len(entries) - 1) * gap
@@ -732,8 +838,7 @@ class DeckArea:
         return None
 
     def draw(self, screen: pygame.Surface) -> None:
-        T.glass(screen, self.rect, radius=M.RADIUS_L, fill=C.GLASS_SOFT)
-        _panel_title(screen, self.rect, "the table", icon="scroll")
+        _panel_title(screen, self.rect, L.TABLE, icon="scroll")
 
         for key, rect, size, top, label in self.slots:
             hot = key == self.hovered_key
@@ -760,7 +865,7 @@ class DeckArea:
             T.text(screen, label.upper(), (rect.centerx, rect.bottom + 4), T.ui(9, bold=True),
                    T.alpha(C.INK_DIM, 235), anchor="midtop", shadow=None)
             T.badge(screen, (rect.centerx, rect.top - 4), 11, str(size),
-                    bg=C.BLOOD if key == "discard" else (36, 32, 60),
+                    bg=C.BLOOD if key == "discard" else C.INK,
                     fg=C.INK_BRIGHT, ring=T.alpha(C.GOLD, 150), fnt=T.ui(10, bold=True))
 
 
@@ -841,11 +946,9 @@ class MonsterRow:
         return top
 
     def draw(self, screen: pygame.Surface) -> None:
-        T.glass(screen, self.rect, radius=M.RADIUS_L, fill=(34, 22, 40, 190),
-                rim=T.alpha(C.BLOOD, 80))
         count = len(self.sprites)
-        _panel_title(screen, self.rect, "monsters \u00b7 attack now", icon="monster",
-                     right=f"{count} on the table", colour=C.BLOOD)
+        _panel_title(screen, self.rect, L.BESTIES_ROW, icon="monster",
+                     right=f"{count} pe masă", colour=C.BLOOD)
 
         for slot in getattr(self, "_slots", ()):
             if not any(s.rect.colliderect(slot) for s in self.sprites):
@@ -865,25 +968,28 @@ class MonsterRow:
     def _draw_monster(self, screen: pygame.Surface, sprite: CardSprite) -> None:
         cdef, can_attack = self.meta.get(sprite.card_id, (None, False))
         rect = sprite.draw_rect()
-        if can_attack:
-            beat = T.pulse(self.pulse, period=1.5, low=0.35, high=0.9)
-            T.blit_glow(screen, rect.center, int(rect.width * 0.95),
-                        T.alpha(C.GOLD, int(90 * beat)))
         sprite.draw(screen)
+        if can_attack:
+            # Static cyan rim — legal befriend target, no throb.
+            T.round_rect(screen, rect.inflate(4, 4), C.CYAN, radius=11, width=2)
 
         facts = card_facts(cdef)
         chip_y = rect.bottom + 4
         if facts.requirement and rect.width >= 70:
             fnt = T.ui(9, bold=True)
             label = T.ellipsise(facts.requirement, fnt, rect.width - 8)
-            w = fnt.size(label)[0] + 14
-            chip = Chip(pygame.Rect(rect.centerx - w // 2, chip_y, w, 16), label,
-                        colour=C.GOOD if can_attack else C.BAD, filled=False)
-            chip.draw(screen)
-            chip_y += 19
+            w = fnt.size(label)[0] + 16
+            # Solid dark chip + bright text so requirements read on the felt.
+            bg = T.alpha((10, 18, 22), 230)
+            fg = C.GOOD if can_attack else C.WARN
+            chip = pygame.Rect(rect.centerx - w // 2, chip_y, w, 18)
+            T.round_rect(screen, chip, bg, radius=9)
+            T.round_rect(screen, chip, T.alpha(fg, 200), radius=9, width=1)
+            T.text(screen, label, chip.center, fnt, fg, anchor="center", shadow=None)
+            chip_y += 20
         if can_attack and rect.width >= 70:
-            T.text(screen, "CAN ATTACK", (rect.centerx, chip_y), T.ui(9, bold=True),
-                   C.GOLD, anchor="midtop", shadow=None)
+            T.text(screen, L.CAN_BEFRIEND, (rect.centerx, chip_y), T.ui(9, bold=True),
+                   C.CYAN, anchor="midtop", shadow=None)
 
 
 # ---------------------------------------------------------------------------
@@ -896,8 +1002,8 @@ class PartyRow:
 
     def __init__(self, layout: Any) -> None:
         self.layout = layout
-        self.row = ZoneWidget(pygame.Rect(0, 0, 0, 0), "your party", mode="row",
-                              empty_hint="play Heroes here")
+        self.row = ZoneWidget(pygame.Rect(0, 0, 0, 0), L.PARTY, mode="row",
+                              empty_hint=L.NO_PARTY, panel=False)
         self.leader_sprite: CardSprite | None = None
         self.classes: tuple[str, ...] = ()
         self.slain = 0
@@ -972,9 +1078,7 @@ class PartyRow:
 
     def draw(self, screen: pygame.Surface) -> None:
         lr = pygame.Rect(self.layout.leader_rect)
-        T.glass(screen, lr, radius=M.RADIUS_L, fill=(40, 32, 62, 210),
-                rim=T.alpha(C.GOLD, 90))
-        _panel_title(screen, lr, "leader", icon="leader", colour=C.GOLD)
+        _panel_title(screen, lr, L.LEADER, icon="leader", colour=C.GOLD)
         if self.leader_sprite:
             self.leader_sprite.draw(screen)
         else:
@@ -987,12 +1091,12 @@ class PartyRow:
         bar = pygame.Rect(rect.left + 12, rect.bottom - 15, 108, 6)
         T.progress_bar(screen, bar, len(self.classes) / max(1, len(T.CLASS_COLOURS)),
                        fill=C.ARCANE)
-        T.text(screen, f"{len(self.classes)}/{len(T.CLASS_COLOURS)} classes",
+        T.text(screen, f"{len(self.classes)}/{len(T.CLASS_COLOURS)} clase",
                (bar.right + 8, bar.centery), T.ui(9, bold=True), C.INK_FAINT,
                anchor="midleft", shadow=None)
         bar2 = pygame.Rect(bar.left + 190, bar.top, 78, 6)
         T.progress_bar(screen, bar2, self.slain / max(1, self.slay_target), fill=C.BLOOD)
-        T.text(screen, f"{self.slain}/{self.slay_target} slain",
+        T.text(screen, f"{self.slain}/{self.slay_target} {L.SLAYN}",
                (bar2.right + 8, bar2.centery), T.ui(9, bold=True), C.INK_FAINT,
                anchor="midleft", shadow=None)
 
@@ -1000,9 +1104,9 @@ class PartyRow:
         for cls in T.CLASS_COLOURS:
             has = cls in self.classes
             centre = (dot_x + 5, rect.bottom - 12)
-            pygame.draw.circle(screen, T.CLASS_COLOURS[cls] if has else (52, 48, 76), centre, 5)
+            pygame.draw.circle(screen, T.CLASS_COLOURS[cls] if has else (190, 200, 212), centre, 5)
             if has:
-                pygame.draw.circle(screen, C.INK_BRIGHT, centre, 5, 1)
+                pygame.draw.circle(screen, C.INK, centre, 5, 1)
             dot_x += 13
 
 
@@ -1012,7 +1116,7 @@ class HandFan:
     def __init__(self, layout: Any) -> None:
         self.layout = layout
         self.row = ZoneWidget(pygame.Rect(0, 0, 0, 0), "", mode="fan", panel=False,
-                              empty_hint="your hand is empty")
+                              empty_hint=L.EMPTY_HAND)
         self.playable: set[str] = set()
         self.hidden_count = 0
         self.owner_name = ""
@@ -1072,10 +1176,9 @@ class HandFan:
 
     def draw(self, screen: pygame.Surface) -> None:
         rect = pygame.Rect(self.layout.hand_rect)
-        T.glass(screen, rect, radius=M.RADIUS_L, fill=(28, 25, 50, 205))
         count = len(self.row.sprites)
-        _panel_title(screen, rect, f"{self.owner_name} \u00b7 hand", icon="hand",
-                     right=f"{count} card{'s' if count != 1 else ''}")
+        _panel_title(screen, rect, f"{self.owner_name} \u00b7 {L.HAND}", icon="hand",
+                     right=f"{count}")
         self.row.draw(screen)
 
 
@@ -1104,11 +1207,13 @@ class DicePanel:
         self.owner_name = ""
         self.owner_colour: tuple[int, int, int] = C.GOLD
         self.is_you = True
-        self.roll_button = Button(pygame.Rect(0, 0, 0, 0), "Roll", on_roll,
-                                 icon="dice", enabled=False, primary=True, shortcut="R")
+        self.roll_button = Button(pygame.Rect(0, 0, 0, 0), L.ROLL_READY, on_roll,
+                                 icon=None, enabled=False, primary=True, shortcut="R")
         self.rolling = 0.0
         self.dice_area = pygame.Rect(0, 0, 0, 0)
         self.pulse = 0.0
+        self._display_total: int | None = None
+        self._scramble = 0.0
 
     def sync(
         self,
@@ -1128,6 +1233,12 @@ class DicePanel:
         self.is_you = bool(actor.is_you)
         self.history = list(rolls)[-4:]
         self.roll = self.history[-1] if self.history else None
+        if self.roll is not None:
+            self._display_total = int(getattr(self.roll, "total", 0) or 0)
+        elif not can_roll:
+            self._display_total = self._display_total  # keep last shown
+        else:
+            self._display_total = None
 
         body = _panel_body(self.rect, 22)
         self.dice_area = pygame.Rect(body.left + 10, body.top + 26, body.width - 20, 62)
@@ -1135,7 +1246,12 @@ class DicePanel:
             body.left + 10, body.bottom - 40, body.width - 20, 34
         )
         self.roll_button.enabled = can_roll
-        self.roll_button.label = roll_label
+        if can_roll:
+            self.roll_button.label = L.ROLL_READY
+        elif self._display_total is not None:
+            self.roll_button.label = L.np_random_label(self._display_total)
+        else:
+            self.roll_button.label = roll_label if roll_label else L.ROLL_READY
 
     def update(self, dt: float) -> None:
         self.pulse += dt
@@ -1145,14 +1261,14 @@ class DicePanel:
         return self.roll_button.handle_event(event)
 
     def draw(self, screen: pygame.Surface, *, dice_hidden: bool = False) -> None:
-        T.glass(screen, self.rect, radius=M.RADIUS_L, fill=C.GLASS_DEEP)
-        _panel_title(screen, self.rect, "dice & action points", icon="dice")
+        _panel_title(screen, self.rect, f"{L.DICE} & {L.AP}", icon="dice")
 
         body = _panel_body(self.rect, 22)
 
-        # Action points as filled pips: three "spend" slots you can count.
         pip_y = body.top + 8
-        label = "your action points" if self.is_you else f"{self.owner_name}'s action points"
+        label = L.ACTION_POINTS_YOURS if self.is_you else L.ACTION_POINTS_THEIRS.format(
+            name=self.owner_name
+        )
         T.text(screen, label.upper(), (body.left + 10, pip_y - 2), T.ui(9, bold=True),
                T.alpha(self.owner_colour, 235), shadow=None)
         pip_x = body.right - 12 - self.max_points * 17
@@ -1160,62 +1276,46 @@ class DicePanel:
             centre = (pip_x + i * 17 + 7, pip_y + 6)
             filled = i < self.action_points
             if filled:
-                beat = T.pulse(self.pulse + i * 0.3, period=2.0, low=0.6, high=1.0)
-                T.blit_glow(screen, centre, 15, T.alpha(C.GOLD, int(90 * beat)))
                 pygame.draw.circle(screen, C.GOLD, centre, 7)
                 draw_icon(screen, "bolt", centre, 11, C.INK_DARK)
             else:
-                pygame.draw.circle(screen, (44, 40, 68), centre, 7)
-                pygame.draw.circle(screen, (70, 64, 100), centre, 7, 1)
+                pygame.draw.circle(screen, (190, 200, 212), centre, 7)
+                pygame.draw.circle(screen, (150, 162, 178), centre, 7, 1)
 
-        # Dice well.
+        # Code-styled roll well: shows np.random("N") as the result readout.
         T.inset(screen, self.dice_area, radius=M.RADIUS)
-        if dice_hidden:
-            T.text(screen, "no roll yet", self.dice_area.center, T.ui(11, italic=True),
+        mono = T.mono(max(12, min(18, self.dice_area.width // 14)))
+        if dice_hidden and self._display_total is None:
+            T.text(screen, L.ROLL_READY, self.dice_area.center, mono,
                    T.alpha(C.INK_FAINT, 200), anchor="center", shadow=None)
-        elif self.roll is not None:
-            self._draw_roll(screen, self.roll)
+        elif self._display_total is not None:
+            caption = L.np_random_label(self._display_total)
+            good = False
+            accent = C.GOLD
+            if self.roll is not None:
+                good = self.roll.band_tag in ("success", "slay")
+                accent = C.GOOD if good else (
+                    C.BAD if self.roll.band_tag == "failure" else C.GOLD
+                )
+            T.text(screen, caption, self.dice_area.center, mono, accent,
+                   anchor="center", shadow=None)
+            if self.roll is not None and self.roll.band_tag:
+                T.text(screen, str(self.roll.band_tag).upper(),
+                       (self.dice_area.centerx, self.dice_area.bottom - 4),
+                       T.ui(9, bold=True), accent, anchor="midbottom", shadow=None)
+        else:
+            T.text(screen, L.ROLL_READY, self.dice_area.center, mono,
+                   C.INK_DIM, anchor="center", shadow=None)
 
         if len(self.history) > 1:
             y = self.dice_area.bottom + 4
             for past in reversed(self.history[:-1][-2:]):
-                T.text(screen, past.describe(), (body.left + 10, y), T.ui(9),
+                line = L.np_random_label(int(getattr(past, "total", 0) or 0))
+                T.text(screen, line, (body.left + 10, y), T.mono(10),
                        T.alpha(C.INK_FAINT, 210), shadow=None, max_width=body.width - 20)
                 y += 12
 
         self.roll_button.draw(screen)
-
-    def _draw_roll(self, screen: pygame.Surface, roll: Any) -> None:
-        area = self.dice_area
-        good = roll.band_tag in ("success", "slay")
-        accent = C.GOOD if good else (C.BAD if roll.band_tag == "failure" else C.GOLD)
-        T.text(screen, str(roll.kind).replace("_", " ").upper(),
-               (area.left + 8, area.top + 5), T.ui(9, bold=True),
-               T.alpha(C.INK_DIM, 230), shadow=None, max_width=area.width - 16)
-
-        faces = tuple(roll.raw) if roll.raw else ()
-        if faces:
-            die_size = min(28, max(18, (area.width - 90) // max(1, len(faces)) - 4))
-            x = area.left + 8
-            y = area.centery - die_size // 2 + 4
-            for value in faces:
-                face = die_face(die_size, int(value), 6, accent)
-                screen.blit(face, (x, y))
-                x += die_size + 5
-        else:
-            T.text(screen, "\u2026", (area.left + 8, area.top + 20), T.display(20), C.INK)
-
-        bonus = roll.bonus
-        if bonus:
-            sign = "+" if bonus > 0 else ""
-            T.text(screen, f"{sign}{bonus}", (area.left + 8, area.bottom - 6),
-                   T.ui(11, bold=True), C.GOOD if bonus > 0 else C.BAD,
-                   anchor="bottomleft", shadow=None)
-        T.text(screen, str(roll.total), (area.right - 10, area.centery + 4),
-               T.display(30), accent, anchor="midright")
-        if roll.band_tag:
-            T.text(screen, str(roll.band_tag).upper(), (area.right - 10, area.bottom - 4),
-                   T.ui(9, bold=True), accent, anchor="bottomright", shadow=None)
 
 
 # ---------------------------------------------------------------------------
@@ -1266,9 +1366,8 @@ class EffectsPanel:
         return False
 
     def draw(self, screen: pygame.Surface) -> None:
-        T.glass(screen, self.rect, radius=M.RADIUS_L, fill=C.GLASS_DEEP)
-        who = "your" if self.is_you else f"{self.owner_name}'s"
-        _panel_title(screen, self.rect, f"{who} abilities in force", icon="flask",
+        who = "ale tale" if self.is_you else f"ale lui {self.owner_name}"
+        _panel_title(screen, self.rect, f"{L.EFFECTS} {who}", icon="flask",
                      right=str(len(self.entries)) if self.entries else "",
                      colour=self.owner_colour)
 
@@ -1410,6 +1509,7 @@ __all__ = [
     "DEFAULT_SLAY_TARGET",
     "FLAG_LABELS",
     "ActiveStack",
+    "CornerButtons",
     "DeckArea",
     "DicePanel",
     "EffectEntry",
@@ -1419,7 +1519,5 @@ __all__ = [
     "OpponentRail",
     "OpponentStrip",
     "PartyRow",
-    "SeatPip",
-    "TopBar",
     "collect_effects",
 ]

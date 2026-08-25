@@ -29,7 +29,7 @@ import pygame
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import render_card, render_card_back
 from here_to_slay.ui.pygame.icons import draw_icon
-from here_to_slay.ui.pygame.theme import C
+from here_to_slay.ui.pygame.theme import C, M
 
 #: Draw order. Card flights pass over the board but under modal overlays.
 Z_BEHIND = -10
@@ -108,7 +108,7 @@ class CardMoveAnimation(Animation):
         start_pos: tuple[int, int],
         end_pos: tuple[int, int],
         size: tuple[int, int] = (100, 140),
-        duration: float = 0.42,
+        duration: float = 0.32,
         *,
         face_down: bool = False,
         flip: bool = False,
@@ -116,7 +116,7 @@ class CardMoveAnimation(Animation):
         arc: float | None = None,
         delay: float = 0.0,
         end_size: tuple[int, int] | None = None,
-        trail: bool = True,
+        trail: bool = False,
     ) -> None:
         super().__init__(duration, delay=delay)
         self.card_def = card_def
@@ -129,25 +129,25 @@ class CardMoveAnimation(Animation):
         self.spin = spin
         self.trail = trail
         distance = math.hypot(end_pos[0] - start_pos[0], end_pos[1] - start_pos[1])
-        self.arc = distance * 0.16 if arc is None else arc
+        self.arc = distance * 0.14 if arc is None else arc
         self._front = (
             render_card_back(*size) if card_def is None else render_card(card_def, *size)
         )
         self._back = render_card_back(*size)
 
-    def _frame(self) -> tuple[pygame.Surface, tuple[int, int]]:
+    def _frame(self) -> tuple[pygame.Surface, pygame.Rect]:
         p = self.progress
         t = T.ease_out_cubic(p)
+        land = T.ease_out_back(min(1.0, max(0.0, (p - 0.75) / 0.25))) if p > 0.75 else 0.0
         x = T.lerp(self.start_pos[0], self.end_pos[0], t)
         y = T.lerp(self.start_pos[1], self.end_pos[1], t) - math.sin(p * math.pi) * self.arc
-        w = int(T.lerp(self.size[0], self.end_size[0], t))
-        h = int(T.lerp(self.size[1], self.end_size[1], t))
+        scale = T.lerp(0.86, 1.0, t) * (1.0 + 0.06 * land)
+        w = max(1, int(T.lerp(self.size[0], self.end_size[0], t) * scale))
+        h = max(1, int(T.lerp(self.size[1], self.end_size[1], t) * scale))
 
         showing_back = self.face_down
         squeeze = 1.0
         if self.flip:
-            # A cheap but convincing flip: squash horizontally through the
-            # midpoint and swap faces when the card is edge-on.
             squeeze = abs(math.cos(p * math.pi))
             showing_back = self.face_down if p < 0.5 else not self.face_down
             squeeze = max(0.06, squeeze)
@@ -161,19 +161,18 @@ class CardMoveAnimation(Animation):
             surf = pygame.transform.rotate(surf, self.spin * (1.0 - t))
 
         rect = surf.get_rect(center=(int(x + w / 2), int(y + h / 2)))
-        return surf, rect.topleft
+        return surf, rect
 
     def draw(self, screen: pygame.Surface) -> None:
         if not self.started:
             return
-        surf, pos = self._frame()
-        if self.trail and self.progress < 0.92:
-            ghost = surf.copy()
-            ghost.set_alpha(70)
-            dx = (self.end_pos[0] - self.start_pos[0]) * 0.03
-            dy = (self.end_pos[1] - self.start_pos[1]) * 0.03
-            screen.blit(ghost, (int(pos[0] - dx), int(pos[1] - dy)))
-        screen.blit(surf, pos)
+        surf, rect = self._frame()
+        p = self.progress
+        shadow_spread = int(6 + p * 14)
+        shadow_off = int(3 + p * 8)
+        T.drop_shadow(screen, rect, radius=10, spread=shadow_spread,
+                      offset=(0, shadow_off), strength=int(60 + p * 80))
+        screen.blit(surf, rect.topleft)
 
 
 class DealAnimation(Animation):
@@ -187,8 +186,8 @@ class DealAnimation(Animation):
         targets: Sequence[tuple[int, int]],
         size: tuple[int, int],
         *,
-        stagger: float = 0.07,
-        duration: float = 0.4,
+        stagger: float = 0.05,
+        duration: float = 0.3,
     ) -> None:
         super().__init__(duration + stagger * max(0, len(targets) - 1))
         self.legs = [
@@ -214,11 +213,9 @@ class DealAnimation(Animation):
 
 
 class DiceRollAnimation(Animation):
-    """Dice tumbling to a stop, then a total that lands with a thump.
+    """Scramble ``np.random("N")`` digits, then settle on the final total.
 
-    Faces are drawn as pip patterns (a d6 with five dots reads instantly;
-    "5" in a box does not), and each die settles at a slightly different time
-    so the group does not look like one object.
+    Matches the RO tech lexicon dice readout — no pip cubes required.
     """
 
     z = Z_ABOVE
@@ -227,7 +224,7 @@ class DiceRollAnimation(Animation):
         self,
         final_values: tuple[int, ...],
         rect: pygame.Rect,
-        duration: float = 0.85,
+        duration: float = 0.65,
         *,
         faces: int = 6,
         total: int | None = None,
@@ -235,54 +232,54 @@ class DiceRollAnimation(Animation):
     ) -> None:
         super().__init__(duration)
         self.final_values = tuple(final_values)
-        self.rect = rect
+        self.rect = pygame.Rect(rect)
         self.faces = max(2, faces)
-        self.total = total
+        self.total = total if total is not None else sum(final_values)
         self.accent = accent
         self._noise = _Wobble(len(final_values) or 1)
 
-    def _face_value(self, index: int, settle: float) -> int:
-        if self.progress >= settle:
-            return self.final_values[index]
-        churn = int(self.elapsed * 26) + index * 3
-        return 1 + (churn * 2654435761 >> 13) % self.faces
+    def _scramble_total(self) -> int:
+        if self.progress >= 0.72:
+            return int(self.total)
+        # Digits churn inside the quotes until settle.
+        churn = int(self.elapsed * 28) + int(self._noise.at(0, self.elapsed) * 9)
+        lo = max(2, len(self.final_values))
+        hi = max(lo, self.faces * max(1, len(self.final_values)))
+        return lo + (churn * 2654435761 >> 13) % max(1, hi - lo + 1)
 
     def draw(self, screen: pygame.Surface) -> None:
-        if not self.final_values:
-            return
-        n = len(self.final_values)
-        size = min(self.rect.height - 10, max(26, (self.rect.width - 16) // max(1, n) - 8))
-        total_w = n * size + (n - 1) * 8
-        x0 = self.rect.centerx - total_w // 2
-        y0 = self.rect.centery - size // 2
+        rect = self.rect
+        p = self.progress
+        settle = 0.72
+        bounce = 0.0
+        if p >= settle:
+            bounce = T.ease_out_back(min(1.0, (p - settle) / max(0.001, 1.0 - settle)))
+        draw_rect = pygame.Rect(rect)
+        draw_rect.y -= int(8 * bounce * (1.0 - p * 0.3))
+        T.drop_shadow(screen, draw_rect, radius=8, spread=6,
+                      offset=(0, int(4 + 6 * (1.0 - bounce))), strength=70)
 
-        for i in range(n):
-            settle = 0.45 + 0.42 * (i / max(1, n))
-            p = self.progress
-            value = self._face_value(i, settle)
-            if p < settle:
-                jitter = self._noise.at(i, self.elapsed) * size * 0.18 * (1 - p / settle)
-                spin = self._noise.at(i + 7, self.elapsed) * 40
-                lift = -math.sin(min(1.0, p / settle) * math.pi) * size * 0.5
-            else:
-                k = min(1.0, (p - settle) / max(0.001, 1.0 - settle))
-                jitter = 0.0
-                spin = 0.0
-                lift = -abs(math.sin(k * math.pi * 2)) * size * 0.12 * (1 - k)
-            die = die_face(size, value, self.faces, self.accent)
-            if spin:
-                die = pygame.transform.rotate(die, spin)
-            rect = die.get_rect(center=(int(x0 + i * (size + 8) + size / 2 + jitter),
-                                        int(y0 + size / 2 + lift)))
-            T.drop_shadow(screen, pygame.Rect(rect.left, rect.bottom - 6, rect.width, 8),
-                          radius=4, spread=6, offset=(0, 2), strength=110)
-            screen.blit(die, rect.topleft)
+        value = self._scramble_total()
+        label = f'roll("{value}")'
+        mono = T.mono(max(12, min(22, rect.width // 12)), bold=True)
 
-        if self.total is not None and self.progress > 0.72:
-            k = T.ease_out_back(min(1.0, (self.progress - 0.72) / 0.28))
-            fnt = T.display(int(20 + 14 * k))
-            T.text(screen, str(self.total), (self.rect.centerx, self.rect.bottom - 4),
-                   fnt, self.accent, anchor="midbottom")
+        T.inset(screen, draw_rect, radius=M.RADIUS)
+
+        jitter = 0.0
+        if p < settle:
+            jitter = self._noise.at(1, self.elapsed) * 4.0 * (1.0 - p / settle)
+
+        colour = self.accent if p >= settle else T.mix(C.INK_DIM, self.accent, 0.45)
+        T.text(
+            screen, label,
+            (draw_rect.centerx + int(jitter), draw_rect.centery),
+            mono, colour, anchor="center", shadow=None,
+            max_width=draw_rect.width - 16,
+        )
+        if p >= settle:
+            k = bounce
+            ring = draw_rect.inflate(int(-8 + 4 * k), int(-8 + 4 * k))
+            T.round_rect(screen, ring, T.alpha(self.accent, int(160 * k)), radius=8, width=2)
 
 
 class _Wobble:
@@ -359,10 +356,10 @@ class ModifierPopAnimation(Animation):
         text: str,
         pos: tuple[int, int],
         colour: tuple[int, int, int] = C.GOLD,
-        duration: float = 1.0,
+        duration: float = 0.75,
         *,
         size: int = 26,
-        rise: int = 48,
+        rise: int = 40,
         delay: float = 0.0,
     ) -> None:
         super().__init__(duration, delay=delay)
@@ -384,9 +381,7 @@ class ModifierPopAnimation(Animation):
         glow = fnt.render(self.text, True, C.INK_BRIGHT)
         rect = surf.get_rect(center=(self.pos[0], y))
         a = int(255 * max(0.0, fade))
-        T.blit_glow(screen, rect.center, int(rect.width * 0.8),
-                    T.alpha(self.colour, int(70 * fade)))
-        glow.set_alpha(int(a * 0.35))
+        glow.set_alpha(int(a * 0.2))
         screen.blit(glow, (rect.left + 1, rect.top + 2))
         surf.set_alpha(a)
         screen.blit(surf, rect.topleft)
@@ -477,12 +472,12 @@ class ParticleBurstAnimation(Animation):
         self,
         centre: tuple[int, int],
         colours: Sequence[tuple[int, int, int]] = (C.GOLD, C.EMBER, C.GOLD_PALE),
-        duration: float = 0.9,
+        duration: float = 0.7,
         *,
-        count: int = 26,
-        speed: float = 260.0,
+        count: int = 14,
+        speed: float = 220.0,
         gravity: float = 520.0,
-        size: int = 5,
+        size: int = 4,
         spread: float = math.tau,
         angle: float = -math.pi / 2,
         shape: str = "square",
@@ -517,7 +512,7 @@ class ParticleBurstAnimation(Animation):
             x = self.centre[0] + vx * t
             y = self.centre[1] + vy * t + 0.5 * self.gravity * t * t
             s = max(1, int(self.size * scale * (0.4 + 0.6 * fade)))
-            a = int(235 * fade)
+            a = int(170 * fade)
             if self.shape == "circle":
                 scratch = T.surface((s * 2, s * 2))
                 pygame.draw.circle(scratch, T.alpha(colour, a), (s, s), s)
@@ -573,11 +568,7 @@ class ConfettiAnimation(Animation):
 
 
 class BannerAnimation(Animation):
-    """A big centred announcement that swipes in, holds, and swipes out.
-
-    Used for phase changes, "SLAIN!", "CHALLENGED!" — the moments that deserve
-    to interrupt the eye without interrupting the game.
-    """
+    """Thin accent lozenge for turn changes and slays — not a full-screen veil."""
 
     z = Z_TOP
 
@@ -587,9 +578,9 @@ class BannerAnimation(Animation):
         subtitle: str = "",
         *,
         colour: tuple[int, int, int] = C.GOLD,
-        duration: float = 1.9,
+        duration: float = 0.85,
         icon: str | None = None,
-        y_fraction: float = 0.34,
+        y_fraction: float = 0.18,
     ) -> None:
         super().__init__(duration)
         self.title = title
@@ -601,46 +592,94 @@ class BannerAnimation(Animation):
     def draw(self, screen: pygame.Surface) -> None:
         w, h = screen.get_size()
         p = self.progress
-        if p < 0.18:
-            k = T.ease_out_quint(p / 0.18)
-            slide, fade = (1 - k) * w * 0.35, k
-        elif p > 0.76:
-            k = (p - 0.76) / 0.24
-            slide, fade = -k * w * 0.3, 1 - k
+        if p < 0.22:
+            k = T.ease_out_quint(p / 0.22)
+            slide, fade = (1 - k) * w * 0.2, k
+        elif p > 0.78:
+            k = (p - 0.78) / 0.22
+            slide, fade = k * w * 0.15, 1 - k
         else:
             slide, fade = 0.0, 1.0
         if fade <= 0.01:
             return
 
-        title_font = T.display(max(24, int(h * 0.058)))
-        sub_font = T.ui(max(12, int(h * 0.021)), bold=True)
+        title_font = T.ui(max(14, int(h * 0.024)), bold=True)
+        sub_font = T.ui(max(10, int(h * 0.016)))
         tw = title_font.size(self.title)[0]
         sw = sub_font.size(self.subtitle)[0] if self.subtitle else 0
-        icon_w = 44 if self.icon else 0
-        panel_w = min(int(w * 0.86), max(tw, sw) + icon_w + 96)
-        panel_h = 78 + (26 if self.subtitle else 0)
+        icon_w = 28 if self.icon else 0
+        panel_w = min(int(w * 0.4), max(tw, sw) + icon_w + 48)
+        panel_h = T.s(36) + (T.s(16) if self.subtitle else 0)
         rect = pygame.Rect(0, 0, panel_w, panel_h)
         rect.center = (int(w // 2 + slide), int(h * self.y_fraction))
 
-        layer = T.surface((panel_w + 80, panel_h + 80))
-        local = pygame.Rect(40, 40, panel_w, panel_h)
-        T.blit_glow(layer, local.center, panel_w // 2, T.alpha(self.colour, 60))
-        T.glass(layer, local, radius=T.M.RADIUS_L, fill=(16, 14, 30, 232),
-                rim=T.alpha(self.colour, 190))
-        bar = pygame.Rect(local.left, local.top, 5, local.height)
-        T.round_rect(layer, bar, self.colour, radius=3)
+        layer = T.surface((panel_w + 40, panel_h + 40))
+        local = pygame.Rect(20, 20, panel_w, panel_h)
+        T.round_rect(layer, local, T.alpha(self.colour, int(200 * fade)), radius=local.height // 2)
+        T.round_rect(layer, local, T.alpha(self.colour, 220), radius=local.height // 2, width=2)
 
-        text_left = local.left + 26 + icon_w
+        text_left = local.left + 16 + icon_w
         if self.icon:
-            draw_icon(layer, self.icon, (local.left + 44, local.centery), 34, self.colour)
-        T.text(layer, self.title, (text_left, local.centery - (12 if self.subtitle else 0)),
-               title_font, C.INK_BRIGHT, anchor="midleft")
+            draw_icon(layer, self.icon, (local.left + 22, local.centery), 18, self.colour)
+        T.text(layer, self.title, (text_left, local.centery - (6 if self.subtitle else 0)),
+               title_font, C.INK_BRIGHT, anchor="midleft", shadow=None)
         if self.subtitle:
-            T.text(layer, self.subtitle, (text_left, local.centery + 22), sub_font,
-                   T.alpha(C.INK_DIM, 240), anchor="midleft")
+            T.text(layer, self.subtitle, (text_left, local.centery + 10), sub_font,
+                   T.alpha(C.INK_BRIGHT, 180), anchor="midleft", shadow=None)
 
-        layer.set_alpha(int(255 * fade))
-        screen.blit(layer, (rect.left - 40, rect.top - 40))
+        layer.set_alpha(int(200 * fade))
+        screen.blit(layer, (rect.left - 20, rect.top - 20))
+
+
+class TableLightSweep(Animation):
+    """Slow specular arc across the felt on turn change."""
+
+    z = Z_BEHIND
+
+    def __init__(self, table_rect: pygame.Rect, duration: float = 1.4) -> None:
+        super().__init__(duration)
+        self.table_rect = pygame.Rect(table_rect)
+
+    def draw(self, screen: pygame.Surface) -> None:
+        p = self.progress
+        if p <= 0.05 or p >= 0.95:
+            return
+        rect = self.table_rect
+        layer = T.surface(rect.size)
+        cx, cy = rect.width // 2, rect.height // 2
+        r = int(min(rect.width, rect.height) * 0.46)
+        arc_rect = pygame.Rect(cx - r, cy - r, r * 2, r * 2)
+        start = math.pi * 0.15 + p * math.pi
+        end = start + 0.4
+        pygame.draw.arc(layer, (*C.GOLD_PALE, 38), arc_rect, start, end, 5)
+        screen.blit(layer, rect.topleft, special_flags=pygame.BLEND_RGBA_ADD)
+
+
+class APSpendAnimation(Animation):
+    """AP pips drain with a tick when a prompt is consumed."""
+
+    z = Z_ABOVE
+
+    def __init__(
+        self,
+        centre: tuple[int, int],
+        *,
+        remaining: int = 0,
+        duration: float = 0.55,
+    ) -> None:
+        super().__init__(duration)
+        self.centre = centre
+        self.remaining = remaining
+
+    def draw(self, screen: pygame.Surface) -> None:
+        p = self.progress
+        fade = 1.0 - p
+        if fade <= 0.02:
+            return
+        y = self.centre[1] - int(18 * p)
+        label = f"{self.remaining} AP"
+        T.text(screen, label, (self.centre[0], y), T.ui(14, bold=True),
+               T.alpha(C.WARN, int(220 * fade)), anchor="center", shadow=None)
 
 
 class TrailAnimation(Animation):
@@ -653,9 +692,9 @@ class TrailAnimation(Animation):
         start: tuple[int, int],
         end: tuple[int, int],
         colour: tuple[int, int, int] = C.ARCANE,
-        duration: float = 0.55,
+        duration: float = 0.42,
         *,
-        width: int = 5,
+        width: int = 4,
     ) -> None:
         super().__init__(duration)
         self.start = start
@@ -671,14 +710,14 @@ class TrailAnimation(Animation):
             k = tail + (p - tail) * (i / segments)
             x = T.lerp(self.start[0], self.end[0], k)
             y = T.lerp(self.start[1], self.end[1], k) - math.sin(k * math.pi) * 34
-            a = int(210 * (i / segments) ** 1.6 * (1 - self.progress * 0.35))
+            a = int(160 * (i / segments) ** 1.6 * (1 - self.progress * 0.35))
             r = max(1, int(self.width * (0.35 + 0.65 * i / segments)))
             scratch = T.surface((r * 2 + 2, r * 2 + 2))
             pygame.draw.circle(scratch, T.alpha(self.colour, a), (r + 1, r + 1), r)
             screen.blit(scratch, (int(x - r), int(y - r)))
         head = (int(T.lerp(self.start[0], self.end[0], p)),
                 int(T.lerp(self.start[1], self.end[1], p) - math.sin(p * math.pi) * 34))
-        T.blit_glow(screen, head, self.width * 5, T.alpha(self.colour, 150))
+        pygame.draw.circle(screen, T.alpha(self.colour, 180), head, max(2, self.width))
 
 
 class SpotlightAnimation(Animation):
@@ -715,9 +754,9 @@ class EmberRainAnimation(Animation):
     def __init__(
         self,
         size: tuple[int, int],
-        duration: float = 2.2,
+        duration: float = 1.6,
         *,
-        count: int = 40,
+        count: int = 22,
         seed: int = 0,
         origin: tuple[int, int] | None = None,
     ) -> None:
@@ -743,7 +782,7 @@ class EmberRainAnimation(Animation):
         for x, y, rise, colour, s, phase in self.sparks:
             px = x + math.sin(phase + t * 3.1) * 18
             py = y + rise * t
-            a = int(200 * fade)
+            a = int(130 * fade)
             scratch = T.surface((s * 4, s * 4))
             pygame.draw.circle(scratch, T.alpha(colour, a), (s * 2, s * 2), s)
             screen.blit(scratch, (int(px - s * 2), int(py - s * 2)))
@@ -758,7 +797,7 @@ class RunePulseAnimation(Animation):
         self,
         centre: tuple[int, int],
         colour: tuple[int, int, int] = C.ARCANE,
-        duration: float = 1.1,
+        duration: float = 0.85,
         *,
         radius: int = 90,
     ) -> None:
@@ -784,9 +823,8 @@ class RunePulseAnimation(Animation):
             ))
         scratch = T.surface((r * 2 + 12, r * 2 + 12))
         local = [(p[0] - self.centre[0] + r + 6, p[1] - self.centre[1] + r + 6) for p in points]
-        pygame.draw.polygon(scratch, T.alpha(self.colour, int(140 * fade)), local, 3)
+        pygame.draw.polygon(scratch, T.alpha(self.colour, int(120 * fade)), local, 3)
         screen.blit(scratch, (self.centre[0] - r - 6, self.centre[1] - r - 6))
-        T.blit_glow(screen, self.centre, int(r * 0.7), T.alpha(self.colour, int(70 * fade)))
 
 
 def _hash01(n: int) -> float:
@@ -917,6 +955,7 @@ __all__ = [
     "Z_TOP",
     "Animation",
     "AnimationManager",
+    "APSpendAnimation",
     "BannerAnimation",
     "CardMoveAnimation",
     "ConfettiAnimation",
@@ -929,6 +968,7 @@ __all__ = [
     "RingBurstAnimation",
     "RunePulseAnimation",
     "SpotlightAnimation",
+    "TableLightSweep",
     "TrailAnimation",
     "die_face",
 ]

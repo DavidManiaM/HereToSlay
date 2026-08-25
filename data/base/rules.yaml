@@ -18,6 +18,10 @@ setup:
 turn:
   action_points_per_turn: 3
   hand_limit: null # null = no limit
+  # A Hero that joined your party this turn activates for free; one from an
+  # earlier turn pays its own `ability.cost`. Delete this line and every
+  # ability costs its printed price, whenever it is used.
+  ability_free_when: { op: card_entered_play_this_turn }
   # Run after every resolved action. *When* a new Monster turns up is policy,
   # so it lives here rather than inside slay_monster.
   after_action:
@@ -69,7 +73,7 @@ actions:
 
   - id: use_hero_ability
     label: "Use a Hero's ability"
-    cost: { action_points: 1 }
+    cost: {} # the ability's own `cost:` block pays, as with use_leader_ability
     targets:
       - param: card
         from: { selector: heroes, of: $self }
@@ -78,6 +82,13 @@ actions:
           of:
             - { op: card_has_ability, activation: action }
             - { op: not, of: { op: card_tapped } }
+            # The action itself is free, so `legal_intents` cannot check
+            # affordability for us — the target filter does it instead, or the
+            # menu would offer an ability at 0 AP that then refuses to pay.
+            - op: any
+              of:
+                - { op: card_entered_play_this_turn }
+                - { op: compare, left: $action_points, cmp: ">=", right: 1 }
         prompt: "Use which Hero's ability?"
     effect: { op: use_ability, card: $intent.card }
 

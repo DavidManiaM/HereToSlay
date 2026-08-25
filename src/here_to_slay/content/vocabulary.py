@@ -335,6 +335,12 @@ _CONDITIONS: tuple[OpSpec, ...] = (
         doc="has this card already been used this turn?",
     ),
     OpSpec(
+        "card_entered_play_this_turn",
+        OpKind.CONDITION,
+        _p(card=R.REF),
+        doc="did this card arrive on the board this turn?",
+    ),
+    OpSpec(
         "card_has_ability",
         OpKind.CONDITION,
         _p(card=R.REF, activation=R.VALUE),

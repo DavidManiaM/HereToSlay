@@ -56,6 +56,8 @@ FLAGS: dict[str, tuple[str, str]] = {
     "autoplay": ("Autoplay all seats", "let the agent answer for everyone"),
     "layout_debug": ("Layout overlay", "outline every named region"),
     "fps": ("Frame counter", "corner readout"),
+    "force_cpu_materials": ("CPU materials", "skip ModernGL foil/glow"),
+    "reaction_timer": ("Reaction auto-pass", "3s countdown on reaction windows"),
 }
 
 

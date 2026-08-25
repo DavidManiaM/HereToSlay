@@ -1,12 +1,7 @@
-"""The living table: felt grain, floating motes, a class constellation.
+"""The living table: dark felt, depth-lit rim, sparse motes.
 
-Cosmetic only. The board still reads correctly with this module deleted —
-``GameScene`` just paints a flat gradient instead — so a dropped frame or a
-headless test that never constructs one cannot hide a rules bug.
-
-Everything is deterministic. A replayed game's table must look the same twice
-(the same reason ``core/`` may not import ``random``), so motes are seeded from
-the window size, not from wall-clock entropy.
+Everything is deterministic and cached so a resize never rebuilds grain
+pixel-by-pixel, and a dropped frame cannot hide a rules bug.
 """
 
 from __future__ import annotations
@@ -20,39 +15,7 @@ import pygame
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.theme import C
 
-_CLASS_COLOURS = tuple(T.CLASS_COLOURS.values())
-_MOTE_COUNT = 48
-
-
-@lru_cache(maxsize=8)
-def _felt_tile(size: int = 256) -> pygame.Surface:
-    """A noisy indigo square. Tiled so a resize never rebuilds grain."""
-    small = 64
-    surf = T.surface((small, small))
-    for y in range(small):
-        for x in range(small):
-            n = _hash01(x * 131 + y * 917 + 41)
-            m = _hash01(x * 53 + y * 197 + 7)
-            tone = int(14 + n * 18 + m * 6)
-            a = int(28 + n * 36)
-            surf.set_at((x, y), (tone + 4, tone, tone + 18, a))
-    return pygame.transform.smoothscale(surf, (size, size))
-
-
-@lru_cache(maxsize=4)
-def _hex_veil(width: int, height: int) -> pygame.Surface:
-    """A faint honeycomb over the monster row — the table's 'arena'."""
-    width, height = max(8, width), max(8, height)
-    surf = T.surface((width, height))
-    radius = 22
-    dx = int(radius * 1.75)
-    dy = int(radius * 1.52)
-    colour = (255, 205, 92, 16)
-    for row, y in enumerate(range(-radius, height + radius, dy)):
-        ox = (dx // 2) if row % 2 else 0
-        for x in range(-radius + ox, width + radius, dx):
-            pygame.draw.circle(surf, colour, (x, y), radius, 1)
-    return surf
+_MOTE_COUNT = 8
 
 
 def _hash01(n: int) -> float:
@@ -61,6 +24,129 @@ def _hash01(n: int) -> float:
     x = (x * 0x85EBCA6B) & 0xFFFFFFFF
     x ^= x >> 13
     return ((x * 0xC2B2AE35) & 0xFFFFFFFF) / 0xFFFFFFFF
+
+
+@lru_cache(maxsize=6)
+def _room(width: int, height: int) -> pygame.Surface:
+    """Dark vertical gradient, warm ceiling glow, bokeh, horizon seam."""
+    width, height = max(8, width), max(8, height)
+    surf = T.surface((width, height))
+    surf.blit(T.vgradient(width, height, (18, 28, 32), C.VOID), (0, 0))
+    # Warm ceiling pool
+    T.blit_glow(surf, (width // 2, int(height * 0.08)), int(width * 0.55),
+                (80, 48, 28, 38), power=2.2)
+    # Bokeh lights
+    for i in range(7):
+        bx = int(_hash01(i * 23 + 5) * width)
+        by = int(_hash01(i * 41 + 9) * height * 0.45)
+        br = int(40 + _hash01(i * 67) * 90)
+        col = (
+            int(40 + _hash01(i * 89) * 40),
+            int(60 + _hash01(i * 103) * 50),
+            int(70 + _hash01(i * 127) * 40),
+            int(12 + _hash01(i * 151) * 18),
+        )
+        T.blit_glow(surf, (bx, by), br, col, power=2.4)
+    # Faint horizon seam
+    seam_y = int(height * 0.38)
+    seam = T.surface((width, 3))
+    for x in range(width):
+        a = int(18 * abs(math.sin(x / max(1, width) * math.pi)))
+        if a:
+            seam.set_at((x, 1), (90, 70, 50, a))
+    surf.blit(seam, (0, seam_y))
+    return surf
+
+
+@lru_cache(maxsize=6)
+def _felt_noise_tile(size: int = 64) -> pygame.Surface:
+    """Deterministic grain tile for BLEND_RGBA_MULT."""
+    tile = T.surface((size, size))
+    for y in range(size):
+        for x in range(size):
+            n = _hash01(x * 928371 + y * 689287)
+            v = int(200 + n * 55)
+            tile.set_at((x, y), (v, v, v, 255))
+    return tile
+
+
+@lru_cache(maxsize=12)
+def _table(width: int, height: int) -> pygame.Surface:
+    """Depth stack: contact shadow, rim bevel, felt, key-light, grain, inlay."""
+    width, height = max(16, width), max(12, height)
+    surf = T.surface((width, height))
+    rect = pygame.Rect(0, 0, width, height)
+
+    # Contact shadow under the whole oval
+    shadow = T.surface((width, height))
+    pygame.draw.ellipse(shadow, (0, 0, 0, 55), rect.inflate(8, 6).move(0, 10))
+    surf.blit(shadow, (0, 0))
+
+    # Outer rim band (wood/leather)
+    outer = rect.inflate(-6, -4)
+    pygame.draw.ellipse(surf, C.TABLE_RIM, outer, 0)
+    inner = outer.inflate(-14, -10)
+    pygame.draw.ellipse(surf, C.FELT_DEEP, inner, 0)
+
+    # Upper-left bevel highlight on the rim
+    bevel = T.surface((width, height))
+    bevel_rect = outer.inflate(-4, -4)
+    pygame.draw.arc(bevel, C.TABLE_RIM_LIT, bevel_rect, math.pi * 0.85, math.pi * 1.65, 3)
+    surf.blit(bevel, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+    # Key-light pool centred at 0.42h
+    cx, cy = width // 2, int(height * 0.42)
+    T.blit_glow(surf, (cx, cy), int(min(width, height) * 0.38),
+                (*T.mix(C.FELT_LIGHT, (255, 255, 255), 0.12), 48), power=1.9)
+
+    # Felt grain
+    grain = _felt_noise_tile()
+    grain_layer = T.surface((width, height))
+    for gy in range(0, height, grain.get_height()):
+        for gx in range(0, width, grain.get_width()):
+            grain_layer.blit(grain, (gx, gy))
+    surf.blit(grain_layer, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    # Thin gold inlay
+    inlay = inner.inflate(-18, -14)
+    pygame.draw.ellipse(surf, (*T.shade(C.GOLD, 0.6), 80), inlay, 1)
+
+    return surf
+
+
+@lru_cache(maxsize=24)
+def _placemats(
+    width: int, height: int, seat_sig: tuple[tuple[int, int, int, int], ...],
+) -> pygame.Surface:
+    """Per-seat tinted arcs around the table edge."""
+    surf = T.surface((width, height))
+    table_cx, table_cy = width // 2, height // 2
+    for i, (sx, sy, sw, sh) in enumerate(seat_sig):
+        colour = T.seat_colour(i)
+        cx = sx + sw // 2
+        cy = sy + sh // 2
+        angle = math.atan2(cy - table_cy, cx - table_cx)
+        arc_r = int(min(width, height) * 0.44)
+        arc_rect = pygame.Rect(table_cx - arc_r, table_cy - arc_r, arc_r * 2, arc_r * 2)
+        start = math.degrees(angle) - 28
+        end = math.degrees(angle) + 28
+        pygame.draw.arc(surf, (*colour, 30), arc_rect, math.radians(start), math.radians(end), 6)
+    return surf
+
+
+_mote_sprites: dict[tuple[int, tuple[int, int, int]], pygame.Surface] = {}
+
+
+def _mote_sprite(radius: int, colour: tuple[int, int, int]) -> pygame.Surface:
+    key = (radius, colour)
+    hit = _mote_sprites.get(key)
+    if hit is not None:
+        return hit
+    r = max(1, radius)
+    surf = T.surface((r * 4, r * 4))
+    pygame.draw.circle(surf, (*colour, 255), (r * 2, r * 2), r)
+    _mote_sprites[key] = surf
+    return surf
 
 
 class Atmosphere:
@@ -76,14 +162,23 @@ class Atmosphere:
         self._size = size
         w, h = size
         self._motes = []
-        palette = (C.GOLD, C.GOLD_PALE, C.EMBER, C.ARCANE, C.FROST, C.ROSE)
+        palette = (C.GOLD_PALE, C.CYAN, (180, 200, 190), (140, 160, 150))
+        cone_cx, cone_cy = w // 2, int(h * 0.42)
+        cone_r = min(w, h) * 0.38
         for i in range(_MOTE_COUNT):
+            for _ in range(8):
+                x = _hash01(i * 17 + 3) * w
+                y = _hash01(i * 31 + 11) * h
+                if math.hypot(x - cone_cx, y - cone_cy) <= cone_r:
+                    break
+            else:
+                x = cone_cx + (_hash01(i * 53) - 0.5) * cone_r * 1.6
+                y = cone_cy + (_hash01(i * 71) - 0.5) * cone_r * 0.9
             self._motes.append((
-                _hash01(i * 17 + 3) * w,
-                _hash01(i * 31 + 11) * h,
-                8.0 + _hash01(i * 53) * 22.0,
-                -6.0 - _hash01(i * 71) * 16.0,
-                1 + int(_hash01(i * 97) * 3),
+                x, y,
+                4.0 + _hash01(i * 53) * 8.0,
+                -3.0 - _hash01(i * 71) * 6.0,
+                1 + int(_hash01(i * 97) * 2),
                 palette[i % len(palette)],
                 _hash01(i * 113) * math.tau,
             ))
@@ -95,112 +190,71 @@ class Atmosphere:
         w, h = self._size
         next_motes = []
         for x, y, vx, vy, radius, colour, phase in self._motes:
-            x = (x + vx * dt + math.sin(self.time + phase) * 6.0 * dt) % (w + 20) - 10
+            x = (x + vx * dt + math.sin(self.time + phase) * 3.0 * dt) % (w + 20) - 10
             y = (y + vy * dt) % (h + 20) - 10
             next_motes.append((x, y, vx, vy, radius, colour, phase))
         self._motes = next_motes
 
-    def draw(self, screen: pygame.Surface, layout: Any) -> None:
+    def draw(
+        self,
+        screen: pygame.Surface,
+        layout: Any,
+        *,
+        active_seat: str | None = None,
+        camera_key: str = "local",
+    ) -> None:
+        del camera_key  # reserved for camera-specific lighting later
         w, h = screen.get_size()
-        screen.blit(T.vgradient(w, h, C.FELT, C.FELT_DEEP), (0, 0))
-        self._tile_felt(screen)
-        self._draw_hearth(screen, layout)
-        self._draw_constellation(screen, layout)
+        screen.blit(_room(w, h), (0, 0))
+
+        table = getattr(layout, "table_rect", None)
+        if table is not None and table.width > 40:
+            screen.blit(_table(table.width, table.height), table.topleft)
+
+            seats = getattr(layout, "seats", ())
+            if seats:
+                sig = tuple(
+                    (s.rect.x, s.rect.y, s.rect.w, s.rect.h) for s in seats
+                )
+                mats = _placemats(table.width, table.height, sig)
+                # Brighten active seat arc
+                if active_seat is not None:
+                    breath = 0.5 + 0.5 * math.sin(self.time * 1.4)
+                    active_layer = mats.copy()
+                    active_layer.set_alpha(int(40 + 35 * breath))
+                    screen.blit(active_layer, table.topleft, special_flags=pygame.BLEND_RGBA_ADD)
+                screen.blit(mats, table.topleft)
+
         self._draw_motes(screen)
-        self._draw_torches(screen, layout)
-        screen.blit(T.vignette((w, h), 168), (0, 0))
-
-    def _tile_felt(self, screen: pygame.Surface) -> None:
-        tile = _felt_tile()
-        tw, th = tile.get_size()
-        w, h = screen.get_size()
-        for y in range(0, h, th):
-            for x in range(0, w, tw):
-                screen.blit(tile, (x, y))
-
-    def _draw_hearth(self, screen: pygame.Surface, layout: Any) -> None:
-        """A warm pool of light under the Monster row — the table's focus."""
-        row = layout.monster_row_rect
-        beat = T.pulse(self.time, period=3.4, low=0.55, high=1.0)
-        T.blit_glow(
-            screen, row.center, int(row.width * 0.52),
-            T.alpha((90, 48, 110), int(52 * beat)),
-        )
-        T.blit_glow(
-            screen, row.center, int(row.width * 0.28),
-            T.alpha(C.BLOOD, int(28 * beat)),
-        )
-        veil = _hex_veil(max(8, row.width), max(8, row.height))
-        screen.blit(veil, row.topleft, special_flags=pygame.BLEND_RGBA_ADD)
-
-        # Gold rail around the arena, breathing with the pulse.
-        rim = row.inflate(8, 8)
-        T.round_rect(screen, rim, T.alpha(C.GOLD, int(36 + 28 * beat)),
-                     radius=T.M.RADIUS_L + 4, width=1)
-
-    def _draw_constellation(self, screen: pygame.Surface, layout: Any) -> None:
-        """Six class-coloured stars orbit the Monster row slowly."""
-        row = layout.monster_row_rect
-        rx = max(80, int(row.width * 0.46))
-        ry = max(48, int(row.height * 0.42))
-        cx, cy = row.center
-        n = len(_CLASS_COLOURS)
-        for i, colour in enumerate(_CLASS_COLOURS):
-            angle = self.time * 0.18 + i * (math.tau / n)
-            x = int(cx + math.cos(angle) * rx)
-            y = int(cy + math.sin(angle) * ry)
-            glow = T.pulse(self.time + i * 0.4, period=2.6, low=0.35, high=1.0)
-            T.blit_glow(screen, (x, y), 16, T.alpha(colour, int(90 * glow)))
-            pygame.draw.circle(screen, colour, (x, y), 3)
-            pygame.draw.circle(screen, T.alpha(C.INK_BRIGHT, 80), (x, y), 3, 1)
-            # Hairline to the next star, so the orbit reads as one figure.
-            nxt = (i + 1) % n
-            a2 = self.time * 0.18 + nxt * (math.tau / n)
-            x2 = int(cx + math.cos(a2) * rx)
-            y2 = int(cy + math.sin(a2) * ry)
-            T.hairline(screen, (x, y), (x2, y2), T.alpha(colour, 28))
+        screen.blit(T.vignette((w, h), 110), (0, 0))
 
     def _draw_motes(self, screen: pygame.Surface) -> None:
         for x, y, _vx, _vy, radius, colour, phase in self._motes:
-            fade = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(self.time * 1.4 + phase))
-            a = int(70 * fade)
-            if a < 8:
+            fade = 0.25 + 0.4 * (0.5 + 0.5 * math.sin(self.time * 0.8 + phase))
+            a = int(32 * fade)
+            if a < 4:
                 continue
-            r = max(1, radius)
-            scratch = T.surface((r * 4, r * 4))
-            pygame.draw.circle(scratch, T.alpha(colour, a), (r * 2, r * 2), r)
-            screen.blit(scratch, (int(x - r * 2), int(y - r * 2)))
-
-    def _draw_torches(self, screen: pygame.Surface, layout: Any) -> None:
-        """Flickering embers in the four corners of the board, like table lamps."""
-        board = layout.board_rect
-        points = (
-            (board.left + 28, board.top + 22, C.EMBER),
-            (board.right - 28, board.top + 22, C.GOLD),
-            (board.left + 28, board.bottom - 18, C.ARCANE),
-            (board.right - 28, board.bottom - 18, C.ROSE),
-        )
-        for i, (x, y, colour) in enumerate(points):
-            flicker = T.pulse(self.time * 1.7 + i * 0.9, period=0.55, low=0.45, high=1.0)
-            T.blit_glow(screen, (x, y), 34, T.alpha(colour, int(55 * flicker)))
-            pygame.draw.circle(screen, T.alpha(colour, int(160 * flicker)), (x, y), 3)
+            sprite = _mote_sprite(radius, colour)
+            sprite = sprite.copy()
+            sprite.set_alpha(a)
+            r = radius * 2
+            screen.blit(sprite, (int(x - r * 2), int(y - r * 2)))
 
 
 def blit_card_sheen(dest: pygame.Surface, rect: pygame.Rect, amount: float) -> None:
     """A diagonal highlight that sweeps across a hovered card."""
     if amount < 0.08 or rect.width < 12 or rect.height < 12:
         return
-    # The band travels left-to-right as hover eases in, then holds.
     travel = T.ease_out_cubic(min(1.0, amount))
     band_w = max(10, int(rect.width * 0.28))
     x = int(rect.left - band_w + travel * (rect.width + band_w * 2))
     sheen = T.surface((band_w, rect.height))
     sheen.blit(
-        T.hgradient(band_w, rect.height, (255, 255, 255, 0), (255, 248, 220, 70)),
+        T.hgradient(band_w, rect.height, (255, 255, 255, 0), (255, 255, 255, 55)),
         (0, 0),
     )
     sheen.blit(
-        T.hgradient(band_w, rect.height, (255, 248, 220, 70), (255, 255, 255, 0)),
+        T.hgradient(band_w, rect.height, (255, 255, 255, 55), (255, 255, 255, 0)),
         (0, 0),
         special_flags=pygame.BLEND_RGBA_MAX,
     )

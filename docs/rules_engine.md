@@ -310,6 +310,9 @@ The test of the design: for each rule, which file changes if the variant changes
 |---|---|
 | "3 action points per turn" | `rules.yaml → turn.action_points_per_turn` |
 | "attacking costs 2" | `rules.yaml → actions[attack_monster].cost` |
+| "draw 1 / play Hero 1 / ability 1 / burn hand 3" | `rules.yaml → actions[].cost` |
+| "Hero ability free the turn it entered party" | `rules.yaml → turn.ability_free_when` + `card_entered_play_this_turn` |
+| "use_hero_ability charges once, not twice" | `actions[use_hero_ability].cost: {}` — the ability's own `cost:` pays |
 | "you may only play Heroes from your hand" | `rules.yaml → actions[play_hero].targets` |
 | "the Monster row refills after each action" | `rules.yaml → turn.after_action` |
 | "a Challenge may interrupt a play" | `rules.yaml → windows[card_played].on` |
@@ -326,6 +329,10 @@ The test of the design: for each rule, which file changes if the variant changes
 
 Everything above the line is your mod's surface. If you find yourself editing below the line for
 a *content* change, the design has failed and we should add a registry seam instead.
+
+**Known no-op:** `play.cost` / `equip.cost` on Magic and Item cards in YAML are never read —
+neither `_run_play` nor `_equip` calls `pay_costs`. Only the action-menu `cost:` blocks charge
+prompts today. Document this in variants rather than silently "fixing" card YAML.
 
 ---
 

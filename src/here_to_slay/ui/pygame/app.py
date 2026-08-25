@@ -25,6 +25,7 @@ import pygame
 
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import clear_card_cache
+from here_to_slay.ui.pygame import materials
 from here_to_slay.ui.pygame.icons import draw_icon
 from here_to_slay.ui.pygame.layout import MIN_H, MIN_W, LayoutManager
 from here_to_slay.ui.pygame.presenter import DEFAULT_AI_DELAY, PygamePresenter
@@ -38,8 +39,14 @@ if TYPE_CHECKING:
     from here_to_slay.core.interpreter import DecisionSource
 
 WINDOW_TITLE = "Here to Slay"
-DEFAULT_WIDTH = 1600
-DEFAULT_HEIGHT = 900
+DEFAULT_WIDTH = 1920
+DEFAULT_HEIGHT = 1080
+#: Chrome scale the client ships with: the HUD shrinks so the board can grow.
+DEFAULT_UI_SCALE = 0.85
+#: Room to leave for the window title bar and taskbar when clamping to the
+#: desktop, so asking for 1080p on a 1080p monitor does not open off-screen.
+DESKTOP_MARGIN_W = 32
+DESKTOP_MARGIN_H = 88
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +88,7 @@ class PygameApp:
         fullscreen: bool = False,
         reveal_all: bool = False,
         sound: bool = True,
+        ui_scale: float = DEFAULT_UI_SCALE,
         ai_delay: float = DEFAULT_AI_DELAY,
         agent: DecisionSource | None = None,
         engine: Engine | None = None,
@@ -91,12 +99,14 @@ class PygameApp:
         self.height = max(MIN_H, height)
         self.fullscreen = fullscreen
         self.reveal_all = reveal_all
+        self.ui_scale = ui_scale
         self.ai_delay = ai_delay
         self._agent_override = agent
 
         self.running = False
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
+        self._apply_ui_scale()
         self.layout = LayoutManager(self.width, self.height)
         self.sound = SoundBoard(enabled=sound)
 
@@ -167,8 +177,12 @@ class PygameApp:
         pygame.display.set_caption(WINDOW_TITLE)
         with contextlib.suppress(pygame.error):
             pygame.display.set_icon(_window_icon())
+        # Only safe once the display is initialised, which is why the request
+        # is clamped here rather than in __init__.
+        self.width, self.height = fit_to_desktop(self.width, self.height)
         self.screen = pygame.display.set_mode(self._mode_size(), self._mode_flags())
         self.clock = pygame.time.Clock()
+        materials.init(self.screen)
         self._sync_size()
 
     def _mode_flags(self) -> int:
@@ -182,10 +196,17 @@ class PygameApp:
         self.screen = pygame.display.set_mode(self._mode_size(), self._mode_flags())
         self._sync_size()
 
+    def _apply_ui_scale(self, height: int | None = None) -> None:
+        """Resolution-relative chrome, times the user's own preference."""
+        base = max(0.8, min(1.5, (height or self.height) / 1080.0))
+        T.set_scale(base * self.ui_scale)
+
     def _sync_size(self) -> None:
         assert self.screen is not None
         width, height = self.screen.get_size()
+        self._apply_ui_scale(height)
         self.layout.rebuild(width, height)
+        materials.resize((width, height))
         if not self.fullscreen:
             self.width, self.height = width, height
         if self.scene is not None:
@@ -318,9 +339,33 @@ class PygameApp:
     def _shutdown(self) -> None:
         self._end_game()
         self.sound.stop()
+        materials.shutdown()
         clear_card_cache()
         clear_surface_caches()
         pygame.quit()
+
+
+def fit_to_desktop(width: int, height: int) -> tuple[int, int]:
+    """Shrink a requested window until it fits on the primary monitor.
+
+    Asking for 1920x1080 on a 1080p screen would put the title bar above the
+    top edge, so anything that does not fit falls back to the largest 16:9
+    box that does. Never goes below the ``MIN_W``/``MIN_H`` floor.
+    """
+    width, height = max(MIN_W, int(width)), max(MIN_H, int(height))
+    try:
+        desktops = pygame.display.get_desktop_sizes()
+    except (pygame.error, AttributeError):
+        desktops = []
+    if not desktops:
+        return width, height
+
+    avail_w = max(MIN_W, desktops[0][0] - DESKTOP_MARGIN_W)
+    avail_h = max(MIN_H, desktops[0][1] - DESKTOP_MARGIN_H)
+    if width <= avail_w and height <= avail_h:
+        return width, height
+    fit_w = min(avail_w, avail_h * 16 // 9)
+    return max(MIN_W, fit_w), max(MIN_H, fit_w * 9 // 16)
 
 
 def _fresh_seed() -> str:
@@ -350,6 +395,7 @@ def launch(
     fullscreen: bool = False,
     reveal_all: bool = False,
     sound: bool = True,
+    ui_scale: float = DEFAULT_UI_SCALE,
     **kwargs: Any,
 ) -> int:
     """One call for the CLI: build the setup, open the window, play."""
@@ -360,9 +406,17 @@ def launch(
             ai_seats=max(0, min(ai_seats, len(names) - 1)),
         ),
         width=width, height=height, fullscreen=fullscreen,
-        reveal_all=reveal_all, sound=sound, **kwargs,
+        reveal_all=reveal_all, sound=sound, ui_scale=ui_scale, **kwargs,
     )
     return app.run()
 
 
-__all__ = ["DEFAULT_HEIGHT", "DEFAULT_WIDTH", "GameSetup", "PygameApp", "launch"]
+__all__ = [
+    "DEFAULT_HEIGHT",
+    "DEFAULT_UI_SCALE",
+    "DEFAULT_WIDTH",
+    "GameSetup",
+    "PygameApp",
+    "fit_to_desktop",
+    "launch",
+]

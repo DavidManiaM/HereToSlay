@@ -1,272 +1,599 @@
-"""Where everything goes. One place that owns the screen's geometry.
+"""Table geometry: you at the south, opponents on a plus/hex ring.
 
-The board is arranged the way a player sitting at the table would see it, and
-that arrangement is the *specification*, not an accident of the drawing order:
-
-::
-
-    ┌──────────────────────────── top bar ──────────────────────── [i][?] ──┐
-    │        │   deck · discard · monster deck        │                     │
-    │ active │                                       │   opponents         │
-    │ stack  │        M O N S T E R   R O W           │   (next player      │
-    │ (left) │                                       │    at the top)      │
-    │        ├───────────────────────────────────────┤                     │
-    │        │   your leader + party                 │                     │
-    ├────────┴───────────────────────────────────────┴─────────────────────┤
-    │  dice / AP   │           your hand              │  active effects     │
-    └──────────────────────────────────────────────────────────────────────┘
-
-Everything is derived from ``(width, height)`` with proportional weights and
-minimum sizes, so the window resizes without any panel doing its own maths.
-Rails collapse on narrow windows rather than squeezing the board.
-
-The rect names from the first version of this client (``header_rect``,
-``opponents_rect``, ``player_hand_rect`` …) are kept as aliases: they are what
-the existing UI tests assert on, and a layout rename is not worth breaking a
-regression suite over.
+The board is one oval table, not a dashboard of panels. Named rects still exist
+as *role anchors* (hand, monsters, decks, chrome) so hit-tests and animations
+have somewhere to point — they are not a chrome grid the player is meant to
+read as UI chrome.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from typing import Any
 
 import pygame
 
+from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.theme import M
-
-#: Below this width the side rails give up space to the board.
-NARROW = 1180
-#: Below this width the left rail becomes an overlay instead of a column.
-VERY_NARROW = 980
 
 MIN_W = 1024
 MIN_H = 640
+NARROW = 1180
+
+
+def _lerp_rect(a: pygame.Rect, b: pygame.Rect, t: float) -> pygame.Rect:
+    return pygame.Rect(
+        int(round(a.x + (b.x - a.x) * t)),
+        int(round(a.y + (b.y - a.y) * t)),
+        max(0, int(round(a.w + (b.w - a.w) * t))),
+        max(0, int(round(a.h + (b.h - a.h) * t))),
+    )
+
+
+@dataclass(slots=True)
+class SeatAnchor:
+    """One chair around the table.
+
+    ``angle`` is radians in screen space: 0 = east, π/2 = south (local),
+    π = west, 3π/2 = north. Local player is always south.
+    """
+
+    index: int
+    angle: float
+    is_local: bool
+    centre: tuple[int, int]
+    rect: pygame.Rect
+    party_rect: pygame.Rect
+    card_w: int
 
 
 @dataclass
 class LayoutManager:
-    """Computes every rect the board needs from the window size."""
+    """Computes seat anchors and role rects from the window size."""
 
-    width: int = 1600
-    height: int = 900
+    width: int = 1920
+    height: int = 1080
+    player_count: int = 4
 
-    # -- bands -------------------------------------------------------------
-    topbar_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     board_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     bottom_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
+    table_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
 
-    # -- top bar contents --------------------------------------------------
-    turn_pips_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
+    #: The three chrome buttons live in one small top-right cluster now that
+    #: the full-width bar they used to sit in is gone.
+    corner_buttons_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     info_button_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     log_button_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     menu_button_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
 
-    # -- rails -------------------------------------------------------------
+    # Role anchors (not a rail HUD)
     left_rail_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     right_rail_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
-
-    # -- centre column -----------------------------------------------------
     deck_area_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     monster_row_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     party_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     leader_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
-
-    # -- bottom band -------------------------------------------------------
     dice_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     hand_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     effects_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
 
-    # -- floating ----------------------------------------------------------
     prompt_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     action_menu_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     toast_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     detail_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
     modal_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
+    turn_chip_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
+    action_bar_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
 
-    # -- derived card sizes ------------------------------------------------
     hand_card_w: int = M.CARD_W
     party_card_w: int = M.CARD_W
     monster_card_w: int = M.CARD_W
     deck_card_w: int = 76
-    rail_card_w: int = 46
+    rail_card_w: int = 72
+    seat_card_w: int = 72
 
+    seats: list[SeatAnchor] = field(default_factory=list)
     compact: bool = False
-    left_rail_floating: bool = False
+    left_rail_floating: bool = True
+    #: Active camera key after :meth:`apply_camera` (``local`` / ``centre`` / player id).
+    camera_key: str = "local"
+    #: Large stage used by the focused opponent camera.
+    focus_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
+    camera_strip_rect: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, 0, 0))
 
     def __post_init__(self) -> None:
-        self.rebuild(self.width, self.height)
+        self.rebuild(self.width, self.height, player_count=self.player_count)
 
-    # ------------------------------------------------------------------
-    # Build
-    # ------------------------------------------------------------------
-
-    def rebuild(self, w: int, h: int) -> None:
+    def rebuild(
+        self, w: int, h: int, *, player_count: int | None = None
+    ) -> None:
         self.width = max(MIN_W, int(w))
         self.height = max(MIN_H, int(h))
+        if player_count is not None:
+            self.player_count = max(2, min(6, int(player_count)))
         w, h = self.width, self.height
-        gap = M.GAP
-
+        gap = T.s(M.GAP)
         self.compact = w < NARROW
-        self.left_rail_floating = w < VERY_NARROW
 
-        # -- horizontal bands ------------------------------------------
-        top_h = max(48, min(64, int(h * 0.062)))
-        bottom_h = max(176, min(258, int(h * 0.255)))
-        self.topbar_rect = pygame.Rect(0, 0, w, top_h)
-        self.bottom_rect = pygame.Rect(0, h - bottom_h, w, bottom_h)
-        self.board_rect = pygame.Rect(0, top_h, w, h - top_h - bottom_h)
+        hand_h = max(168, min(230, int(h * 0.24)))
+        self.bottom_rect = pygame.Rect(0, h - hand_h, w, hand_h)
+        # No top bar: the board owns the window from the very first row.
+        self.board_rect = pygame.Rect(0, 0, w, h - hand_h)
 
-        self._build_topbar(top_h)
-        self._build_rails(gap)
+        self._build_corner_buttons()
+        self._build_camera_strip()
+        self._build_table(gap)
         self._build_centre(gap)
-        self._build_bottom(gap)
+        self._build_local(gap)
+        self._build_seats(gap)
         self._build_floating(gap)
 
-    def _build_topbar(self, top_h: int) -> None:
-        btn = top_h - 16
-        y = 8
-        right = self.width - M.GAP
-        self.menu_button_rect = pygame.Rect(right - btn, y, btn, btn)
-        self.log_button_rect = pygame.Rect(right - btn * 2 - 8, y, btn, btn)
-        self.info_button_rect = pygame.Rect(right - btn * 3 - 16, y, btn, btn)
-        # Turn pips sit between the title block and the buttons, right-aligned
-        # so they stay near the eye's resting place on the toolbar.
-        pips_w = min(int(self.width * 0.42), 92 * 6)
-        self.turn_pips_rect = pygame.Rect(
-            self.info_button_rect.left - 16 - pips_w, y, pips_w, btn
-        )
+        self.right_rail_rect = pygame.Rect(w - 8, self.board_rect.top, 8, self.board_rect.height)
+        self.left_rail_rect = pygame.Rect(gap, self.chrome_top, 200,
+                                          max(120, self.board_rect.height // 2))
+        self.left_rail_floating = True
+        self.focus_rect = pygame.Rect(self.table_rect)
+        # Re-apply last camera so resize keeps the framing.
+        self.apply_camera(self.camera_key)
 
-    def _build_rails(self, gap: int) -> None:
+    def apply_camera(self, key: str) -> None:
+        """Reframe role rects for the active camera. Call after rebuild or on cycle."""
+        self.camera_key = key or "local"
+        gap = T.s(M.GAP)
+        w, h = self.width, self.height
         board = self.board_rect
-        right_w = M.RAIL_R if not self.compact else max(232, int(self.width * 0.2))
-        right_w = min(right_w, int(self.width * 0.26))
-        left_w = 0 if self.left_rail_floating else (M.RAIL_L if not self.compact else 176)
+        top = max(board.top + gap, self.chrome_top)
+        bottom = self.bottom_rect.top - gap
 
-        # The rail stops at the bottom band: the effects panel lives under it,
-        # and a rail that ran to the window edge would be drawn over.
-        self.right_rail_rect = pygame.Rect(
-            self.width - right_w - gap, board.top + gap // 2, right_w, board.height - gap,
-        )
-        if self.left_rail_floating:
-            # Floating: an overlay strip the scene only shows when it has
-            # something to put in it, so a narrow window keeps its board.
-            self.left_rail_rect = pygame.Rect(gap, board.top + gap, 200, board.height - gap * 2)
-        else:
-            self.left_rail_rect = pygame.Rect(
-                gap, board.top + gap // 2, left_w, board.height - gap
+        if self.camera_key == "local":
+            # Angled “your seat”: party mid-stage, hand large in foreground,
+            # besties small in the distance at the top.
+            hand_h = max(200, min(280, int(h * 0.30)))
+            self.bottom_rect = pygame.Rect(0, h - hand_h, w, hand_h)
+            chrome_w = max(180, min(240, int(w * 0.14)))
+            self.dice_rect = pygame.Rect(gap, self.bottom_rect.top + 8, chrome_w,
+                                         hand_h - 16)
+            self.effects_rect = pygame.Rect(w - chrome_w - gap, self.bottom_rect.top + 8,
+                                            chrome_w, hand_h - 16)
+            self.hand_rect = pygame.Rect(
+                self.dice_rect.right + gap, self.bottom_rect.top + 8,
+                max(300, self.effects_rect.left - self.dice_rect.right - gap * 2),
+                hand_h - 16,
             )
+            self.hand_card_w = max(110, min(168, int((hand_h - 40) / M.CARD_ASPECT)))
+
+            party_h = max(150, min(220, int(h * 0.26)))
+            party_w = min(w - 100, max(480, int(w * 0.72)))
+            party_top = self.hand_rect.top - party_h - 12
+            leader_w = max(110, min(160, int(party_w * 0.15)))
+            self.leader_rect = pygame.Rect(w // 2 - party_w // 2, party_top, leader_w, party_h)
+            self.party_rect = pygame.Rect(
+                self.leader_rect.right + gap, party_top,
+                party_w - leader_w - gap, party_h,
+            )
+            self.party_card_w = max(96, min(150, int(party_h / M.CARD_ASPECT)))
+
+            # Distant besties — small strip along the top edge, decks above
+            # them so the whole centre column hangs off ``top``.
+            centre_w = min(w - 160, 520)
+            monster_h = max(90, min(130, int(h * 0.14)))
+            self.deck_area_rect = pygame.Rect(w // 2 - 200, top, 400, 64)
+            self.monster_row_rect = pygame.Rect(
+                w // 2 - centre_w // 2, self.deck_area_rect.bottom + gap // 2,
+                centre_w, monster_h,
+            )
+            self.monster_card_w = max(56, min(90, int(monster_h / M.CARD_ASPECT)))
+            self.deck_card_w = 48
+            self.focus_rect = pygame.Rect(0, 0, 0, 0)
+            # Full seat wedges on the oval — opponents' parties live on the table.
+            self._place_opponent_wedges(gap, scale=1.0)
+
+        elif self.camera_key == "centre":
+            # Besties fill the stage; your hand shrinks to a strip.
+            hand_h = max(120, min(150, int(h * 0.16)))
+            self.bottom_rect = pygame.Rect(0, h - hand_h, w, hand_h)
+            chrome_w = max(160, min(220, int(w * 0.13)))
+            self.dice_rect = pygame.Rect(gap, self.bottom_rect.top + 6, chrome_w, hand_h - 12)
+            self.effects_rect = pygame.Rect(w - chrome_w - gap, self.bottom_rect.top + 6,
+                                            chrome_w, hand_h - 12)
+            self.hand_rect = pygame.Rect(
+                self.dice_rect.right + gap, self.bottom_rect.top + 6,
+                max(200, self.effects_rect.left - self.dice_rect.right - gap * 2),
+                hand_h - 12,
+            )
+            self.hand_card_w = max(64, min(100, int((hand_h - 28) / M.CARD_ASPECT)))
+
+            centre_w = min(w - 80, max(640, int(w * 0.78)))
+            monster_h = max(220, min(360, int(h * 0.42)))
+            self.deck_area_rect = pygame.Rect(w // 2 - 280, top, 560, 90)
+            self.monster_row_rect = pygame.Rect(
+                w // 2 - centre_w // 2, self.deck_area_rect.bottom + gap,
+                centre_w, monster_h,
+            )
+            self.monster_card_w = max(120, min(200, int(monster_h / M.CARD_ASPECT)))
+            self.deck_card_w = 72
+            # Local party tucked above the hand, small.
+            party_h = 88
+            party_w = min(w - 200, 520)
+            self.leader_rect = pygame.Rect(
+                w // 2 - party_w // 2, self.hand_rect.top - party_h - 8, 80, party_h
+            )
+            self.party_rect = pygame.Rect(
+                self.leader_rect.right + 8, self.leader_rect.top,
+                party_w - 88, party_h,
+            )
+            self.party_card_w = 56
+            self.focus_rect = pygame.Rect(0, 0, 0, 0)
+            # Slightly smaller side wedges so besties keep the stage.
+            self._place_opponent_wedges(gap, scale=0.78)
+
+        else:
+            # Opponent camera: their deployed persoane fill the stage.
+            hand_h = max(100, min(130, int(h * 0.14)))
+            self.bottom_rect = pygame.Rect(0, h - hand_h, w, hand_h)
+            chrome_w = max(150, min(200, int(w * 0.12)))
+            self.dice_rect = pygame.Rect(gap, self.bottom_rect.top + 6, chrome_w, hand_h - 12)
+            self.effects_rect = pygame.Rect(w - chrome_w - gap, self.bottom_rect.top + 6,
+                                            chrome_w, hand_h - 12)
+            self.hand_rect = pygame.Rect(
+                self.dice_rect.right + gap, self.bottom_rect.top + 6,
+                max(180, self.effects_rect.left - self.dice_rect.right - gap * 2),
+                hand_h - 12,
+            )
+            self.hand_card_w = max(52, min(84, int((hand_h - 24) / M.CARD_ASPECT)))
+
+            focus_h = max(280, min(480, bottom - top - 40))
+            focus_w = min(w - 80, max(700, int(w * 0.82)))
+            self.focus_rect = pygame.Rect(
+                w // 2 - focus_w // 2, top + 40, focus_w, focus_h
+            )
+            self.seat_card_w = max(110, min(180, int((focus_h - 60) / M.CARD_ASPECT)))
+            self.rail_card_w = self.seat_card_w
+            # Hide local party / besties off to the edges (tiny).
+            self.monster_row_rect = pygame.Rect(gap, top + 8, 200, 70)
+            self.monster_card_w = 44
+            self.deck_area_rect = pygame.Rect(w - 220, top + 8, 200, 60)
+            self.deck_card_w = 40
+            self.leader_rect = pygame.Rect(gap, self.bottom_rect.top - 70, 60, 64)
+            self.party_rect = pygame.Rect(self.leader_rect.right + 4, self.leader_rect.top, 200, 64)
+            self.party_card_w = 44
+            # Non-focused opponents stay as side wedges; focused uses focus_rect.
+            self._place_opponent_wedges(gap, scale=0.7, focused_key=self.camera_key)
+
+        self.action_menu_rect = pygame.Rect(
+            self.dice_rect.left,
+            max(self.chrome_top, self.dice_rect.top - 280),
+            self.dice_rect.width,
+            260,
+        )
+        self.prompt_rect = pygame.Rect(
+            int(w * 0.18), self.chrome_top + T.s(28), int(w * 0.64), T.s(44)
+        )
+
+    def _place_opponent_wedges(
+        self,
+        gap: int,
+        *,
+        scale: float = 1.0,
+        focused_key: str | None = None,
+    ) -> None:
+        """Lay opponent parties on the oval as seat wedges (not top thumbnails)."""
+        opponents = [s for s in self.seats if not s.is_local]
+        if not opponents:
+            return
+        table = self.table_rect
+        cx, cy = table.centerx, table.centery
+        rx = table.width * 0.42
+        ry = table.height * 0.38
+        n_all = max(2, self.player_count)
+        step = (2 * math.pi) / n_all
+        for i, seat in enumerate(opponents):
+            # seats[0] is local; opponents are seats 1..n-1 → angles match _build_seats.
+            angle = (math.pi / 2) - (i + 1) * step
+            x = int(cx + rx * math.cos(angle))
+            y = int(cy + ry * math.sin(angle))
+            if focused_key and self.focus_rect.width > 40:
+                # Focused seat is drawn into focus_rect by OpponentRail; park
+                # the others as compact side wedges so the stage stays clear.
+                pass
+            card_w = max(56, min(110, int(min(table.width, table.height) * 0.075 * scale)))
+            wedge_w = max(150, min(280, int(table.width * 0.18 * scale)))
+            wedge_h = max(130, min(220, int(table.height * 0.38 * scale)))
+            deg = math.degrees(angle) % 360
+            if 200 < deg < 340:  # north-ish
+                wedge_w = max(wedge_w, int(table.width * 0.26 * scale))
+                wedge_h = max(120, int(table.height * 0.28 * scale))
+            elif deg < 50 or deg > 310 or 130 < deg < 230:
+                wedge_w = max(140, int(table.width * 0.15 * scale))
+                wedge_h = max(150, int(table.height * 0.42 * scale))
+            rect = pygame.Rect(0, 0, wedge_w, wedge_h)
+            rect.center = (x, y)
+            rect.clamp_ip(pygame.Rect(
+                gap, self.chrome_top,
+                self.width - gap * 2,
+                max(80, self.bottom_rect.top - self.chrome_top - gap),
+            ))
+            if rect.colliderect(self.monster_row_rect.inflate(-40, -20)):
+                if x < cx:
+                    rect.right = min(rect.right, self.monster_row_rect.left - gap)
+                else:
+                    rect.left = max(rect.left, self.monster_row_rect.right + gap)
+            head = 40
+            party = pygame.Rect(
+                rect.left + 8, rect.top + head,
+                max(20, rect.width - 16), max(40, rect.height - head - 8),
+            )
+            seat.angle = angle
+            seat.rect = rect
+            seat.party_rect = party
+            seat.centre = rect.center
+            seat.card_w = min(card_w, max(48, party.height * 10 // 14))
+            self.seat_card_w = max(self.seat_card_w, seat.card_w)
+            self.rail_card_w = self.seat_card_w
+
+    #: Rect / int fields that participate in camera blends.
+    _LERP_RECTS = (
+        "bottom_rect", "table_rect", "deck_area_rect", "monster_row_rect",
+        "party_rect", "leader_rect", "dice_rect", "hand_rect", "effects_rect",
+        "focus_rect", "action_menu_rect", "prompt_rect", "action_bar_rect",
+    )
+    _LERP_INTS = (
+        "hand_card_w", "party_card_w", "monster_card_w", "deck_card_w",
+        "rail_card_w", "seat_card_w",
+    )
+
+    def snapshot(self) -> dict[str, Any]:
+        """Freeze role rects / card sizes / seat wedges for a camera blend."""
+        data: dict[str, Any] = {
+            name: pygame.Rect(getattr(self, name)) for name in self._LERP_RECTS
+        }
+        for name in self._LERP_INTS:
+            data[name] = int(getattr(self, name))
+        data["seats"] = [
+            {
+                "rect": pygame.Rect(s.rect),
+                "party_rect": pygame.Rect(s.party_rect),
+                "centre": s.centre,
+                "card_w": s.card_w,
+                "angle": s.angle,
+            }
+            for s in self.seats
+        ]
+        return data
+
+    def apply_lerp(self, frm: dict, to: dict, t: float) -> None:
+        """Blend layout geometry from ``frm`` toward ``to`` (t in 0..1)."""
+        t = max(0.0, min(1.0, float(t)))
+        for name in self._LERP_RECTS:
+            a, b = frm.get(name), to.get(name)
+            if isinstance(a, pygame.Rect) and isinstance(b, pygame.Rect):
+                setattr(self, name, _lerp_rect(a, b, t))
+        for name in self._LERP_INTS:
+            if name in frm and name in to:
+                setattr(self, name, int(round(frm[name] + (to[name] - frm[name]) * t)))
+        seats_a = frm.get("seats") or []
+        seats_b = to.get("seats") or []
+        for i, seat in enumerate(self.seats):
+            if i >= len(seats_a) or i >= len(seats_b):
+                break
+            a, b = seats_a[i], seats_b[i]
+            seat.rect = _lerp_rect(a["rect"], b["rect"], t)
+            seat.party_rect = _lerp_rect(a["party_rect"], b["party_rect"], t)
+            seat.centre = (
+                int(round(a["centre"][0] + (b["centre"][0] - a["centre"][0]) * t)),
+                int(round(a["centre"][1] + (b["centre"][1] - a["centre"][1]) * t)),
+            )
+            seat.card_w = int(round(a["card_w"] + (b["card_w"] - a["card_w"]) * t))
+            seat.angle = a["angle"] + (b["angle"] - a["angle"]) * t
+
+    @property
+    def chrome_top(self) -> int:
+        """First y a board layer may use, below the floating top-edge chrome."""
+        return self.camera_strip_rect.bottom + T.s(6)
+
+    def _build_corner_buttons(self) -> None:
+        """Rules / log / menu, clustered in the top-right corner."""
+        btn = T.s(34)
+        pad = T.s(6)
+        y = T.s(6)
+        width = btn * 3 + pad * 2
+        right = self.width - T.s(M.GAP)
+        self.corner_buttons_rect = pygame.Rect(right - width, y, width, btn)
+        self.info_button_rect = pygame.Rect(self.corner_buttons_rect.left, y, btn, btn)
+        self.log_button_rect = pygame.Rect(self.info_button_rect.right + pad, y, btn, btn)
+        self.menu_button_rect = pygame.Rect(self.log_button_rect.right + pad, y, btn, btn)
+
+    def _build_camera_strip(self) -> None:
+        w = self.width
+        self.camera_strip_rect = pygame.Rect(
+            int(w * 0.22), T.s(6), int(w * 0.56), T.s(24)
+        )
+
+    def _build_table(self, gap: int) -> None:
+        board = self.board_rect
+        # Oval play surface inset from the board band.
+        pad_x = max(36, int(self.width * 0.04))
+        pad_y = max(20, int(board.height * 0.04))
+        self.table_rect = pygame.Rect(
+            pad_x,
+            board.top + pad_y,
+            self.width - pad_x * 2,
+            max(200, board.height - pad_y * 2),
+        )
 
     def _build_centre(self, gap: int) -> None:
-        board = self.board_rect
-        left = (gap if self.left_rail_floating else self.left_rail_rect.right) + gap
-        right = self.right_rail_rect.left - gap
-        centre = pygame.Rect(left, board.top + gap // 2, max(320, right - left), board.height - gap)
+        table = self.table_rect
+        # Besties + decks occupy the upper-centre of the oval.
+        centre_w = min(table.width - 80, max(420, int(table.width * 0.55)))
+        monster_h = max(140, min(220, int(table.height * 0.42)))
+        deck_h = max(88, min(120, int(table.height * 0.22)))
 
-        # The board splits into: decks strip, monster row, own party.
-        deck_h = max(92, min(132, int(centre.height * 0.26)))
-        party_h = max(112, min(210, int(centre.height * 0.40)))
-        monster_h = max(120, centre.height - deck_h - party_h - gap * 2)
-
-        # Decks are a compact cluster centred over the monster row, leaving the
-        # flanks free for the roll readout and the turn banner.
-        deck_w = min(centre.width, 520)
-        self.deck_area_rect = pygame.Rect(
-            centre.centerx - deck_w // 2, centre.top, deck_w, deck_h
-        )
         self.monster_row_rect = pygame.Rect(
-            centre.left, self.deck_area_rect.bottom + gap, centre.width, monster_h
+            table.centerx - centre_w // 2,
+            table.top + int(table.height * 0.08),
+            centre_w,
+            monster_h,
         )
-        party_top = self.monster_row_rect.bottom + gap
-        leader_w = max(88, min(132, int(centre.width * 0.11)))
-        self.leader_rect = pygame.Rect(centre.left, party_top, leader_w, party_h)
-        self.party_rect = pygame.Rect(
-            self.leader_rect.right + gap, party_top,
-            centre.width - leader_w - gap, party_h,
+        deck_w = min(centre_w, 480)
+        self.deck_area_rect = pygame.Rect(
+            table.centerx - deck_w // 2,
+            self.monster_row_rect.top - deck_h + gap,
+            deck_w,
+            deck_h,
         )
+        if self.deck_area_rect.top < table.top:
+            self.deck_area_rect.top = table.top
+            self.monster_row_rect.top = self.deck_area_rect.bottom + gap // 2
 
-        self.deck_card_w = max(52, min(84, int(deck_h * 0.52)))
-        self.monster_card_w = max(72, min(150, int(monster_h / M.CARD_ASPECT)))
-        self.party_card_w = max(64, min(132, int(party_h / M.CARD_ASPECT)))
+        self.monster_card_w = max(88, min(160, int(monster_h / M.CARD_ASPECT)))
+        self.deck_card_w = max(56, min(88, int(deck_h * 0.55)))
 
-    def _build_bottom(self, gap: int) -> None:
+    def _build_local(self, gap: int) -> None:
         bottom = self.bottom_rect
-        dice_w = max(216, min(300, int(self.width * 0.19)))
-        fx_w = max(216, min(320, int(self.width * 0.21)))
-        if dice_w + fx_w > self.width * 0.62:
-            dice_w = fx_w = int(self.width * 0.30)
-
+        table = self.table_rect
+        # Floating chrome: dice + effects on the flanks of the hand.
+        chrome_w = max(200, min(280, int(self.width * 0.17)))
         inner_h = bottom.height - gap
-        self.dice_rect = pygame.Rect(gap, bottom.top + gap // 2, dice_w, inner_h)
+        self.dice_rect = pygame.Rect(gap, bottom.top + gap // 2, chrome_w, inner_h)
         self.effects_rect = pygame.Rect(
-            self.width - fx_w - gap, bottom.top + gap // 2, fx_w, inner_h
+            self.width - chrome_w - gap, bottom.top + gap // 2, chrome_w, inner_h
         )
         self.hand_rect = pygame.Rect(
-            self.dice_rect.right + gap, bottom.top + gap // 2,
-            max(260, self.effects_rect.left - self.dice_rect.right - gap * 2), inner_h,
+            self.dice_rect.right + gap,
+            bottom.top + gap // 2,
+            max(280, self.effects_rect.left - self.dice_rect.right - gap * 2),
+            inner_h,
         )
-        self.hand_card_w = max(72, min(146, int((self.hand_rect.height - 40) / M.CARD_ASPECT)))
-        self.rail_card_w = max(34, min(56, int(self.right_rail_rect.width * 0.16)))
+        self.hand_card_w = max(100, min(150, int(inner_h / M.CARD_ASPECT) - 8))
+
+        # Local party sits on the south lip of the table, above the hand.
+        party_h = max(100, min(150, int(table.height * 0.28)))
+        party_w = min(table.width - 120, max(360, int(table.width * 0.62)))
+        party_top = min(
+            table.bottom - party_h - gap,
+            self.hand_rect.top - party_h - gap // 2,
+        )
+        leader_w = max(96, min(140, int(party_w * 0.16)))
+        self.leader_rect = pygame.Rect(
+            table.centerx - party_w // 2, party_top, leader_w, party_h
+        )
+        self.party_rect = pygame.Rect(
+            self.leader_rect.right + gap, party_top,
+            party_w - leader_w - gap, party_h,
+        )
+        self.party_card_w = max(72, min(132, int(party_h / M.CARD_ASPECT)))
+
+    def _build_seats(self, gap: int) -> None:
+        n = self.player_count
+        table = self.table_rect
+        cx, cy = table.centerx, table.centery
+        rx = table.width * 0.42
+        ry = table.height * 0.38
+        # Counter-clockwise from south so "next" sits to the local player's left (east).
+        step = (2 * math.pi) / n
+        self.seats = []
+        for i in range(n):
+            angle = (math.pi / 2) - i * step
+            x = int(cx + rx * math.cos(angle))
+            y = int(cy + ry * math.sin(angle))
+            is_local = i == 0
+            if is_local:
+                # Local uses leader/party/hand rects; seat rect is a soft hit zone.
+                rect = pygame.Rect(self.party_rect)
+                party = pygame.Rect(self.party_rect)
+                card_w = self.party_card_w
+            else:
+                # Side/north wedges — larger than the old 34–56px rail minis.
+                card_w = max(64, min(96, int(min(table.width, table.height) * 0.07)))
+                self.seat_card_w = card_w
+                self.rail_card_w = card_w
+                wedge_w = max(160, min(260, int(table.width * 0.18)))
+                wedge_h = max(120, min(200, int(table.height * 0.36)))
+                # North gets a wider short strip; sides get taller narrow ones.
+                deg = math.degrees(angle) % 360
+                if 200 < deg < 340:  # north-ish
+                    wedge_w = max(wedge_w, int(table.width * 0.28))
+                    wedge_h = max(110, int(table.height * 0.28))
+                elif deg < 50 or deg > 310 or 130 < deg < 230:
+                    wedge_w = max(140, int(table.width * 0.14))
+                    wedge_h = max(150, int(table.height * 0.42))
+                rect = pygame.Rect(0, 0, wedge_w, wedge_h)
+                rect.center = (x, y)
+                # Keep wedges inside the window, above the hand band.
+                rect.clamp_ip(pygame.Rect(
+                    gap, self.chrome_top,
+                    self.width - gap * 2, self.bottom_rect.top - self.chrome_top - gap,
+                ))
+                # Avoid covering the monster row centre too heavily.
+                if rect.colliderect(self.monster_row_rect.inflate(-40, -20)):
+                    if x < cx:
+                        rect.right = min(rect.right, self.monster_row_rect.left - gap)
+                    else:
+                        rect.left = max(rect.left, self.monster_row_rect.right + gap)
+                party = pygame.Rect(rect.left + 8, rect.top + 36, rect.width - 16, rect.height - 44)
+                card_w = min(card_w, max(56, party.height * 10 // 14))
+
+            self.seats.append(SeatAnchor(
+                index=i, angle=angle, is_local=is_local,
+                centre=(rect.centerx, rect.centery),
+                rect=rect, party_rect=party, card_w=card_w,
+            ))
 
     def _build_floating(self, gap: int) -> None:
         w, h = self.width, self.height
-        # The prompt banner rides just above the hand, where the eye already is
-        # when choosing a card.
-        prompt_w = min(int(w * 0.5), 720)
-        prompt_h = 46
+        self.turn_chip_rect = pygame.Rect(T.s(8), self.camera_strip_rect.bottom + T.s(4),
+                                          T.s(220), T.s(20))
+        chip_h = T.s(28)
+        bar_w = min(int(w * 0.62), T.s(720))
+        self.action_bar_rect = pygame.Rect(
+            w // 2 - bar_w // 2,
+            self.bottom_rect.top - chip_h - T.s(8),
+            bar_w,
+            chip_h,
+        )
         self.prompt_rect = pygame.Rect(
-            (w - prompt_w) // 2, self.bottom_rect.top - prompt_h - gap, prompt_w, prompt_h
+            int(w * 0.18), self.chrome_top + T.s(28), int(w * 0.64), T.s(44)
         )
-        # The action menu floats over the board's left flank: beside the
-        # Monster row (whose cards are centred), below the deck cluster, and
-        # clear of the hand it is talking about.
-        menu_w = min(360, max(268, int(w * 0.23)))
-        menu_top = self.deck_area_rect.bottom + gap
-        available = self.board_rect.bottom - menu_top - gap
-        menu_h = min(available, 460)
         self.action_menu_rect = pygame.Rect(
-            self.monster_row_rect.left + gap,
-            menu_top + max(0, (available - menu_h) // 2),
-            menu_w, menu_h,
+            self.dice_rect.left,
+            max(self.chrome_top, self.dice_rect.top - 280),
+            self.dice_rect.width,
+            260,
         )
-        toast_w = min(560, int(w * 0.44))
-        self.toast_rect = pygame.Rect(
-            (w - toast_w) // 2, self.topbar_rect.bottom + gap, toast_w, 46
+        self.toast_rect = pygame.Rect(int(w * 0.25), h - 72, int(w * 0.5), 40)
+        self.detail_rect = pygame.Rect(0, 0, 360, 520)
+        self.modal_rect = pygame.Rect(
+            int(w * 0.18), int(h * 0.1), int(w * 0.64), int(h * 0.78)
         )
-        detail_w = min(340, max(240, int(w * 0.2)))
-        self.detail_rect = pygame.Rect(0, 0, detail_w, int(detail_w * M.CARD_ASPECT) + 120)
-        modal_w = min(1080, int(w * 0.8))
-        modal_h = min(840, int(h * 0.86))
-        self.modal_rect = pygame.Rect((w - modal_w) // 2, (h - modal_h) // 2, modal_w, modal_h)
 
-    # ------------------------------------------------------------------
-    # Queries
-    # ------------------------------------------------------------------
-
-    def card_box(self, width: int) -> tuple[int, int]:
-        return width, round(width * M.CARD_ASPECT)
+    def seat_at(self, index: int) -> SeatAnchor | None:
+        if 0 <= index < len(self.seats):
+            return self.seats[index]
+        return None
 
     def detail_at(self, anchor: pygame.Rect) -> pygame.Rect:
-        """Place the hover-detail card near ``anchor`` without leaving the screen."""
         rect = pygame.Rect(self.detail_rect)
-        rect.centery = anchor.centery
-        rect.left = anchor.right + M.GAP
-        if rect.right > self.width - M.GAP:
-            rect.right = anchor.left - M.GAP
-        rect.left = max(M.GAP, min(rect.left, self.width - rect.width - M.GAP))
-        rect.top = max(self.topbar_rect.bottom + M.GAP_S,
-                       min(rect.top, self.height - rect.height - M.GAP_S))
+        rect.topleft = (anchor.right + 12, anchor.top)
+        if rect.right > self.width - 8:
+            rect.right = anchor.left - 12
+        if rect.bottom > self.height - 8:
+            rect.bottom = self.height - 8
+        if rect.top < 8:
+            rect.top = 8
         return rect
 
-    def centre_of(self, rect: pygame.Rect) -> tuple[int, int]:
-        return rect.center
+    def card_box(self, width: int) -> tuple[int, int]:
+        return int(width), int(width * M.CARD_ASPECT)
 
     def as_dict(self) -> dict[str, tuple[int, int, int, int]]:
-        """Every named region — the dev console's layout inspector reads this."""
-        return {
-            name: tuple(value)
-            for name, value in vars(self).items()
-            if isinstance(value, pygame.Rect)
-        }
+        out: dict[str, tuple[int, int, int, int]] = {}
+        for name, value in self.__dict__.items():
+            if isinstance(value, pygame.Rect):
+                out[name] = (value.x, value.y, value.w, value.h)
+        for i, seat in enumerate(self.seats):
+            out[f"seat_{i}"] = (seat.rect.x, seat.rect.y, seat.rect.w, seat.rect.h)
+        return out
 
 
-__all__ = ["MIN_H", "MIN_W", "NARROW", "VERY_NARROW", "LayoutManager"]
+__all__ = ["MIN_H", "MIN_W", "NARROW", "LayoutManager", "SeatAnchor"]

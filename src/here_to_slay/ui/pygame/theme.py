@@ -5,10 +5,13 @@ re-skin is an edit to this file rather than a hunt through eight renderers.
 That mirrors what ``data/base/rules.yaml`` does for the rules: the widgets
 below know *how* to draw a panel, this module decides *which* panel.
 
-The visual language is a dark tabletop — deep indigo felt, translucent
-"glass" panels lifted off it with soft shadows, and a warm gold accent for
-anything the player is meant to look at next. Class colours are shared with
-``ui/cli/render.py`` so a Bard is magenta in both clients.
+Visual language: a deep felt table under near-white card paper, frosted
+panels, and cyan for "look here". Class colours stay on cards so the board
+stays readable and playable. Material accents (foil / emissive) live in
+``materials.py``.
+
+Chrome is authored at a nominal 1.0 scale and read back through :func:`s`, so
+one ``set_scale`` call shrinks the whole HUD while the board keeps the pixels.
 
 Nothing here touches the engine, and every helper is a pure
 ``(args) -> Surface`` so results can be cached by the caller.
@@ -38,55 +41,61 @@ Colour = RGB | RGBA
 class C:
     """Named colours. Short class name because it is used constantly."""
 
-    # -- table surface ------------------------------------------------------
-    VOID = (8, 7, 16)
-    FELT_DEEP = (17, 15, 34)
-    FELT = (26, 23, 48)
-    FELT_LIGHT = (38, 34, 66)
-    VIGNETTE = (0, 0, 0, 150)
+    # -- table surface (deep felt) -----------------------------------------
+    # Dark and saturated on purpose: near-white card paper only reads as a
+    # solid object when the table underneath it is nothing like paper.
+    VOID = (8, 12, 16)
+    FELT_DEEP = (12, 38, 40)
+    FELT = (18, 54, 54)
+    FELT_LIGHT = (26, 70, 68)
+    TABLE_RIM = (58, 38, 26)
+    TABLE_RIM_LIT = (108, 76, 48)
+    VIGNETTE = (4, 8, 12, 130)
 
-    # -- glass panels -------------------------------------------------------
-    GLASS = (44, 40, 74, 205)
-    GLASS_SOFT = (38, 34, 64, 165)
-    GLASS_DEEP = (22, 20, 40, 232)
-    GLASS_RIM = (120, 110, 190, 90)
-    GLASS_RIM_HOT = (255, 208, 110, 150)
-    SHADOW = (0, 0, 0, 110)
+    # -- glass panels (dark frosted chrome — light text on these) ----------
+    GLASS = (18, 26, 34, 230)
+    GLASS_SOFT = (22, 32, 42, 200)
+    GLASS_DEEP = (14, 20, 28, 240)
+    GLASS_RIM = (120, 160, 190, 90)
+    GLASS_RIM_HOT = (64, 196, 255, 180)
+    SHADOW = (4, 8, 12, 110)
 
-    # -- text ---------------------------------------------------------------
-    INK = (232, 230, 246)
+    # -- text (high contrast on dark chrome / dark felt) -------------------
+    INK = (236, 242, 248)          # primary HUD text (light)
     INK_BRIGHT = (255, 255, 255)
-    INK_DIM = (152, 148, 184)
-    INK_FAINT = (104, 100, 136)
-    INK_DARK = (24, 20, 40)
+    INK_DIM = (168, 184, 204)      # secondary HUD text
+    INK_FAINT = (120, 140, 162)    # tertiary / captions
+    INK_DARK = (14, 18, 24)        # for light pill / card-paper backgrounds
 
-    # -- accents ------------------------------------------------------------
-    GOLD = (255, 205, 92)
-    GOLD_DEEP = (196, 143, 42)
-    GOLD_PALE = (255, 236, 186)
+    # -- accents (cyan primary; warm gold kept for rare highlights) --------
+    GOLD = (64, 196, 255)  # primary UI accent = cyan (legacy name kept)
+    GOLD_DEEP = (32, 140, 200)
+    GOLD_PALE = (186, 232, 255)
     EMBER = (255, 128, 64)
     BLOOD = (214, 66, 74)
-    POISON = (126, 214, 108)
-    ARCANE = (150, 122, 255)
-    FROST = (108, 205, 236)
-    ROSE = (240, 110, 168)
+    POISON = (72, 168, 96)
+    ARCANE = (64, 196, 255)
+    FROST = (96, 188, 228)
+    ROSE = (220, 96, 140)
+    CYAN = (64, 196, 255)
 
     # -- semantic -----------------------------------------------------------
-    GOOD = (108, 214, 132)
-    BAD = (226, 86, 92)
-    WARN = (245, 186, 82)
-    INFO = (118, 178, 240)
-    ACTIVE = (255, 205, 92)
-    IDLE = (86, 82, 118)
+    GOOD = (72, 196, 120)
+    BAD = (236, 88, 96)
+    WARN = (236, 180, 64)
+    INFO = (80, 168, 236)
+    ACTIVE = (64, 196, 255)
+    IDLE = (148, 164, 184)
 
-    # -- cards --------------------------------------------------------------
-    CARD_PAPER = (243, 238, 226)
-    CARD_PAPER_EDGE = (206, 197, 176)
-    CARD_INK = (44, 38, 34)
-    CARD_INK_DIM = (108, 98, 88)
-    CARD_BACK_A = (58, 40, 96)
-    CARD_BACK_B = (30, 22, 56)
-    CARD_BACK_MARK = (176, 142, 240)
+    # -- cards (paper stays light; ink on paper stays dark) -----------------
+    CARD_PAPER = (246, 248, 252)
+    CARD_PAPER_EDGE = (190, 200, 214)
+    CARD_EDGE = (18, 22, 28)
+    CARD_INK = (18, 24, 32)
+    CARD_INK_DIM = (72, 84, 100)
+    CARD_BACK_A = (72, 140, 196)
+    CARD_BACK_B = (28, 56, 92)
+    CARD_BACK_MARK = (220, 236, 250)
 
 
 #: Hero / Leader class -> accent colour. Shared with the CLI palette.
@@ -185,7 +194,6 @@ class M:
     CARD_W = 132
     CARD_H = int(CARD_W * CARD_ASPECT)  # 186
 
-    TOPBAR_H = 56
     BOTTOM_H = 214
     RAIL_L = 216
     RAIL_R = 306
@@ -194,6 +202,34 @@ class M:
 def card_size(width: int) -> tuple[int, int]:
     """A card box of ``width`` px, at the canonical aspect ratio."""
     return width, round(width * M.CARD_ASPECT)
+
+
+# ---------------------------------------------------------------------------
+# Global UI scale
+# ---------------------------------------------------------------------------
+
+#: Every chrome dimension is authored at 1.0 and read back through :func:`s`.
+#: One knob shrinks the whole HUD so the board can grow, without a second set
+#: of tokens for every window size.
+_SCALE = 1.0
+
+MIN_SCALE = 0.6
+MAX_SCALE = 2.0
+
+
+def set_scale(value: float) -> None:
+    """Set the global chrome scale, clamped to ``0.6`` .. ``2.0``."""
+    global _SCALE
+    _SCALE = max(MIN_SCALE, min(MAX_SCALE, float(value)))
+
+
+def get_scale() -> float:
+    return _SCALE
+
+
+def s(px: float) -> int:
+    """Scale a design-time pixel value. Never returns 0, so hairlines survive."""
+    return max(1, round(px * _SCALE))
 
 
 # ---------------------------------------------------------------------------
@@ -221,20 +257,24 @@ def font(
     return hit
 
 
+# The role wrappers scale *before* the cache key, so 13px at scale 0.85 and
+# 13px at scale 1.0 are two different entries rather than one stale hit.
+
+
 def ui(size: int, *, bold: bool = False, italic: bool = False) -> pygame.font.Font:
-    return font(size, family=FONT_UI, bold=bold, italic=italic)
+    return font(s(size), family=FONT_UI, bold=bold, italic=italic)
 
 
 def display(size: int) -> pygame.font.Font:
-    return font(size, family=FONT_DISPLAY, bold=True)
+    return font(s(size), family=FONT_DISPLAY, bold=True)
 
 
 def serif(size: int, *, bold: bool = False, italic: bool = False) -> pygame.font.Font:
-    return font(size, family=FONT_SERIF, bold=bold, italic=italic)
+    return font(s(size), family=FONT_SERIF, bold=bold, italic=italic)
 
 
 def mono(size: int, *, bold: bool = False) -> pygame.font.Font:
-    return font(size, family=FONT_MONO, bold=bold)
+    return font(s(size), family=FONT_MONO, bold=bold)
 
 
 def clear_font_cache() -> None:
@@ -465,23 +505,24 @@ def glass(
     shadow: bool = True,
     sheen: bool = True,
 ) -> None:
-    """The house panel: soft shadow, translucent body, lit top edge.
+    """The house panel: soft shadow, frosted body, lit top edge.
 
     Used for every floating surface in the client so they read as one family.
     """
     if rect.width < 2 or rect.height < 2:
         return
     if shadow:
-        drop_shadow(dest, rect, radius=radius, spread=14, offset=(0, 6), strength=96)
+        drop_shadow(dest, rect, radius=radius, spread=12, offset=(0, 4), strength=56)
 
     body = surface(rect.size)
     pygame.draw.rect(
         body, fill, pygame.Rect(0, 0, rect.width, rect.height), border_radius=radius
     )
     if sheen and rect.height > 12:
-        sheen_h = min(rect.height // 2, 56)
+        sheen_h = min(rect.height // 2, 48)
         top = surface((rect.width, sheen_h))
-        top.blit(vgradient(rect.width, sheen_h, (255, 255, 255, 26), (255, 255, 255, 0)), (0, 0))
+        # Soft top edge only — dark chrome, not a white wash.
+        top.blit(vgradient(rect.width, sheen_h, (255, 255, 255, 28), (255, 255, 255, 0)), (0, 0))
         mask = surface(rect.size)
         pygame.draw.rect(
             mask, (255, 255, 255, 255), pygame.Rect(0, 0, rect.width, rect.height),
@@ -500,18 +541,18 @@ def inset(
     rect: pygame.Rect,
     *,
     radius: int = M.RADIUS,
-    fill: Colour = (10, 9, 20, 150),
+    fill: Colour = (40, 70, 100, 90),
 ) -> None:
     """A recessed well — used behind card slots and scroll areas."""
     round_rect(dest, rect, fill, radius=radius)
-    round_rect(dest, rect, (0, 0, 0, 120), radius=radius, width=1)
+    round_rect(dest, rect, (20, 36, 52, 80), radius=radius, width=1)
 
 
 def hairline(
     dest: pygame.Surface,
     start: tuple[int, int],
     end: tuple[int, int],
-    colour: Colour = (255, 255, 255, 22),
+    colour: Colour = (20, 36, 52, 40),
 ) -> None:
     scratch = surface((abs(end[0] - start[0]) + 2, abs(end[1] - start[1]) + 2))
     ox, oy = min(start[0], end[0]), min(start[1], end[1])
@@ -521,8 +562,8 @@ def hairline(
     dest.blit(scratch, (ox, oy))
 
 
-def vignette(size: tuple[int, int], strength: int = 130) -> pygame.Surface:
-    """Darkened edges, so the middle of the table reads as lit."""
+def vignette(size: tuple[int, int], strength: int = 90) -> pygame.Surface:
+    """Soft edge darkening — lighter than the old indigo table."""
     return _vignette_sprite(size[0], size[1], strength)
 
 
@@ -821,6 +862,7 @@ __all__ = [
     "ellipsise",
     "fit_font",
     "font",
+    "get_scale",
     "glass",
     "hairline",
     "hgradient",
@@ -836,8 +878,10 @@ __all__ = [
     "radial_glow",
     "readable_ink",
     "round_rect",
+    "s",
     "seat_colour",
     "serif",
+    "set_scale",
     "shade",
     "star",
     "surface",

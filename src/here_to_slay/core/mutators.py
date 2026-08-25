@@ -106,7 +106,12 @@ def _card_discarded(state: GameState, event: Event) -> None:
 
 @mutator("hero.entered_party")
 def _hero_entered(state: GameState, event: Event) -> None:
-    move_to(state, CardId(_required(event, "card")), _zone_for(state, event, "to", "party"))
+    card = CardId(_required(event, "card"))
+    move_to(state, card, _zone_for(state, event, "to", "party"))
+    # "It arrived this turn" — read by `card_entered_play_this_turn`, which is
+    # what makes a just-played Hero's ability free. Per-instance, so it clones
+    # and snapshots with the state and the replay stays exact.
+    state.card(card).state["entered_turn"] = state.turn_number
 
 
 @mutator("hero.left_party")

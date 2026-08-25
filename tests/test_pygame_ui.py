@@ -121,7 +121,7 @@ pygame.init()
 pygame.font.init()
 
 BASE_PACK = Path(__file__).resolve().parent.parent / "data" / "base"
-SIZES = ((MIN_W, MIN_H), (1280, 800), (1600, 900), (2560, 1400))
+SIZES = ((MIN_W, MIN_H), (1280, 800), (1600, 900), (1920, 1080), (2560, 1400))
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +286,7 @@ def test_layout_regions_stay_on_screen(size) -> None:
         if name != "detail_rect":  # positioned per-hover by detail_at()
             assert window.contains(rect) or window.colliderect(rect), name
 
-    assert layout.topbar_rect.top == 0
+    assert layout.board_rect.top == 0
     assert layout.hand_rect.bottom <= layout.height
     assert layout.monster_row_rect.top >= layout.deck_area_rect.bottom
     assert layout.party_rect.top >= layout.monster_row_rect.bottom
@@ -840,8 +840,7 @@ def test_scene_draws_for_every_player_count(registry, players, screen) -> None:
         scene.update(0.016)
         scene.draw(screen)
     assert len(scene.rail.strips) == players - 1, "every opponent needs a rail strip"
-    assert len(scene.topbar.pips) == players
-    assert scene.topbar.pips[0].player_id == scene.seat, "you are always the first pip"
+    assert scene.turn_chip.name, "turn chip shows the active player"
     presenter.close()
 
 
@@ -867,7 +866,7 @@ def test_scene_turn_order_starts_after_you(registry) -> None:
     you = order.index(scene.seat)
     expected = [order[(you + i) % len(order)] for i in range(1, len(order))]
     assert [strip.player_id for strip in scene.rail.strips] == expected
-    assert [pip.player_id for pip in scene.topbar.pips] == [scene.seat, *expected]
+    assert scene.turn_chip.turn_number >= 1
     presenter.close()
 
 
@@ -1199,6 +1198,89 @@ def test_game_setup_resizes_sensibly() -> None:
     assert shrunk.ai_seats == 1, "somebody has to hold the mouse"
 
     assert setup.resized(1, 0, 0).names == ("Alice", "Bob"), "two players is the floor"
+
+
+def test_ui_scale_round_trip() -> None:
+    before = T.get_scale()
+    try:
+        T.set_scale(0.85)
+        assert T.get_scale() == 0.85
+        fnt_a = T.ui(12)
+        T.set_scale(1.2)
+        fnt_b = T.ui(12)
+        assert fnt_a.get_height() != fnt_b.get_height()
+        assert T.s(10) == max(1, round(10 * 1.2))
+    finally:
+        T.set_scale(before)
+
+
+def test_action_bar_lists_legal_intents(registry) -> None:
+    engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+    engine.start()
+    _ask(presenter, ChooseIntent("p1", intents=(Intent("draw"), Intent("play_hero", card="c1"))))
+    scene.update(0.016)
+    enabled = [c.action_id for c in scene.action_bar.chips if c.enabled]
+    assert "draw" in enabled
+    presenter.close()
+
+
+def test_action_key_submits_draw(registry) -> None:
+    engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+    engine.start()
+    _ask(presenter, ChooseIntent("p1", intents=(Intent("draw"),)))
+    scene.update(0.016)
+    assert _press(scene, pygame.K_d)
+    assert isinstance(presenter._current_decision, IntentChosen)
+    assert presenter._current_decision.intent.action == "draw"
+    presenter.close()
+
+
+def test_action_key_enters_targeting_when_many_heroes(registry) -> None:
+    engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+    engine.start()
+    _ask(presenter, ChooseIntent(
+        "p1",
+        intents=(
+            Intent("play_hero", card="c1"),
+            Intent("play_hero", card="c2"),
+        ),
+    ))
+    scene.update(0.016)
+    assert _press(scene, pygame.K_h)
+    assert scene._action_filter == "play_hero"
+    presenter.close()
+
+
+def test_reaction_timer_auto_passes(registry) -> None:
+    import time as time_module
+
+    engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+    engine.start()
+    _ask(presenter, ReactionPrompt(
+        "p1", prompt="Challenge?", window="on_play", options=(Option("c1", "Challenge"),),
+    ))
+    scene.update(0.016)
+    scene._reaction_deadline = time_module.monotonic() - 0.01
+    scene.update(0.016)
+    assert presenter._current_decision is not None
+    presenter.close()
+
+
+def test_reaction_timer_freezes_while_overlay_open(registry) -> None:
+    import time as time_module
+
+    engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+    engine.start()
+    _ask(presenter, ReactionPrompt(
+        "p1", prompt="Challenge?", window="on_play", options=(Option("c1", "Challenge"),),
+    ))
+    scene.update(0.016)
+    deadline = scene._reaction_deadline
+    assert deadline is not None
+    scene.open_rules()
+    scene.update(1.0)
+    assert scene._reaction_deadline > deadline
+    presenter.close()
 
 
 # ---------------------------------------------------------------------------

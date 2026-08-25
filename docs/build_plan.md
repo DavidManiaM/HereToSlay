@@ -537,7 +537,7 @@ this phase is *only* rendering and input.
 
 **Acceptance:** ✅
 * A full game start→win with mouse only; the CLI and AI still work unchanged.
-* `uv run hts gui data/base` launches the graphical client with full window resizing, hot-seat interstitial transitions, dice roll overlays, action menus, and party/hand/opponent rendering.
+* `uv run hts gui data/base` launches the graphical client at 1920×1080 with action keys, action bar, turn chip, 3s reaction auto-pass, and dark 2.5D table presentation.
 * `uv run pytest` runs **803 tests** (12 PyGame tests in `tests/test_pygame_ui.py`), all green.
 * `ruff check .` is completely clean across the entire repository.
 

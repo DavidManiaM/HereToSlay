@@ -25,6 +25,7 @@ from typing import Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.animations import AnimationManager, ConfettiAnimation
 from here_to_slay.ui.pygame.card_renderer import card_facts, render_card
@@ -163,9 +164,9 @@ class Overlay:
         local = pygame.Rect(0, 0, rect.width, rect.height)
         T.round_rect(panel, local, C.GLASS_DEEP, radius=M.RADIUS_XL)
         panel.blit(
-            T.vgradient(rect.width, rect.height, (255, 255, 255, 18), (0, 0, 0, 40)), (0, 0)
+            T.vgradient(rect.width, rect.height, (255, 255, 255, 22), (0, 0, 0, 40)), (0, 0)
         )
-        T.round_rect(panel, local, T.alpha(C.GLASS_RIM, 150), radius=M.RADIUS_XL, width=1)
+        T.round_rect(panel, local, T.alpha(C.GLASS_RIM, 140), radius=M.RADIUS_XL, width=1)
         T.drop_shadow(screen, rect, radius=M.RADIUS_XL, spread=28, offset=(0, 14), strength=140)
         panel.set_alpha(int(255 * alpha))
         screen.blit(panel, rect.topleft)
@@ -204,7 +205,7 @@ class Overlay:
         if self.icon:
             draw_icon(screen, self.icon, (x + 11, y), 24, C.GOLD)
             x += 34
-        T.text(screen, self.title, (x, y), T.display(23), C.GOLD_PALE, anchor="midleft")
+        T.text(screen, self.title, (x, y), T.display(23), C.INK, anchor="midleft", shadow=None)
         if self.subtitle:
             width = T.display(23).size(self.title)[0]
             T.text(screen, self.subtitle, (x + width + 14, y + 2), T.ui(12),
@@ -330,7 +331,7 @@ def _draw_line(screen: pygame.Surface, line: Line, x: int, y: int, width: int) -
         return
 
     if line.kind == "rule":
-        T.hairline(screen, (x, y + 6), (x + width, y + 6), (255, 255, 255, 26))
+        T.hairline(screen, (x, y + 6), (x + width, y + 6), (40, 56, 72, 50))
         return
 
     if line.kind == "chips":
@@ -346,7 +347,7 @@ def _draw_line(screen: pygame.Surface, line: Line, x: int, y: int, width: int) -
         pill_w = 76
         T.pill(
             screen, pygame.Rect(x, y + 1, pill_w, fnt.get_linesize() + 4), line.value,
-            bg=T.alpha(line.accent, 46), fg=T.mix(line.accent, C.INK_BRIGHT, 0.45),
+            bg=T.alpha(line.accent, 46), fg=C.INK,
             border=T.alpha(line.accent, 150), fnt=T.ui(11, bold=True),
         )
         body = pygame.Rect(x + pill_w + 14, y + 2, width - pill_w - 14, 400)
@@ -533,7 +534,7 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
         Line("row", "every opponent's party, newest first", "right", accent=C.GOLD),
         Line("row", "cards resolving now \u2014 Challenges, Magic, Modifiers", "left",
              accent=C.GOLD),
-        Line("row", "turn order, with the active seat lit", "top bar", accent=C.GOLD),
+        Line("row", "turn order, with the active seat lit", "turn chip", accent=C.GOLD),
         Line("gap"),
         Line("h", "Reading the rail", accent=C.FROST, icon="hand_cards"),
         Line("p", (
@@ -543,7 +544,7 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
         ), accent=C.INK_DIM),
         Line("gap"),
         Line("h", "Highlights", accent=C.POISON, icon="check"),
-        Line("bullet", "A gold ring means a legal target for the open choice.", accent=C.GOLD),
+        Line("bullet", "A cyan ring means a legal target for the open choice.", accent=C.GOLD),
         Line("bullet", "A dimmed card is visible but not selectable right now.", accent=C.INK_DIM),
         Line("bullet", "A tilted card has already been used this turn.", accent=C.INK_DIM),
     ]
@@ -556,7 +557,15 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
         Line("row", "confirm the current choice", "Enter", accent=C.GOOD),
         Line("row", "pass, decline, or take no action", "Space", accent=C.INK_DIM),
         Line("row", "pick the nth option or card", "1 \u2026 9", accent=C.GOLD),
-        Line("row", "end your turn", "E", accent=C.WARN),
+        Line("row", "cycle camera views", "Q / E", accent=C.CYAN),
+        Line("row", "draw a card (1 AP)", "D", accent=C.FROST),
+        Line("row", "play a Hero (1 AP)", "H", accent=C.GOOD),
+        Line("row", "use a Hero ability (1 AP, free if played this turn)", "A", accent=C.GOLD),
+        Line("row", "use Party Leader skill", "S", accent=C.GOLD),
+        Line("row", "befriend a bestie (2 AP)", "F", accent=C.BLOOD),
+        Line("row", "equip Gear (1 AP)", "G", accent=C.GOLD),
+        Line("row", "cast Magic (1 AP)", "C", accent=C.ARCANE),
+        Line("row", "burn hand and draw five (3 AP)", "B", accent=C.WARN),
         Line("row", "roll the dice when asked", "R", accent=C.FROST),
         Line("row", "inspect the card under the cursor", "click", accent=C.ARCANE),
         Line("row", "toggle sound", "M", accent=C.INK_DIM),
@@ -584,7 +593,7 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
 class RulesOverlay(Overlay):
     """The *i* button's destination: a tabbed, scrollable rules reference."""
 
-    title = "How to play"
+    title = L.HOW_TO_PLAY
     icon = "info"
 
     def __init__(self, layout: Any, registry: Any, *, tab: int = 0) -> None:
@@ -714,7 +723,7 @@ class CardOverlay(Overlay):
 
         for value, label, colour in rows:
             fnt = T.ui(15, bold=True)
-            T.text(screen, value, (x, y), fnt, T.mix(colour, C.INK_BRIGHT, 0.35))
+            T.text(screen, value, (x, y), fnt, colour)
             T.text(screen, label.upper(), (x, y + fnt.get_linesize() - 1), T.ui(9, bold=True),
                    C.INK_FAINT)
             y += fnt.get_linesize() + 16
@@ -821,7 +830,7 @@ class MenuItem:
 class MenuOverlay(Overlay):
     """Esc: settings and session control. Results are strings the scene reads."""
 
-    title = "Paused"
+    title = L.PAUSED
     icon = "gear"
 
     def __init__(self, layout: Any, items: Sequence[MenuItem], *, subtitle: str = "") -> None:
@@ -906,7 +915,7 @@ class HandoverOverlay(Overlay):
         body = self.body_rect
         self.button = Button(
             pygame.Rect(body.centerx - 110, body.bottom - 52, 220, 44),
-            "I'm ready", lambda: self.finish("ready"),
+            L.READY, lambda: self.finish("ready"),
             primary=True, icon="check", shortcut="Enter",
         )
 
@@ -933,14 +942,14 @@ class HandoverOverlay(Overlay):
         T.badge(screen, (cx, body.top + 54), 38, initials, bg=self.seat_colour,
                 ring=T.alpha(C.INK_BRIGHT, 90), fnt=T.display(28))
 
-        T.text(screen, "Pass the device to", (cx, body.top + 112), T.ui(12), C.INK_DIM,
+        T.text(screen, L.PASS_DEVICE, (cx, body.top + 112), T.ui(12), C.INK_DIM,
                anchor="midtop", shadow=None)
-        T.text(screen, self.player_name, (cx, body.top + 132), T.display(28), C.INK_BRIGHT,
-               anchor="midtop")
+        T.text(screen, self.player_name, (cx, body.top + 132), T.display(28), C.INK,
+               anchor="midtop", shadow=None)
         if self.turn:
-            T.text(screen, f"Turn {self.turn}", (cx, body.top + 172), T.ui(11), C.INK_FAINT,
+            T.text(screen, f"{L.TURN} {self.turn}", (cx, body.top + 172), T.ui(11), C.INK_FAINT,
                    anchor="midtop", shadow=None)
-        T.text(screen, "Nobody else should be looking at the screen.",
+        T.text(screen, "Nimeni altcineva nu ar trebui să se uite la ecran.",
                (cx, body.top + 196), T.ui(11, italic=True), C.INK_FAINT,
                anchor="midtop", shadow=None)
         self.button.draw(screen)
@@ -987,7 +996,7 @@ class GameOverOverlay(Overlay):
         super().__init__(pygame.Rect(
             (layout.width - width) // 2, (layout.height - height) // 2, width, height
         ))
-        self.title = "Victory"
+        self.title = L.VICTORY
         self.subtitle = f"after {turns} turns" if turns else ""
         self.winner = winner
         self.reason = reason
@@ -1034,11 +1043,11 @@ class GameOverOverlay(Overlay):
         cx = body.centerx
         glow = 0.55 + 0.45 * T.pulse(self.elapsed, period=2.6, low=0.0, high=1.0)
         T.blit_glow(screen, (cx, body.top + 34), 240, T.alpha(self.winner_colour, int(70 * glow)))
-        T.text(screen, self.winner, (cx, body.top + 12), T.display(34), C.INK_BRIGHT,
-               anchor="midtop")
+        T.text(screen, self.winner, (cx, body.top + 12), T.display(34), C.INK,
+               anchor="midtop", shadow=None)
         if self.reason:
             T.text(screen, self.reason, (cx, body.top + 54), T.ui(13),
-                   T.mix(self.winner_colour, C.INK_BRIGHT, 0.4), anchor="midtop", shadow=None)
+                   C.INK_DIM, anchor="midtop", shadow=None)
 
         y = body.top + 86
         for row in self.rows:

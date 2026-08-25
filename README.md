@@ -31,10 +31,11 @@ uv run hts gui data/base --players 4 --ai 3
 uv run hts gui data/base --players 6 --ai 5
 ```
 
-The GUI supports 2–6 players, a living tabletop, hover-to-read opponent
-parties, tumbling dice, and a developer console (`Ctrl+Shift+D`) for firing
-every animation and spawning any card. See [`docs/ui_guide.md`](docs/ui_guide.md)
-for the board map, hotkeys and how to drive it.
+The GUI supports 2–6 players, a light-blue tabletop with frosted panels,
+hover-to-read opponent parties, tumbling dice, and a developer console
+(`Ctrl+Shift+D`) for firing every animation and spawning any card. See
+[`docs/ui_guide.md`](docs/ui_guide.md) for the board map, hotkeys and how to
+drive it.
 
 ## Status
 

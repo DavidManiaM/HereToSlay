@@ -44,7 +44,8 @@ Useful flags:
 | `--names …` | Seat names, in turn order |
 | `--ai N` | Last *N* seats are played by the heuristic agent |
 | `--seed S` | Reproducible deal |
-| `--width` / `--height` | Window size (resizable; minimum 1024×640) |
+| `--width` / `--height` | Window size (default 1920×1080; clamped to desktop; minimum 1024×640) |
+| `--ui-scale` | Chrome scale (default 0.85 — smaller HUD, bigger board) |
 | `--fullscreen` | Start fullscreen (`F11` toggles) |
 | `--reveal-all` | Spectator: show every hand |
 | `--no-sound` | Start muted (`M` toggles) |
@@ -55,82 +56,49 @@ GUI loads. A card added to YAML this afternoon is on the table this afternoon.
 
 ---
 
-## 2. The board, clockwise
+## 2. The board — camera views
 
-The layout is the specification, not an accident of drawing order. Everything
-is derived from `(width, height)` in `layout.py`, so the window resizes without
-any panel doing its own maths.
+The table is framed by **cameras**, not frosted panels:
 
-```
-+------------------------------ top bar --------------------------- [i][log][menu] --+
-|  HERE TO SLAY   Turn 4 . Main              A -> B -> C -> YOU                     |
-+--------+-----------------------------------------------+--------------------------+
-|        |   Draw pile . Burnt (discard) . Monsters      |                          |
-| active |                                               |   opponents              |
-| stack  |              M O N S T E R   R O W            |   (next player           |
-| (left) |                                               |    at the top)           |
-|        +-----------------------------------------------+                          |
-|        |   your Leader + deployed party                |                          |
-+--------+-----------------------------------------------+--------------------------+
-|  dice / AP   |              your hand                  |  abilities in force      |
-+-----------------------------------------------------------------------------------+
-```
+1. **Tu** — angled on your deployed persoane + hand (răspunsuri AI)
+2. **Each opponent** — tight on their deployed persoane (abilities readable)
+3. **Besties** — centre row + decks
+
+Cycle with **Q / E** (or arrow keys), click the camera strip, or **click an enemy pile**.
+The **action bar** (bottom centre) shows every legal action with its key and AP cost.
+The **turn chip** (top left) shows whose go it is and remaining AP. No full-width top bar.
+Thin HUD only: prompts, dice readout, actions.
+
+Romanian tech lexicon (`ui/lexicon.py`): persoane, cheats, **hacks** (cursed
+items on opponents), provocări, scripts, besties, șeful grupului,
+download/upload speed, etc. Engine ids stay English.
 
 ### Top bar
 
-- Wordmark, turn number, current phase.
-- **Seat pips** — first letter (or `P2` for "Player 2") of every name, in
-  *play order starting with you*. The active seat pulses in their colour.
-  Ticks around a pip count slain Monsters.
-- **i** — rules overlay (`I` or `F1`).
-- **Log** — the full event feed (`L`).
-- **Menu** — pause, settings, new game (`Esc`).
-
-### Right rail — opponents
-
-Every opponent's deployed cards are always visible. After your turn the
-**top** strip is the next player; play then runs **down** the column until it
-is your turn again. That is the only ordering the board uses, so the pips and
-the rail agree.
-
-Hovering a strip grows it: cards enlarge so you can read the text. Hovering an
-individual card opens the detail popup (full face + wording). Right-click pins
-that card in a modal inspector.
-
-Each strip also shows: initials, action points, hand size, slain count, and
-six class dots (the six-class win condition at a glance).
+Thin status: title, turn/phase, seat pips, info / log / menu.
 
 ### Centre
 
-- **The table** — main deck (draw), discard ("burnt cards"), monster deck.
-  Pile depth is drawn as a stack of backs; the discard shows its top face.
-- **Monster row** — the beasts you can attack *now*. Attackable monsters
-  glow gold and say `CAN ATTACK`. Requirement chips sit under each card.
-- **Your party** — Leader on the left, Heroes in a row. Class-progress and
-  slay-progress bars live on the bottom edge.
+Besties row — requirement chips and **POȚI ÎMPRIETENI** when legal. Decks:
+inbox / trash / besties.
 
-### Bottom
+### Seats
 
-- **Left — dice & action points.** Here to Slay has no mana: the spendable
-  resource is **3 action points per turn**. The panel shows whoever is
-  acting (you on your turn, the opponent on theirs). The **Roll** button
-  (`R`) is enabled only when the engine is actually waiting for a roll
-  (attack / hero ability / leader skill) — dice in this game are thrown by
-  effects, so a button that rolled whenever you liked would be lying about
-  the rules. While a roll is in flight the dice *tumble* (pip faces, not
-  numbers) and then settle.
-- **Centre — your hand.** Playable cards lift and glow; the rest sit dim.
-  Click a card to play it (or to focus the action menu on it if it has
-  more than one legal action).
-- **Right — abilities in force.** Passives, ready/spent hero skills,
-  equipped items, and flags (`uncontestable`, …) for **whoever's round it
-  is**. You can see an opponent's actives during their turn.
+Opponents are wedges around the oval (not a right-hand list). Hover expands
+their persoane.
 
-### Left rail — in play now
+### Your strip
 
-Cards mid-resolution live here: a Hero being played, the Challenge answering
-it, a Magic on the table. The engine's `limbo` zone is exactly this. Recent
-rolls and the open reaction window also annotate the stack.
+Șeful grupului + persoane above; hand of răspunsuri AI along the bottom.
+
+**i** / **Log** / **Menu** still open rules, journal, and pause. Hover a seat
+wedge to expand persoane; right-click pins a card inspector.
+
+### np.random
+
+The roll control is a monospace **`np.random("")`** button. When a 2d6 total
+resolves, it becomes **`np.random("N")`** with N from 2–12. Enabled only when
+the engine is waiting for a roll (`R`).
 
 ---
 
@@ -150,7 +118,7 @@ highlights those widgets. You cannot play an illegal card by clicking it.
 | `Enter` | Confirm a selection / accept a prompt |
 | `Space` | Pass a reaction / decline a confirm |
 | `Tab` | Cycle card-choice candidates |
-| `R` | Roll (when a roll action is legal) or replay the last tumble |
+| `R` | `np.random` when a roll is legal, or replay last total |
 | `I` / `F1` | Rules |
 | `L` | Log |
 | `Esc` | Menu (or close the top overlay) |
@@ -191,19 +159,19 @@ which owns the engine and is allowed to build one.
 
 ## 5. Visual language
 
-A dark tabletop: deep indigo felt, translucent glass panels, a warm gold
-accent for anything you are meant to look at next. Class colours are shared
-with the CLI, so a Bard is magenta in both clients.
+A light-blue arena with frosted white panels, black ink, and a cyan accent for
+"look here next". Class colours stay on cards (same as the CLI), so a Bard is
+still magenta. The board keeps every play-critical signal: AP, requirements,
+attackability, thresholds, opponent stats, phase, and prompts — quiet chrome,
+not a stripped-down party game UI.
 
-The table is alive:
+The table stays alive without clutter:
 
-- Felt grain, tiled.
-- Floating motes (gold, ember, arcane).
-- A class-coloured constellation orbiting the Monster row.
-- A honeycomb veil and a breathing gold rail around the arena.
-- Corner "torch" flickers.
-- Hovered cards pick up a diagonal sheen.
+- Soft sky-blue felt and a pale oval mat under the centre play.
+- Sparse white/cyan motes (no constellation veil or corner torches).
+- Hovered cards pick up a foil sheen (ModernGL when available, CPU fallback).
 - Opponent strips ease open instead of snapping.
+- Legal targets get a cyan ring; dimmed cards are visible but not selectable.
 
 Animations are *cosmetic*. They are driven by a diff of two `GameView`s
 (`tracker.py`) after the engine has already moved. If a frame drops, the
@@ -215,6 +183,8 @@ many Heroes, several Monsters and Items). Missing art is a generated
 id — so nothing on screen ever says "missing". `art.py` is the resolver.
 
 Sound is synthesised at runtime (`sound.py`). There are no audio files.
+Accent materials live in `materials.py` (foil + emissive); the dev console can
+force the CPU path with **CPU materials**.
 
 ---
 
@@ -250,7 +220,8 @@ Modules, bottom up:
 | `theme` | Palette, fonts, easing, glass / glow / shadow |
 | `icons` | Vector glyphs — no image files |
 | `art` | Find a scan, or invent a sigil |
-| `atmosphere` | Living table |
+| `atmosphere` | Dark felt table, rim bevel, placemats, cached motes |
+| `keybinds` | Default action hotkeys (overridable per `ActionDef.hotkey`) |
 | `card_renderer` | Cached card faces, level-of-detail |
 | `animations` | Flights, dice, bursts, banners, confetti |
 | `widgets` | Buttons, sprites, fans, toasts, fields |

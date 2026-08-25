@@ -361,6 +361,7 @@ class ActionDef(Frozen):
     id: str
     label: str = ""
     cost: Cost = Field(default_factory=dict)
+    hotkey: str | None = None
     requires: ConditionNode | None = None
     targets: list[TargetDef] = Field(default_factory=list)
     effect: EffectNode | None = None
@@ -432,6 +433,11 @@ class TurnRules(Frozen):
     #: run after every resolved action — where "the Monster row refills" lives,
     #: because *when* a new Monster turns up is policy, not mechanism
     after_action: list[EffectNode] = Field(default_factory=list)
+    #: when an activated ability's own ``cost:`` is waived. Evaluated with the
+    #: ability's card as ``$card`` and its user as ``$self``, so a variant can
+    #: say "free for Bards" or "free once per turn" without touching Python.
+    #: ``None`` means nothing is ever waived.
+    ability_free_when: ConditionNode | None = None
 
 
 class RuleSet(Frozen):
