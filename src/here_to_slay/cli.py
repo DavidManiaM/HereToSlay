@@ -547,21 +547,32 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
     TROPHY = ICONS["trophy"]
 
     presenter = CliPresenter(engine, registry, console=console)
+    status: object = None
+    # An interrupted game is still a game: the log is this project's undo and
+    # replay mechanism, and discarding it on the most common way a hot-seat
+    # session ends - somebody presses Ctrl+C - is the wrong trade. So the run is
+    # separated from the save, and the save happens either way.
     try:
         status = engine.run(presenter)
     except KeyboardInterrupt:
         console.print("\n[yellow]Game interrupted.[/yellow]")
-        return EXIT_OK
-
-    # -- result ------------------------------------------------------------
-    if isinstance(status, GameOver) and status.winner:
-        winner_name = engine.state.player(status.winner).name
-        console.print(f"\n[bold bright_yellow]{TROPHY} {winner_name} wins![/bold bright_yellow]\n")
+    except EOFError:
+        # A closed stdin: a piped session that ran out of answers, or a terminal
+        # that went away. `_read_int` raises rather than re-prompting forever,
+        # which is right; printing its traceback at the user is not.
+        console.print("\n[yellow]Input ended before the game did.[/yellow]")
     else:
-        console.print("\n[dim]Game over (no winner / turn cap reached).[/dim]\n")
+        # -- result --------------------------------------------------------
+        if isinstance(status, GameOver) and status.winner:
+            winner_name = engine.state.player(status.winner).name
+            console.print(
+                f"\n[bold bright_yellow]{TROPHY} {winner_name} wins![/bold bright_yellow]\n"
+            )
+        else:
+            console.print("\n[dim]Game over (no winner / turn cap reached).[/dim]\n")
 
     # -- save log ----------------------------------------------------------
-    if not args.no_save:
+    if not args.no_save and len(engine.log):
         log_dir = Path.cwd() / "hts_logs"
         log_dir.mkdir(exist_ok=True)
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -715,12 +726,15 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
 
     viewer = ReplayViewer(log_source)
     status: object = None
+    exhausted = False
     try:
         status = engine.run(viewer)
     except ReplayExhausted:
         # The expected end of a partial log — a distinct type rather than a
-        # substring of somebody else's message (Phase 5 gap 6).
-        pass
+        # substring of somebody else's message (Phase 5 gap 6). Worth saying
+        # out loud, though: printing "Replay finished" over a log that ran out
+        # mid-game is how a divergence hides.
+        exhausted = True
     except KeyboardInterrupt:
         console.print("\n[yellow]Replay interrupted.[/yellow]")
         return EXIT_OK
@@ -737,6 +751,16 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
     if isinstance(status, GameOver) and status.winner:
         winner_name = engine.state.player(status.winner).name
         console.print(f"[bold bright_yellow]{TROPHY} {winner_name} wins![/bold bright_yellow]")
+    elif exhausted:
+        console.print(
+            f"[yellow]The log ran out after {len(log.entries)} decision(s), "
+            f"but the game is still waiting on one.[/yellow]"
+        )
+        console.print(
+            "[dim]Expected for a log saved from an interrupted game. Otherwise the "
+            "replay diverged — check that the pack and its plugin.py are the ones "
+            "the log was recorded against.[/dim]"
+        )
     else:
         console.print("[dim]Replay finished.[/dim]")
     return EXIT_OK
@@ -750,6 +774,7 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
 def cmd_sim(args: argparse.Namespace, console: Console) -> int:
     import os
     import time
+    from pathlib import Path
 
     from rich.progress import (
         BarColumn,
@@ -789,6 +814,12 @@ def cmd_sim(args: argparse.Namespace, console: Console) -> int:
             if candidate.exists():
                 weights_path = candidate
                 break
+    # Checked once here rather than once per game: the agent is rebuilt inside
+    # the loop, so a mistyped path used to be discovered `--games` times, each
+    # one a caught exception and a wasted setup.
+    if weights_path is not None and not Path(weights_path).is_file():
+        console.print(f"[red]AI weights file not found: {weights_path}[/red]")
+        return EXIT_USAGE
 
     console.print()
     console.print(

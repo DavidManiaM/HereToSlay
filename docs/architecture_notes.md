@@ -304,7 +304,7 @@ Python `TurnMachine` only knows how to *walk* a table.
 
 ## 7. Determinism, Replay, and What It Buys
 
-`Game = f(content_hash, seed, [decision₀, decision₁, ...])`
+`Game = f(content_hash, seed, max_turns, [decision₀, decision₁, ...])`
 
 Because the core has no ambient randomness or I/O, the decision log fully reproduces a game.
 Consequences we get for free:

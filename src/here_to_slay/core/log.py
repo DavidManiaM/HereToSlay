@@ -1,6 +1,6 @@
 """The decision log, and replaying one.
 
-``Game = f(content_hash, seed, [decision₀, decision₁, ...])``
+``Game = f(content_hash, seed, max_turns, [decision₀, decision₁, ...])``
 
 Because the engine has no ambient randomness and no I/O, that equation holds
 exactly — and everything expensive comes free from it (``architecture_notes.md
@@ -86,14 +86,22 @@ class DecisionLog:
     players: tuple[str, ...] = ()
     entries: list[LoggedDecision] = field(default_factory=list)
     format: int = LOG_FORMAT
+    #: the turn cap the game was played under, because it is a fourth input to
+    #: ``f`` and not a preference. A game stopped by ``--max-turns 40`` replayed
+    #: without the cap keeps going past turn 40, asks for decisions the log does
+    #: not have, and reports itself as a finished replay of a different game.
+    max_turns: int = 0
 
     @classmethod
-    def for_game(cls, state: GameState, players: Sequence[str] = ()) -> DecisionLog:
+    def for_game(
+        cls, state: GameState, players: Sequence[str] = (), *, max_turns: int = 0
+    ) -> DecisionLog:
         """Start a log for a state that setup has just built."""
         return cls(
             content_hash=state.content_hash,
             seed=state.rng.seed,
             players=tuple(players) or tuple(player.name for player in state.players.values()),
+            max_turns=max_turns,
         )
 
     # -- recording ---------------------------------------------------------
@@ -127,6 +135,7 @@ class DecisionLog:
             players=self.players,
             entries=list(self.entries[:count]),
             format=self.format,
+            max_turns=self.max_turns,
         )
 
     # -- serialisation -----------------------------------------------------
@@ -137,6 +146,7 @@ class DecisionLog:
             "content_hash": self.content_hash,
             "seed": self.seed,
             "players": list(self.players),
+            "max_turns": self.max_turns,
             "entries": [entry.as_data() for entry in self.entries],
         }
 
@@ -153,6 +163,9 @@ class DecisionLog:
             players=tuple(data.get("players") or ()),
             entries=[LoggedDecision.from_data(entry) for entry in data.get("entries") or ()],
             format=version,
+            # Absent in logs written before the cap was recorded; 0 is what
+            # those games were played with anyway, so they replay unchanged.
+            max_turns=int(data.get("max_turns", 0) or 0),
         )
 
     def to_json(self, indent: int | None = 2) -> str:

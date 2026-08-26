@@ -292,19 +292,24 @@ not at end of turn; a whole game replays from its log to a byte-identical state.
 
 ### Known gaps carried out of Phase 5
 
-These are real defects found by auditing the shipped code, each reproduced. None are blocking
-Phase 6 (card content), but **gaps 1 and 3 should be closed before Phase 7**, whose whole subject
-is rolls and reactions.
+These were real defects found by auditing the shipped code, each reproduced. **All seven are now
+closed**; the reports are kept because each one names a trap worth not falling into twice.
 
 1. ~~**Roll display is dead code.**~~ **Closed in Phase 7.** `Engine.recent_rolls` harvests each
    step's `Execution` before it is discarded; the presenter reads that and keeps its own
    "already shown" count instead of writing to `state.flags`. `render_roll_result()` now has a
    caller too — it prints the band's `tag:`, which is the thing the Phase 5 bullet asked for.
-2. **Emoji crash the CLI on a legacy Windows console.** `👾 💀 🎲 ⚔ 🏆` raise
+2. ~~**Emoji crash the CLI on a legacy Windows console.**~~ **Closed.** `render.py:_icons()`
+   probes `sys.stdout.encoding` once and returns an ASCII set when the rich one cannot be
+   encoded; `cli.py:_make_console()` additionally reconfigures stdout with `errors="replace"`.
+   Original report: `👾 💀 🎲 ⚔ 🏆` raise
    `UnicodeEncodeError` under a non-UTF-8 code page (reproduced on cp1250: `hts play` dies while
    printing the first board). *Fix shape:* construct the `Console` with an explicit UTF-8 file, or
    fall back to ASCII icons when `console.encoding` cannot take them.
-3. **`_choose_cards` is the one prompt with no test, and has three bugs.**
+3. ~~**`_choose_cards` is the one prompt with no test, and has three bugs.**~~ **Closed**, and
+   the prompt now has tests, including the blind pick. The loop builds its display names up
+   front, only ever offers cards not already taken, and `_read_int` raises `EOFError` on a
+   closed stream instead of re-prompting. Original report:
    * `hidden=True` raises `UnboundLocalError` — line 211 reads a loop variable `c` that is not
      bound yet. It only survives today because `request.hidden` is `False` in every current
      request, and `and` short-circuits.
@@ -315,17 +320,19 @@ is rolls and reactions.
    * The multi-pick loop re-prompts forever on EOF, because `_read_int` treats the empty string
      from a closed stdin as "invalid, try again". Harmless for a human, an infinite loop for a
      piped session.
-4. **Header markup is printed literally.** `_render_header` calls `Text.append` with
+4. ~~**Header markup is printed literally.**~~ **Closed** — `_render_header` passes
+   `style="dim"` rather than embedding markup in the string. Original report: `_render_header` calls `Text.append` with
    `"[dim][…][/dim]"`; `Text.append` does not parse markup, so the board shows
    `[dim][4f9dfbda][/dim]`. Use `Text.append(..., style="dim")` like every other line does.
-5. **Monster band text is ambiguous.** `_render_monster_card` renders an open bound and the range
+5. ~~**Monster band text is ambiguous.**~~ **Closed** — `_band_text` prints `8+`, `5-7`, `4-`.
+   Original report: `_render_monster_card` renders an open bound and the range
    separator with the same en dash, giving `––12` and `2––`. Print `≤12` / `2+` instead.
 6. ~~**`cmd_replay` detects "log exhausted" by matching substrings of a `ReplayError` message.**~~
    **Closed in Phase 7.** `LogSource` raises a typed `ReplayExhausted`, and `cmd_replay` catches
    that instead of reading prose.
-7. **Dead imports/locals** flagged by `ruff` in `ui/cli/` and `cli.py` (22 findings, mostly
-   `F401`/`F841`/`E501` plus the ambiguous en dashes). The lint gate does not currently cover
-   these files.
+7. ~~**Dead imports/locals** flagged by `ruff`.~~ **Closed in Phase 10**, along with the 33
+   findings the Phase 9 UI rework added. `ruff check .` is clean across the whole repository,
+   `assets/ref/` scripts included.
 
 ---
 
@@ -553,8 +560,9 @@ this phase is *only* rendering and input.
 - [x] **A sample variant** exercising every seam: a new class, a new zone, a new action, a new
       reaction window, an altered win condition — `data/variants/overclock`
 - [x] `hts diff-pack base variants/x` — show what a pack changes — `modding/diffing.py`
-- [x] `tests/test_modding.py` (29) and `tests/test_variant_overclock.py` (29), plus three
-      pygame tests that draw the variant
+- [x] `tests/test_modding.py` (34) and `tests/test_variant_overclock.py` (29), plus three
+      pygame tests that draw the variant and twelve regression tests for the determinism
+      and CLI defects the phase turned up
 
 **Acceptance:** ✅
 * `data/variants/overclock` adds a class (`hacker`), a zone (`cache`), three actions
@@ -569,7 +577,7 @@ this phase is *only* rendering and input.
 * `uv run hts sim data/variants/overclock --games 30 --strict` → 0 errors, 0 invariant
   violations, at three and four players; both win conditions fire (~55% cache, ~10–30%
   slay), and the pack terminates as reliably as the base game does under random agents.
-* `uv run pytest` → **940 tests**, all green, and again under `HTS_STRICT=1`.
+* `uv run pytest` → **957 tests**, all green, and again under `HTS_STRICT=1`.
 
 ### Decisions taken during Phase 10
 
@@ -635,6 +643,45 @@ this phase is *only* rendering and input.
    loaded rule set now — same colours, same layout, one more dot. This is exactly the class of bug
    Phase 10 exists to find: the engine was already data-driven, and the UI quietly was not.
 
+### Determinism bugs found auditing Phase 10
+
+Phase 10's own tooling put pressure on the replay contract, and it broke in two places. Both are
+fixed with regression tests that fail on the old code.
+
+* **`max_turns` was a missing input to `f`.** `rules_engine.md` says
+  `Game = f(content_hash, seed, decisions)`, but the turn cap ends games too, and the log never
+  recorded it. A game played with `--max-turns 40` replayed with no cap at all: it ran past the
+  turn it had stopped on, asked for decisions the log did not have, and `cmd_replay` reported
+  that as an ordinary end-of-log. Four of eight random seeds diverged. The log now carries
+  `max_turns`, `Engine.replaying` takes the cap from it unless overridden, and a log written
+  before the field existed still loads (absent means 0, which is what those games used).
+
+* **`content_hash` did not cover a pack's Python.** `check_content` refuses to replay against
+  edited *cards* precisely because a silently-wrong replay is worse than none — but a variant's
+  `plugin.py` is just as much a part of what a game was played with, and two versions of it can
+  leave every card byte-identical while making `cache_burn` charge nothing. `as_data()` now
+  includes a per-pack digest of the plugin source. The key is added **only when a pack has one**,
+  so a pack without a plugin hashes over exactly the bytes it always did and every log recorded
+  against `data/base` still replays.
+
+* **And the visible half:** `hts replay` printed "Replay finished" over a log that ran out
+  mid-game, which is how a divergence hides. It now says how many decisions the log held and that
+  the game is still waiting, with the two explanations that fit.
+
+### Two CLI defects found the same way
+
+* **`hts play` printed a traceback when stdin closed.** `_read_int` raises `EOFError` rather than
+  re-prompting forever — correct, and documented — but nothing caught it, so a piped session ended
+  in a Python stack trace.
+
+* **An interrupted game threw its log away.** Both Ctrl+C and a closed stdin returned before the
+  save, discarding the decision log — this project's undo and replay mechanism — on the two
+  commonest ways a hot-seat session actually ends. The run and the save are now separate, and an
+  empty log still writes no file.
+
+* Minor, same audit: `hts sim --ai-weights <typo>` validated the path *inside* the game loop, so a
+  1000-game run reported the same missing file 1000 times. Checked once, up front.
+
 10. **The scaffolder writes something runnable.** An empty skeleton makes the first edit a guess.
    `hts new-pack` writes a pack that validates and deals immediately, with the merge rules that
    catch everyone (`allows:` replaces, `classes:` replaces) commented at the point they bite.
@@ -669,7 +716,7 @@ this phase is *only* rendering and input.
 ## Current Status
 
 **Phases 0–10 complete.** `uv run hts validate data/base --strict` is green on 88 card
-definitions and 136 physical cards; `uv run pytest` runs **940 tests**, and the whole suite also
+definitions and 136 physical cards; `uv run pytest` runs **957 tests**, and the whole suite also
 passes under `HTS_STRICT=1` (invariants checked after every mutation).
 
 **The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical

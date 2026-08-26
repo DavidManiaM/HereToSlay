@@ -14,6 +14,7 @@ sample variant works. This file proves the tools around it do.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -347,3 +348,60 @@ class TestDiffPacks:
             load_plugins(registry)
             diff = diff_packs(["data/base"], ["data/variants/overclock"])
         assert diff.ops["effects"] == ("upload_card",)
+
+
+# ---------------------------------------------------------------------------
+# A pack's Python is part of what the game was played with
+# ---------------------------------------------------------------------------
+
+
+class TestPluginCodeIsInTheContentHash:
+    """``check_content`` refuses a replay against edited cards. It has to refuse
+    one against edited *code* too: two ``plugin.py`` files can leave every card
+    byte-identical and still make ``cache_burn`` charge nothing, which produces
+    exactly the plausible, wrong game that check exists to prevent."""
+
+    @staticmethod
+    def _copy(tmp_path: Path) -> Path:
+        target = tmp_path / "overclock"
+        shutil.copytree(
+            Path("data/variants/overclock"),
+            target,
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        return target
+
+    def test_editing_the_plugin_changes_the_hash(self, tmp_path: Path) -> None:
+        pack = self._copy(tmp_path)
+        before = load_pack(pack, search_paths=["data"]).content_hash
+
+        plugin = pack / "plugin.py"
+        plugin.write_text(
+            plugin.read_text(encoding="utf-8").replace(
+                "    if len(zone) < amount:", "    if False:"
+            ),
+            encoding="utf-8",
+        )
+        after = load_pack(pack, search_paths=["data"]).content_hash
+        assert before != after
+
+    def test_the_digest_is_reported_per_pack(self, tmp_path: Path) -> None:
+        registry = load_pack(self._copy(tmp_path), search_paths=["data"])
+        assert set(registry.plugin_digests()) == {"overclock"}
+
+    def test_a_pack_with_no_plugin_hashes_exactly_as_before(self) -> None:
+        """The compatibility clause, asserted as a shape rather than a literal.
+
+        The key is added only when there is something to put in it, so a pack
+        without a plugin hashes over exactly the bytes it always did and every
+        log recorded against the base game still replays. Pinning the digest
+        itself would just break on the next legitimate card edit.
+        """
+        base = load_pack("data/base")
+        assert base.plugin_digests() == {}
+        assert set(base.as_data()) == {"rules", "cards"}
+
+    def test_the_hash_is_computed_once(self) -> None:
+        """``build_view`` asks per view; answering re-serialised every card."""
+        registry = load_pack("data/base")
+        assert registry.content_hash is registry.content_hash

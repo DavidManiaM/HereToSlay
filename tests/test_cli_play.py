@@ -508,3 +508,126 @@ class TestChooseCardsPrompt:
 
         with pytest.raises(EOFError):
             presenter._choose_cards(self._request(["a", "b"], minimum=1, maximum=1), None)
+
+
+# ---------------------------------------------------------------------------
+# Ending a game the ways players actually end one
+# ---------------------------------------------------------------------------
+
+
+class TestAnInterruptedGameIsStillAGame:
+    """Ctrl+C and a closed stdin are the two commonest ways a hot-seat session
+    stops, and both used to lose the decision log — which is this project's undo
+    and replay mechanism. A closed stdin additionally printed ``_read_int``'s
+    ``EOFError`` traceback at the player.
+    """
+
+    def _play(self, fixtures: Path, tmp_path: Path, *, raises: BaseException):
+        import argparse
+        from io import StringIO
+
+        from rich.console import Console
+
+        from here_to_slay.cli import cmd_play
+
+        answers = AutoSource()
+        calls = {"n": 0}
+
+        def answer(request):
+            calls["n"] += 1
+            if calls["n"] > 3:
+                raise raises
+            return answers.answer(request)
+
+        namespace = argparse.Namespace(
+            packs=[str(fixtures / "cardless")],
+            search_path=[str(PROJECT_ROOT / "data")],
+            names=["Alice", "Bob"],
+            players=2,
+            seed="interrupted",
+            max_turns=0,
+            no_save=False,
+        )
+        buf = StringIO()
+        with (
+            patch(
+                "here_to_slay.ui.cli.presenter.CliPresenter.answer", side_effect=answer
+            ),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            code = cmd_play(namespace, Console(file=buf, no_color=True, width=120))
+        return code, buf.getvalue(), sorted((tmp_path / "hts_logs").glob("*.json"))
+
+    def test_a_closed_stdin_is_reported_not_raised(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        code, output, _logs = self._play(fixtures, tmp_path, raises=EOFError("closed"))
+        assert code == 0
+        assert "Input ended before the game did" in output
+        assert "Traceback" not in output
+
+    def test_the_log_survives_a_closed_stdin(self, fixtures: Path, tmp_path: Path) -> None:
+        _, output, logs = self._play(fixtures, tmp_path, raises=EOFError("closed"))
+        assert len(logs) == 1
+        assert "Decision log saved" in output
+        assert len(json.loads(logs[0].read_text(encoding="utf-8"))["entries"]) == 3
+
+    def test_the_log_survives_ctrl_c(self, fixtures: Path, tmp_path: Path) -> None:
+        code, output, logs = self._play(fixtures, tmp_path, raises=KeyboardInterrupt())
+        assert code == 0
+        assert "Game interrupted" in output
+        assert len(logs) == 1
+
+    def test_the_partial_log_replays_and_says_it_ran_out(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        """The other half: a truncated log must not report itself as a finished
+        replay, or a real divergence hides behind 'Replay finished'."""
+        import argparse
+        from io import StringIO
+
+        from rich.console import Console
+
+        from here_to_slay.cli import cmd_replay
+
+        _, _, logs = self._play(fixtures, tmp_path, raises=EOFError("closed"))
+        buf = StringIO()
+        namespace = argparse.Namespace(
+            log=str(logs[0]),
+            packs=[str(fixtures / "cardless")],
+            search_path=[str(PROJECT_ROOT / "data")],
+            step=False,
+        )
+        assert cmd_replay(namespace, Console(file=buf, no_color=True, width=120)) == 0
+        assert "ran out after 3 decision(s)" in buf.getvalue()
+
+    def test_nothing_is_written_when_no_decision_was_made(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        """An empty log is not worth a file."""
+        import argparse
+        from io import StringIO
+
+        from rich.console import Console
+
+        from here_to_slay.cli import cmd_play
+
+        namespace = argparse.Namespace(
+            packs=[str(fixtures / "cardless")],
+            search_path=[str(PROJECT_ROOT / "data")],
+            names=["Alice", "Bob"],
+            players=2,
+            seed="empty",
+            max_turns=0,
+            no_save=False,
+        )
+        buf = StringIO()
+        with (
+            patch(
+                "here_to_slay.ui.cli.presenter.CliPresenter.answer",
+                side_effect=KeyboardInterrupt(),
+            ),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            cmd_play(namespace, Console(file=buf, no_color=True, width=120))
+        assert not (tmp_path / "hts_logs").exists()

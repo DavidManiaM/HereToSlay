@@ -294,7 +294,7 @@ Rules:
    (and in a hot-seat CLI, when to clear the screen).
 2. Every request carries the *legal* option set. `submit()` **re-validates**; an illegal decision
    raises rather than corrupting state. The UI is never trusted.
-3. Every accepted decision is appended to `DecisionLog`. `(content_hash, seed, log)` reproduces
+3. Every accepted decision is appended to `DecisionLog`. `(content_hash, seed, max_turns, log)` reproduces
    the game exactly → replay, network, tests, bug reports.
 4. **Save/load is only legal at `Quiescent`** (between actions), because a suspended generator
    stack isn't serialisable. Mid-decision saves are rejected with a clear error. Accepted

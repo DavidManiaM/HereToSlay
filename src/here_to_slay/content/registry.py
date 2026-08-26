@@ -18,7 +18,8 @@ class ContentRegistry:
     """Validated, immutable content: the engine's read-only substrate.
 
     ``content_hash`` identifies the exact content a game was played with, so a
-    replay can refuse to run against edited cards (architecture §7).
+    replay can refuse to run against edited cards (architecture §7) — and, since
+    a pack may ship a ``plugin.py``, against edited *code* too.
     """
 
     rules: RuleSet
@@ -27,6 +28,10 @@ class ContentRegistry:
     #: card id -> "path/to/file.yaml[3]", for error messages
     sources: Mapping[str, str] = field(default_factory=dict)
     roots: tuple[Path, ...] = ()
+    #: memoised :attr:`content_hash`. Not an optimisation for its own sake:
+    #: ``build_view`` asks for it once per view, and answering meant
+    #: re-serialising every card definition to JSON each time.
+    _hash: list[str] = field(default_factory=list, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "cards", MappingProxyType(dict(self.cards)))
@@ -80,17 +85,51 @@ class ContentRegistry:
             totals[zone] = totals.get(zone, 0) + card.copies
         return totals
 
+    def plugin_digests(self) -> dict[str, str]:
+        """``{pack_id: sha256(plugin.py)}`` for every pack that ships one.
+
+        A pack's Python is as much a part of "what was this game played with"
+        as its YAML: two ``plugin.py`` files can leave the cards identical and
+        still make ``cache_burn`` charge nothing. Without this, a replay would
+        pass :func:`~here_to_slay.core.log.check_content` and then produce a
+        plausible, wrong game — precisely the failure that function exists to
+        prevent.
+        """
+        digests: dict[str, str] = {}
+        for pack, root in zip(self.packs, self.roots, strict=False):
+            if not pack.plugin:
+                continue
+            try:
+                source = (root / pack.plugin).read_bytes()
+            except OSError:
+                # Hashing must never be the thing that raises; an unreadable
+                # plugin is already fatal at load time, and a stable marker
+                # keeps this deterministic if it somehow is not.
+                digests[pack.id] = "<unreadable>"
+            else:
+                digests[pack.id] = hashlib.sha256(source).hexdigest()
+        return digests
+
     def as_data(self) -> dict[str, Any]:
         """Canonical JSON-able projection — the input to :attr:`content_hash`."""
-        return {
+        data: dict[str, Any] = {
             "rules": self.rules.model_dump(mode="json"),
             "cards": {
                 card_id: self.cards[card_id].model_dump(mode="json")
                 for card_id in sorted(self.cards)
             },
         }
+        # Added only when something is there, so a pack with no plugin hashes to
+        # exactly what it hashed to before plugins existed and its saved logs
+        # keep replaying.
+        digests = self.plugin_digests()
+        if digests:
+            data["plugins"] = digests
+        return data
 
     @property
     def content_hash(self) -> str:
-        blob = json.dumps(self.as_data(), sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+        if not self._hash:
+            blob = json.dumps(self.as_data(), sort_keys=True, separators=(",", ":"))
+            self._hash.append(hashlib.sha256(blob.encode("utf-8")).hexdigest())
+        return self._hash[0]

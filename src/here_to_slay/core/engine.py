@@ -94,21 +94,32 @@ class Engine:
     ) -> Engine:
         """Deal a game and wrap it. The one-liner every caller wants."""
         state = new_game(content, players, seed=seed)
-        return cls(state, log=DecisionLog.for_game(state, players), max_turns=max_turns)
+        log = DecisionLog.for_game(state, players, max_turns=max_turns)
+        return cls(state, log=log, max_turns=max_turns)
 
     @classmethod
     def replaying(
-        cls, content: ContentRegistry, log: DecisionLog, *, max_turns: int = 0
+        cls, content: ContentRegistry, log: DecisionLog, *, max_turns: int | None = None
     ) -> tuple[Engine, LogSource]:
         """Rebuild the game a log describes, and the source that answers it.
 
         Refuses a log recorded against different content or a different seed —
         a replay that quietly runs against edited cards produces a plausible,
         wrong game and a bug report nobody can reproduce.
+
+        The turn cap comes from the log unless the caller overrides it, for the
+        same reason: a game stopped by ``--max-turns`` and replayed without one
+        runs past the point it ended, then reports the extra decisions it wants
+        as an ordinary end-of-log.
         """
         state = new_game(content, log.players, seed=log.seed)
         check_content(log, state)
-        engine = cls(state, log=DecisionLog.for_game(state, log.players), max_turns=max_turns)
+        cap = log.max_turns if max_turns is None else max_turns
+        engine = cls(
+            state,
+            log=DecisionLog.for_game(state, log.players, max_turns=cap),
+            max_turns=cap,
+        )
         return engine, LogSource(log)
 
     # -- status ------------------------------------------------------------

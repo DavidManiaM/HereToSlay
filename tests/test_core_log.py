@@ -13,6 +13,7 @@ from here_to_slay.core import (
     ChoosePlayer,
     Confirmed,
     DecisionLog,
+    Engine,
     GameState,
     Intent,
     IntentChosen,
@@ -184,3 +185,56 @@ class TestReplay:
         source = LogSource(log)
         assert source.exhausted
         replay(log, state, EffectContext.root(state).run({"op": "noop"}), verify=False)
+
+
+class TestTheTurnCapIsPartOfTheGame:
+    """``Game = f(content_hash, seed, max_turns, decisions)``.
+
+    ``max_turns`` was the missing fourth input. A game stopped by the cap and
+    replayed without one runs past the point it ended, asks for decisions the
+    log does not have, and reports itself as an ordinary end-of-log — a
+    divergence that looks exactly like a partial save.
+    """
+
+    def test_the_cap_is_recorded_and_survives_a_round_trip(
+        self, table_content: ContentRegistry
+    ) -> None:
+        engine = Engine.new(table_content, ["Ann", "Bob"], seed="cap", max_turns=7)
+        assert engine.log.max_turns == 7
+        assert DecisionLog.from_json(engine.log.to_json()).max_turns == 7
+        assert engine.log.truncated(0).max_turns == 7
+
+    def test_a_log_written_before_the_cap_existed_still_loads(self) -> None:
+        """Old logs have no ``max_turns`` key; 0 is what they were played with."""
+        data = {"format": 1, "content_hash": "", "seed": 1, "players": ["Ann"], "entries": []}
+        assert DecisionLog.from_data(data).max_turns == 0
+
+    def test_replaying_takes_the_cap_from_the_log(
+        self, table_content: ContentRegistry
+    ) -> None:
+        engine = Engine.new(table_content, ["Ann", "Bob"], seed="cap", max_turns=7)
+        rerun, _ = Engine.replaying(table_content, engine.log)
+        assert rerun.machine.max_turns == 7
+
+    def test_an_explicit_cap_still_wins(self, table_content: ContentRegistry) -> None:
+        engine = Engine.new(table_content, ["Ann", "Bob"], seed="cap", max_turns=7)
+        rerun, _ = Engine.replaying(table_content, engine.log, max_turns=3)
+        assert rerun.machine.max_turns == 3
+
+    @pytest.mark.parametrize("seed", [1, 2, 3, 7])
+    def test_a_capped_game_replays_to_the_same_position(
+        self, table_content: ContentRegistry, seed: int
+    ) -> None:
+        """The regression: these seeds used to raise ``ReplayExhausted``,
+        because the replay carried on past the turn the original stopped at."""
+        from here_to_slay.ai.random_agent import RandomAgent
+
+        engine = Engine.new(table_content, ["Ann", "Bob", "Cid"], seed=seed, max_turns=12)
+        engine.run(RandomAgent(seed=seed))
+
+        rerun, source = Engine.replaying(table_content, engine.log)
+        rerun.run(source)
+
+        assert rerun.state.turn_number == engine.state.turn_number
+        assert rerun.state.winner == engine.state.winner
+        assert diff_snapshots(engine.state.snapshot(), rerun.state.snapshot()) == []
