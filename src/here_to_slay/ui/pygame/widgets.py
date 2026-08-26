@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import (
     CARD_H,
@@ -303,6 +304,7 @@ class CardSprite:
         selected: bool = False,
         dimmed: bool = False,
         attachments: tuple[str, ...] = (),
+        attachment_defs: tuple[Any, ...] = (),
         badge_text: str = "",
         badge_colour: tuple[int, int, int] = C.GOLD,
         rotation: float = 0.0,
@@ -319,6 +321,7 @@ class CardSprite:
         self.selected = selected
         self.dimmed = dimmed
         self.attachments = attachments
+        self.attachment_defs = attachment_defs
         self.badge_text = badge_text
         self.badge_colour = badge_colour
         self.rotation = rotation
@@ -327,7 +330,7 @@ class CardSprite:
         self.depth = max(0.0, min(1.0, depth))
         self.hovered = False
         self.hover = 0.0
-        self.enter = 0.0  # 0..1 entrance animation
+        self.enter = 1.0  # opaque unless a zone explicitly starts an entrance
         self.clickable = True
 
     # -- state -------------------------------------------------------------
@@ -398,7 +401,7 @@ class CardSprite:
 
         blit_rect = pygame.Rect(rect.left, rect.top + y_off, rect.width, draw_h)
         if self.rotation:
-            surf = pygame.transform.rotate(surf, self.rotation)
+            surf = pygame.transform.rotozoom(surf, self.rotation, 1.0)
             blit_rect = surf.get_rect(center=blit_rect.center)
         if entering:
             surf = surf.copy()
@@ -409,7 +412,30 @@ class CardSprite:
             strip = pygame.Rect(rect.left + 4, rect.bottom - 4, rect.width - 8, 3)
             T.round_rect(screen, strip, self.owner_colour, radius=2)
 
-        if self.attachments and rect.width >= 40:
+        # Equipped Cheats/Hacks sit offset down-right so the host stays readable
+        # and hoverable on its top-left.
+        faces = self.attachment_defs or ()
+        if faces and rect.width >= 48:
+            aw = max(28, int(rect.width * 0.55))
+            ah = int(aw * M.CARD_ASPECT)
+            base_x = blit_rect.left + int(blit_rect.width * 0.32)
+            base_y = blit_rect.top + int(blit_rect.height * 0.28)
+            for i, adef in enumerate(faces[:3]):
+                ox = base_x + i * max(6, aw // 8)
+                oy = base_y + i * max(6, ah // 8)
+                mini = render_card(adef, aw, ah)
+                T.drop_shadow(
+                    screen, pygame.Rect(ox, oy, aw, ah),
+                    radius=6, spread=8, offset=(0, 3), strength=70,
+                )
+                screen.blit(mini, (ox, oy))
+            if len(faces) > 3:
+                r = max(7, rect.width // 12)
+                centre = (blit_rect.right - r - 2, blit_rect.bottom - r - 2)
+                pygame.draw.circle(screen, C.GOLD, centre, r)
+                T.text(screen, f"+{len(faces) - 3}", centre, T.ui(max(8, r), bold=True),
+                       C.INK_DARK, anchor="center", shadow=None)
+        elif self.attachments and rect.width >= 40:
             r = max(7, rect.width // 11)
             centre = (rect.right - r - 3, rect.bottom - r - 3)
             pygame.draw.circle(screen, C.GOLD, centre, r)
@@ -491,6 +517,9 @@ class ZoneWidget:
                 sprite.hover = old.hover
                 sprite.hovered = old.hovered
                 sprite.enter = old.enter
+                sprite.attachment_defs = old.attachment_defs
+            else:
+                sprite.enter = 0.0  # only brand-new cards fade in
             self.sprites.append(sprite)
             self._by_id[cid] = sprite
 
@@ -649,8 +678,8 @@ class PlayerBadge:
                T.ui(13, bold=True), C.INK_BRIGHT if self.is_active else C.INK,
                max_width=rect.right - x - 40)
         stats = (
-            f"AP {self.action_points}  \u00b7  hand {self.hand_count}"
-            f"  \u00b7  party {self.hero_count}"
+            f"{L.ap_label(self.action_points)}  ·  {L.hand_label(self.hand_count)}"
+            f"  ·  {L.PARTY} {self.hero_count}"
         )
         T.text(screen, stats, (x, rect.top + 26), T.ui(10), C.INK_DIM, shadow=None,
                max_width=rect.right - x - 12)
@@ -836,7 +865,7 @@ class LogFeed:
     def add(
         self, text: str, *, colour: tuple[int, int, int] = C.INK_DIM, icon: str | None = None
     ) -> None:
-        self.entries.append(LogEntry(text, colour, icon))
+        self.entries.append(LogEntry(L.retheme_prompt(text), colour, icon))
         if len(self.entries) > self.limit:
             del self.entries[: len(self.entries) - self.limit]
         self.scroll = 0
@@ -849,7 +878,7 @@ class LogFeed:
         self.entries.clear()
 
     def draw(self, screen: pygame.Surface, *, newest_first: bool = True) -> None:
-        fnt = T.ui(11)
+        fnt = T.ui(16)
         line_h = fnt.get_linesize() + 4
         rows = max(1, self.rect.height // line_h)
         visible = list(reversed(self.entries[-(rows + self.scroll):])) if newest_first else \
@@ -868,9 +897,9 @@ class LogFeed:
                 fade = k
             x = self.rect.left + slide
             if entry.icon:
-                draw_icon(screen, entry.icon, (x + 6, y + line_h // 2 - 1), 12,
+                draw_icon(screen, entry.icon, (x + 6, y + line_h // 2 - 1), T.s(16),
                           T.alpha(entry.colour, int(255 * fade))[:3])
-                x += 17
+                x += T.s(20)
             colour = T.alpha(entry.colour, int(230 * fade * (1.0 - i / (rows * 1.9))))
             T.text(screen, entry.text, (x, y), fnt, colour, shadow=None,
                    max_width=self.rect.right - x - 4)

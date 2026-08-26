@@ -57,7 +57,7 @@ FLAGS: dict[str, tuple[str, str]] = {
     "layout_debug": ("Layout overlay", "outline every named region"),
     "fps": ("Frame counter", "corner readout"),
     "force_cpu_materials": ("CPU materials", "skip ModernGL foil/glow"),
-    "reaction_timer": ("Reaction auto-pass", "3s countdown on reaction windows"),
+    "reaction_timer": ("Reaction auto-pass", "10s countdown on reaction windows"),
 }
 
 

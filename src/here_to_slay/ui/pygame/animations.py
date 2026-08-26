@@ -26,6 +26,7 @@ from typing import Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import render_card, render_card_back
 from here_to_slay.ui.pygame.icons import draw_icon
@@ -158,7 +159,7 @@ class CardMoveAnimation(Animation):
         if squeeze < 0.999:
             surf = pygame.transform.smoothscale(surf, (max(1, int(w * squeeze)), max(1, h)))
         if self.spin:
-            surf = pygame.transform.rotate(surf, self.spin * (1.0 - t))
+            surf = pygame.transform.rotozoom(surf, self.spin * (1.0 - t), 1.0)
 
         rect = surf.get_rect(center=(int(x + w / 2), int(y + h / 2)))
         return surf, rect
@@ -520,7 +521,7 @@ class ParticleBurstAnimation(Animation):
             else:
                 chip = T.surface((s * 2, s * 2))
                 pygame.draw.rect(chip, T.alpha(colour, a), pygame.Rect(0, 0, s * 2, s))
-                spun = pygame.transform.rotate(chip, math.degrees(phase + t * 7.0))
+                spun = pygame.transform.rotozoom(chip, math.degrees(phase + t * 7.0), 1.0)
                 screen.blit(spun, (int(x - spun.get_width() / 2), int(y - spun.get_height() / 2)))
 
 
@@ -563,7 +564,7 @@ class ConfettiAnimation(Animation):
             chip = T.surface((s * 2, s * 2))
             pygame.draw.rect(chip, T.alpha(colour, int(230 * fade)),
                              pygame.Rect(0, 0, s * 2, max(2, s)))
-            spun = pygame.transform.rotate(chip, math.degrees(phase + t * 4.0))
+            spun = pygame.transform.rotozoom(chip, math.degrees(phase + t * 4.0), 1.0)
             screen.blit(spun, (int(px), int(py)))
 
 
@@ -677,7 +678,7 @@ class APSpendAnimation(Animation):
         if fade <= 0.02:
             return
         y = self.centre[1] - int(18 * p)
-        label = f"{self.remaining} AP"
+        label = f"{self.remaining} {L.AP_ONE if self.remaining == 1 else L.AP}"
         T.text(screen, label, (self.centre[0], y), T.ui(14, bold=True),
                T.alpha(C.WARN, int(220 * fade)), anchor="center", shadow=None)
 
@@ -850,7 +851,7 @@ class AnimationManager:
     :meth:`draw_overlays` last.
     """
 
-    def __init__(self, *, cap: int = 220) -> None:
+    def __init__(self, *, cap: int = 24) -> None:
         self.animations: list[Animation] = []
         self.cap = cap
         self.time = 0.0

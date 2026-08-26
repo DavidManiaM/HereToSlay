@@ -226,6 +226,17 @@ def render_card_back(width: int = CARD_W, height: int = CARD_H, *, tone: int = 0
     if hit is not None:
         return hit
 
+    if width >= LOD_TINY and _SUPERSAMPLE > 1:
+        hi = _paint_card_back(width * _SUPERSAMPLE, height * _SUPERSAMPLE, tone=tone)
+        surf = pygame.transform.smoothscale(hi, (width, height))
+    else:
+        surf = _paint_card_back(width, height, tone=tone)
+
+    _back_cache[key] = surf
+    return surf
+
+
+def _paint_card_back(width: int, height: int, *, tone: int = 0) -> pygame.Surface:
     radius = _radius(width)
     surf = T.surface((width, height))
     base_a = (C.CARD_BACK_A, (72, 120, 168), (48, 88, 140))[tone % 3]
@@ -273,7 +284,6 @@ def render_card_back(width: int = CARD_W, height: int = CARD_H, *, tone: int = 0
            points=4, inner=0.28, rotation=math.pi / 4)
 
     T.round_rect(surf, pygame.Rect(0, 0, width, height), T.alpha(mark, 90), radius=radius, width=1)
-    _back_cache[key] = surf
     return surf
 
 
@@ -332,7 +342,7 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
 
     # -- art window -------------------------------------------------------
     pad = max(3, w // 24)
-    art_h = int(h * (0.40 if detail else (0.44 if w >= LOD_FULL else 0.58)))
+    art_h = int(h * (0.34 if detail else (0.44 if w >= LOD_FULL else 0.58)))
     art_top = pad + (max(5, h // 18) if w >= LOD_SMALL else 0)
     art_rect = pygame.Rect(pad, art_top, w - pad * 2, art_h)
     art = library().art(card_def, art_rect.size)
@@ -356,10 +366,10 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
 
     # -- name plate -------------------------------------------------------
     name = L.card_name(card_def)
-    plate_h = max(14, int(h * 0.11))
+    plate_h = max(14, int(h * 0.095))
     plate = pygame.Rect(pad, art_rect.bottom + max(1, pad // 2), w - pad * 2, plate_h)
     T.round_rect(surf, plate, T.alpha(accent, 230), radius=max(2, radius - 4))
-    name_font = T.fit_line(name.upper(), max(9, int(plate_h * 0.78)), 7, plate.width - 10,
+    name_font = T.fit_line(name.upper(), max(9, int(plate_h * 0.68)), 7, plate.width - 10,
                            family=T.FONT_DISPLAY, bold=True)
     T.text(surf, name.upper(), plate.center, name_font, C.INK_BRIGHT, anchor="center",
            max_width=plate.width - 6, shadow=(0, 0, 0, 140))
@@ -376,7 +386,7 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
     )
     blocks: list[tuple[str, tuple[int, int, int], bool]] = []
     if facts.requirement:
-        blocks.append((f"Necesită: {facts.requirement}", T.shade(accent, 0.7), True))
+        blocks.append((f"Necesită: {L.requirement_label(facts.requirement)}", T.shade(accent, 0.7), True))
     text_value = L.card_text(card_def) or L.retheme_prompt(str(getattr(card_def, "text", "") or ""))
     if text_value:
         blocks.append((L.retheme_prompt(text_value), C.CARD_INK, False))
@@ -386,7 +396,8 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
     for value, colour, is_bold in blocks:
         if y >= text_rect.bottom - 4:
             break
-        fnt = T.ui(size, bold=is_bold)
+        # Card faces are already sized in pixels — do not apply chrome UI scale.
+        fnt = T.font(size, bold=is_bold)
         used = T.draw_wrapped(
             surf, value,
             pygame.Rect(text_rect.left, y, text_rect.width, text_rect.bottom - y),
@@ -396,7 +407,7 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
 
     if detail and facts.passive:
         T.text(surf, "Passive", (text_rect.left, text_rect.bottom - 12),
-               T.ui(max(8, w // 14), italic=True), C.CARD_INK_DIM, shadow=None)
+               T.font(max(8, w // 14), italic=True), C.CARD_INK_DIM, shadow=None)
 
     _footer_strip(surf, facts, w, h, pad, compact=False)
     return surf
@@ -521,7 +532,7 @@ def _with_target_ring(surf: pygame.Surface, *, selected: bool) -> pygame.Surface
 
 def _tapped(surf: pygame.Surface) -> pygame.Surface:
     """Rotate 90 degrees and dim — the tabletop convention for "used"."""
-    rotated = pygame.transform.rotate(surf, -90)
+    rotated = pygame.transform.rotozoom(surf, -90, 1.0)
     return _dim(rotated, mix=0.35, shade=0.88)
 
 

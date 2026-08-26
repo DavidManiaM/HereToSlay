@@ -1188,7 +1188,7 @@ def test_fps_readout_draws(screen) -> None:
 def test_game_setup_resizes_sensibly() -> None:
     setup = GameSetup(names=("Alice", "Bob"), seed=1)
     grown = setup.resized(6, 5, "abc")
-    assert grown.names == ("Alice", "Bob", "Player 3", "Player 4", "Player 5", "Player 6")
+    assert grown.names == ("Alice", "Bob", "Jucător 3", "Jucător 4", "Jucător 5", "Jucător 6")
     assert grown.ai_seats == 5
     assert grown.human_names == ("Alice",)
     assert grown.seed == "abc"

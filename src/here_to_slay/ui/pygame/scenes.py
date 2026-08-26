@@ -108,6 +108,7 @@ from here_to_slay.ui.pygame.panels import (
     PartyRow,
     ReactionTimer,
     TurnChip,
+    _play_order,
 )
 from here_to_slay.ui.pygame.sound import NULL_BOARD, SoundBoard
 from here_to_slay.ui.pygame.theme import C, M
@@ -199,15 +200,22 @@ class ActionMenu:
         *,
         rect: pygame.Rect | None = None,
     ) -> None:
-        """``entries`` are ``(label, subtitle, icon, accent, on_click)``."""
+        """``entries`` are ``(label, subtitle, icon, accent, on_click)``.
+
+        Buttons are laid out top-down inside ``rect``; if they do not fit, the
+        list scrolls. The panel itself never draws past ``rect.bottom``.
+        """
         if rect is not None:
             self.rect = pygame.Rect(rect)
         self.title = title
         self.scroll = 0
         self.buttons = []
-        row_h = 40 if len(entries) <= 8 else 34
-        top = self.rect.top + 34
-        width = self.rect.width - 24
+        if not entries or self.rect.height < 40:
+            self.visible = False
+            return
+        row_h = 36 if len(entries) <= 6 else 30
+        top = self.rect.top + 30
+        width = max(40, self.rect.width - 24)
         for i, (label, subtitle, icon, accent, action) in enumerate(entries):
             self.buttons.append(Button(
                 pygame.Rect(self.rect.left + 12, top + i * (row_h + 4), width, row_h),
@@ -215,7 +223,7 @@ class ActionMenu:
                 align="left", shortcut=str(i + 1) if i < 9 else "",
                 primary=i == 0 and len(entries) == 1,
             ))
-        self.visible = bool(entries)
+        self.visible = True
 
     def clear(self) -> None:
         self.buttons = []
@@ -223,10 +231,17 @@ class ActionMenu:
 
     @property
     def content_bottom(self) -> int:
-        return self.buttons[-1].rect.bottom + 12 if self.buttons else self.rect.top + 40
+        return self.buttons[-1].rect.bottom + 10 if self.buttons else self.rect.top + 36
+
+    def desired_height(self, entry_count: int) -> int:
+        """Natural height for ``entry_count`` rows (before flex clamp)."""
+        if entry_count <= 0:
+            return 0
+        row_h = 36 if entry_count <= 6 else 30
+        return 30 + entry_count * (row_h + 4) + 10
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        if not self.visible:
+        if not self.visible or self.rect.height < 20:
             return False
         if event.type == pygame.MOUSEWHEEL and self.rect.collidepoint(pygame.mouse.get_pos()):
             span = max(0, self.content_bottom - self.rect.bottom)
@@ -254,13 +269,13 @@ class ActionMenu:
             button.update(dt)
 
     def draw(self, screen: pygame.Surface) -> None:
-        if not self.visible:
+        if not self.visible or self.rect.height < 20:
             return
-        height = min(self.rect.height, self.content_bottom - self.rect.top)
-        panel = pygame.Rect(self.rect.left, self.rect.top, self.rect.width, height)
+        # Always draw exactly inside the packed slot — bottom flush with effects.
+        panel = pygame.Rect(self.rect)
         T.glass(screen, panel, radius=M.RADIUS_L, fill=C.GLASS,
                 rim=T.alpha(C.GOLD, 160))
-        T.text(screen, self.title.upper(), (panel.left + 14, panel.top + 10),
+        T.text(screen, self.title.upper(), (panel.left + 14, panel.top + 8),
                T.ui(10, bold=True), C.GOLD, shadow=None, max_width=panel.width - 28)
 
         clip = screen.get_clip()
@@ -268,9 +283,17 @@ class ActionMenu:
         for button in self.buttons:
             saved = pygame.Rect(button.rect)
             button.rect.top += self.scroll
-            button.draw(screen)
+            if button.rect.bottom > panel.top and button.rect.top < panel.bottom:
+                button.draw(screen)
             button.rect = saved
         screen.set_clip(clip)
+        if self.content_bottom + self.scroll > panel.bottom + 2:
+            T.text(
+                screen, "▾",
+                (panel.centerx, panel.bottom - 2),
+                T.ui(10, bold=True), T.alpha(C.INK_FAINT, 200),
+                anchor="midbottom", shadow=None,
+            )
 
 
 class PickTray:
@@ -424,6 +447,9 @@ class GameScene:
         self.prompt = _Prompt()
         self._request_id: tuple[Any, ...] | None = None
         self._action_filter: str | None = None
+        self._armed_roll: Intent | None = None
+        self._action_bar_entries: list = []
+        self._menu_desired_h: int = 0
         self._reaction_deadline: float | None = None
         self._reaction_frozen = False
         #: The request already answered, kept until the engine asks the next
@@ -604,7 +630,6 @@ class GameScene:
 
         self.dice.draw(screen, dice_hidden=not self.rolls)
         self.effects.draw(screen)
-        self.active.draw(screen)
         self.corner.draw(screen)
         self.turn_chip.draw(screen)
         self._draw_camera_strip(screen)
@@ -616,6 +641,9 @@ class GameScene:
         self.menu.draw(screen)
         self.reaction_timer.draw(screen)
         self.tray.draw(screen)
+        self._draw_log(screen)
+        # Limbo faces sit inside the merged journal (drawn after the frame).
+        self.active.draw(screen)
         self._draw_detail(screen)
         self.toast.draw(screen)
         self.tooltip.draw(screen)
@@ -643,21 +671,29 @@ class GameScene:
                 label = label[:11] + "\u2026"
             T.text(
                 screen, label, slot.center,
-                T.ui(10, bold=active), C.INK if active else C.INK_DIM,
+                T.ui(13, bold=active), C.INK if active else C.INK_DIM,
                 anchor="center", shadow=None, max_width=slot.width - 8,
             )
             x += slot_w + gap
         T.text(
-            screen, "Q / E camere  \u00b7  click pe un grup inamic",
+            screen, L.CAM_HINT,
             (strip.centerx, strip.bottom + 12),
-            T.ui(9), T.alpha(C.INK_FAINT, 200), anchor="midtop", shadow=None,
+            T.ui(12), T.alpha(C.INK_FAINT, 200), anchor="midtop", shadow=None,
         )
 
     def _draw_backdrop(self, screen: pygame.Surface) -> None:
         active = str(self.view.active_player) if self.view else None
+        active_index: int | None = None
+        if self.view and active:
+            order = _play_order(self.view)
+            try:
+                active_index = order.index(active)
+            except ValueError:
+                active_index = None
         self.atmosphere.draw(
             screen, self.layout,
             active_seat=active,
+            active_index=active_index,
             camera_key=self.cameras.active.key,
         )
 
@@ -764,7 +800,7 @@ class GameScene:
         thinking = self.presenter.thinking_seat
         if thinking is not None:
             player = self.view.players.get(thinking)
-            return f"{player.name if player else thinking} is thinking\u2026"
+            return L.THINKING.format(name=player.name if player else thinking)
         if self.presenter.paused:
             return "engine paused"
         request = self.presenter.awaiting_human
@@ -812,6 +848,8 @@ class GameScene:
         self.selected.clear()
         self.focus_card = None
         self._action_filter = None
+        self._armed_roll = None
+        self._menu_desired_h = 0
         self.menu.clear()
         self.prompt = self._build_prompt(request)
         if isinstance(request, ReactionPrompt):
@@ -844,6 +882,10 @@ class GameScene:
             for intent in request.intents:
                 if intent.card:
                     by_card.setdefault(intent.card, []).append(intent)
+                # Attack / target picks key the Monster (or Hero) as target.
+                target = getattr(intent, "target", None)
+                if target and target != intent.card:
+                    by_card.setdefault(str(target), []).append(intent)
             return _Prompt(
                 request=request, text=L.retheme_prompt(request.prompt or "Alege o acțiune"),
                 hint="click pe un răspuns AI, sau din listă", accent=C.GOLD, icon="bolt",
@@ -898,39 +940,43 @@ class GameScene:
 
     def _build_menu(self) -> None:
         request = self.prompt.request
-        rect = pygame.Rect(self.layout.action_menu_rect)
         entries: list[tuple[str, str, str | None, tuple[int, int, int], Callable[[], None]]] = []
 
         if isinstance(request, ChooseIntent):
             for intent in self._menu_intents(request):
                 icon, accent = ACTION_STYLE.get(intent.action, ("bolt", C.GOLD))
                 entries.append((
-                    self._intent_label(intent), self._intent_note(intent), icon, accent,
+                    L.retheme_prompt(self._intent_label(intent)),
+                    L.retheme_prompt(self._intent_note(intent)),
+                    icon, accent,
                     self._pick_intent(intent),
                 ))
-            title = "your move"
+            title = L.YOUR_MOVE
             if self.focus_card is not None:
                 card = self._card_view(self.focus_card)
                 name = self._card_name(card.def_id) if card else "card"
-                title = f"{name} \u2014 choose"
+                title = f"{name} — {L.CHOOSE}"
         elif isinstance(request, ChooseOption):
             for option in request.options:
-                entries.append((option.label, "", "scroll", C.GOLD, self._pick_option(option)))
-            title = "choose"
+                entries.append((
+                    L.retheme_prompt(option.label), "", "scroll", C.GOLD,
+                    self._pick_option(option),
+                ))
+            title = L.CHOOSE
         elif isinstance(request, ReactionPrompt):
             for option in request.options:
                 entries.append((
-                    option.label, "free \u00b7 out of turn", "bolt", C.POISON,
+                    L.retheme_prompt(option.label), L.FREE, "bolt", C.POISON,
                     self._pick_reaction(option),
                 ))
-            entries.append(("Pass", "do nothing", "close", C.INK_DIM, self._pass_reaction))
-            title = f"{request.window.replace('_', ' ')} window"
+            entries.append((L.PASS, "", "close", C.INK_DIM, self._pass_reaction))
+            title = L.retheme_prompt(request.window.replace("_", " "))
         elif isinstance(request, Confirm):
             entries = [
-                ("Yes", "", "check", C.GOOD, lambda: self._submit(Confirmed(True))),
-                ("No", "", "close", C.BAD, lambda: self._submit(Confirmed(False))),
+                ("Da", "", "check", C.GOOD, lambda: self._submit(Confirmed(True))),
+                ("Nu", "", "close", C.BAD, lambda: self._submit(Confirmed(False))),
             ]
-            title = "confirm"
+            title = L.CONFIRM
         elif isinstance(request, ChoosePlayer):
             for pid in request.candidates:
                 player = self.view.players.get(pid)
@@ -939,18 +985,53 @@ class GameScene:
                     T.seat_colour(player.seat) if player else C.GOLD,
                     self._pick_player(pid),
                 ))
-            title = "choose a player"
+            title = L.CHOOSE_PLAYER
         elif isinstance(request, ChooseCards):
             self._build_confirm_row()
             return
         else:
+            self.menu.clear()
+            self._menu_desired_h = 0
+            self._repack_right(menu_height=0)
             return
 
-        self.menu.build(title, entries, rect=rect)
+        self._menu_desired_h = self.menu.desired_height(len(entries))
+        self._repack_right(menu_height=self._menu_desired_h)
+        self.menu.build(title, entries, rect=pygame.Rect(self.layout.action_menu_rect))
+
+    def _repack_right(self, *, menu_height: int | None = None) -> None:
+        if menu_height is None:
+            menu_height = self._menu_desired_h if self.menu.visible else 0
+        n = len(self._action_bar_entries)
+        rows = max(1, (n + 1) // 2) if n else 1
+        self.layout.pack_right_column(rows, cols=2, menu_height=menu_height)
+        if self._action_bar_entries:
+            self.action_bar.build(self._action_bar_entries)
+        self.effects.rect = pygame.Rect(self.layout.effects_rect)
+        # Keep the live menu flush with the freshly packed slot.
+        if self.menu.visible and self.menu.buttons:
+            self._relayout_menu()
+
+    def _relayout_menu(self) -> None:
+        """Move existing menu buttons into the packed action_menu_rect."""
+        slot = pygame.Rect(self.layout.action_menu_rect)
+        if slot.height < 20:
+            return
+        old = pygame.Rect(self.menu.rect)
+        dy = slot.top - old.top
+        dx = slot.left - old.left
+        self.menu.rect = slot
+        for button in self.menu.buttons:
+            button.rect.move_ip(dx, dy)
+        # Clamp scroll so content stays reachable inside the new height.
+        span = max(0, self.menu.content_bottom - self.menu.rect.bottom)
+        self.menu.scroll = max(-span, min(0, self.menu.scroll))
 
     def _build_action_bar(self) -> None:
         request = self.presenter.awaiting_human
         if not isinstance(request, ChooseIntent):
+            self._action_bar_entries = []
+            self._repack_right()
             self.action_bar.build([])
             return
         by_action: dict[str, list[Intent]] = {}
@@ -963,9 +1044,7 @@ class GameScene:
                 continue
             intents = by_action.get(action_id, [])
             key = hotkey_for(action_id, action) or "?"
-            label = (action.label or action_id.replace("_", " ")).split(" - ")[0]
-            if len(label) > 24:
-                label = label[:22] + "\u2026"
+            label = L.retheme_prompt((action.label or action_id.replace("_", " ")).split(" - ")[0])
             cost_val = DISPLAY_COSTS.get(action_id)
             if cost_val is None:
                 cost_val = int((action.cost or {}).get("action_points", 0))
@@ -976,13 +1055,26 @@ class GameScene:
                 return lambda: self._handle_action(aid, group)
 
             entries.append((action_id, key, label, cost_str, enabled, _cb()))
+        self._action_bar_entries = entries
+        self._repack_right()
         self.action_bar.build(entries)
 
     def _handle_action(self, action_id: str, intents: list[Intent]) -> None:
         if not intents:
             action = self.registry.rules.action(action_id)
             label = action.label if action else action_id.replace("_", " ")
-            self.toast.show(f"No legal {label} right now", colour=C.WARN, icon="close")
+            self.toast.show(L.NO_LEGAL.format(label=label), colour=C.WARN, icon="close")
+            return
+        if action_id in ROLL_ACTIONS:
+            if len(intents) == 1:
+                self._arm_roll(intents[0])
+                return
+            self._action_filter = action_id
+            self._build_menu()
+            self.toast.show(
+                L.PICK_TARGET.format(n=len(intents)),
+                colour=C.CYAN, icon="target",
+            )
             return
         if len(intents) == 1:
             self._submit(IntentChosen(intents[0]))
@@ -990,7 +1082,7 @@ class GameScene:
         self._action_filter = action_id
         self._build_menu()
         self.toast.show(
-            f"Pick a target ({len(intents)} choices)",
+            L.PICK_TARGET.format(n=len(intents)),
             colour=C.CYAN, icon="target",
         )
 
@@ -1014,7 +1106,8 @@ class GameScene:
             return
         remaining = max(0.0, self._reaction_deadline - time.monotonic())
         fraction = remaining / REACTION_SECONDS
-        if remaining <= 1.0 and int(remaining * 4) != int((remaining + dt) * 4):
+        # Tick only in the final 3 seconds so a 10s window stays quiet.
+        if remaining <= 3.0 and int(remaining * 4) != int((remaining + dt) * 4):
             self.sound.play("click", volume=0.25)
         anchor = self.layout.left_rail_rect
         rect = pygame.Rect(anchor.left, anchor.top, max(220, anchor.width), T.s(80))
@@ -1028,6 +1121,7 @@ class GameScene:
             title=self.prompt.text or request.prompt or "React?",
             fraction=fraction,
             options=options,
+            seconds_left=remaining,
         )
 
     def _dev_console_open(self) -> bool:
@@ -1078,14 +1172,26 @@ class GameScene:
     def _intent_note(self, intent: Intent) -> str:
         action = self.registry.rules.action(intent.action)
         cost = int((getattr(action, "cost", None) or {}).get("action_points", 0)) if action else 0
-        bits = [f"{cost} AP" if cost else "free"]
+        bits = [L.ap_label(cost) if cost else L.FREE]
         if intent.action in ROLL_ACTIONS:
-            bits.append("rolls 2d6")
-        return "  \u00b7  ".join(bits)
+            bits.append("np.random 2d6")
+        return "  ·  ".join(bits)
 
     # -- submission --------------------------------------------------------
 
+    def _arm_roll(self, intent: Intent) -> None:
+        """Queue a roll action until the player presses np.random."""
+        self._armed_roll = intent
+        self.focus_card = getattr(intent, "card", None)
+        self._action_filter = None
+        self.menu.clear()
+        self._menu_desired_h = 0
+        self._repack_right(menu_height=0)
+        self.toast.show(L.PRESS_ROLL, colour=C.FROST, icon="dice")
+
     def _pick_intent(self, intent: Intent) -> Callable[[], None]:
+        if intent.action in ROLL_ACTIONS:
+            return lambda: self._arm_roll(intent)
         return lambda: self._submit(IntentChosen(intent))
 
     def _pick_option(self, option: Option) -> Callable[[], None]:
@@ -1115,7 +1221,9 @@ class GameScene:
         self.sound.play("click")
         self.selected.clear()
         self.focus_card = None
+        self._armed_roll = None
         self.menu.clear()
+        self._menu_desired_h = 0
         self._answered = self.prompt.request
         self._request_id = None
         return True
@@ -1128,12 +1236,7 @@ class GameScene:
         """Whether the roll button does anything, and what it should say."""
         intent = self._pending_roll_intent()
         if intent is not None:
-            verb = {
-                "attack_monster": L.ROLL_READY,
-                "use_hero_ability": L.ROLL_READY,
-                "use_leader_ability": L.ROLL_READY,
-            }.get(intent.action, L.ROLL_READY)
-            return True, verb
+            return True, L.ROLL_READY
         if self.rolls:
             return True, L.np_random_label(int(getattr(self.rolls[-1], "total", 0) or 0))
         return False, L.ROLL_READY
@@ -1141,15 +1244,28 @@ class GameScene:
     def _pending_roll_intent(self) -> Intent | None:
         request = self.presenter.awaiting_human
         if not isinstance(request, ChooseIntent):
+            self._armed_roll = None
             return None
         rolling = [i for i in request.intents if i.action in ROLL_ACTIONS]
         if not rolling:
+            self._armed_roll = None
             return None
+        # Only an explicitly armed roll (or a single focus) enables the button.
+        if self._armed_roll is not None:
+            for intent in rolling:
+                if (
+                    intent.action == self._armed_roll.action
+                    and getattr(intent, "card", None) == getattr(self._armed_roll, "card", None)
+                    and getattr(intent, "target", None) == getattr(self._armed_roll, "target", None)
+                ):
+                    return intent
+            # Armed intent no longer legal.
+            self._armed_roll = None
         if self.focus_card is not None:
             focused = [i for i in rolling if i.card == self.focus_card]
-            if focused:
+            if focused and self._armed_roll is not None:
                 return focused[0]
-        return rolling[0] if len(rolling) == 1 else None
+        return None
 
     def _on_roll_pressed(self) -> None:
         intent = self._pending_roll_intent()
@@ -1232,9 +1348,6 @@ class GameScene:
             self.sound.play("card_play", volume=0.8)
             if self.flags["animations"]:
                 self.fx.add(RunePulseAnimation(end, C.ARCANE, 0.9, radius=80))
-                self.fx.add(EmberRainAnimation(
-                    (self.layout.width, self.layout.height), 1.0, count=12, origin=end,
-                ))
         if change.frm.owner and change.to.owner and change.frm.owner != change.to.owner:
             # A card changing hands is the one move that needs its own gesture.
             if self.flags["animations"]:
@@ -1248,9 +1361,8 @@ class GameScene:
         self.toast.show(f"{who} slew {name}!", colour=C.GOLD, duration=2.6, icon="skull")
         if not self.flags["animations"]:
             return
-        self.fx.shake(11.0)
+        self.fx.shake(5.0)
         self.fx.add(RingBurstAnimation(at, C.BLOOD, 0.8, radius=150, rings=4))
-        self.fx.add(ParticleBurstAnimation(at, (C.BLOOD, C.EMBER, C.GOLD), 0.8, count=18))
         self.fx.add(BannerAnimation("SLAIN", f"{who} \u2014 {name}", colour=C.BLOOD,
                                     icon="skull", duration=0.85, y_fraction=0.18))
         card_def = self.registry.get(change.def_id)
@@ -1291,7 +1403,7 @@ class GameScene:
         # see for an opponent, so it is what drives their deal animation.
         if change.zone == "hand" and change.delta > 0 and change.owner != self.seat:
             for i in range(min(change.delta, 5)):
-                self._deal_flight_to_owner(change.owner, delay=i * 0.08)
+                self._deal_flight_to_owner(change.owner, delay=i * 0.09)
             self.sound.play("card_deal", volume=0.5)
 
     def _deal_flight(self, place: Any, def_id: str) -> None:
@@ -1331,9 +1443,6 @@ class GameScene:
         anchor = self.layout.dice_rect if change.player == self.seat else \
             (self.rail.strip_of(change.player).rect if self.rail.strip_of(change.player)
              else self.layout.dice_rect)
-        self.fx.add(ModifierPopAnimation(
-            f"{change.delta} AP", (anchor.centerx, anchor.top + 26), C.WARN, 0.9, size=20,
-        ))
         player = self.view.players.get(change.player)
         remaining = int(player.action_points) if player else 0
         self.fx.add(APSpendAnimation((anchor.centerx, anchor.top + 8), remaining=remaining))
@@ -1350,7 +1459,6 @@ class GameScene:
             self.fx.add(ModifierPopAnimation(
                 f"{sign}{amount}", area.center, C.GOOD if amount > 0 else C.BAD, 1.1,
             ))
-            self.fx.add(FlashAnimation(area, C.ARCANE, 0.45))
 
     def _log_roll(self, roll: Any) -> None:
         who = self._owner_name(getattr(roll, "roller", None))
@@ -1470,14 +1578,14 @@ class GameScene:
         player = self.view.players.get(request.requester)
         who = player.name if player else str(request.requester)
         if thinking:
-            text, hint = f"{who} is thinking\u2026", prompt.text
+            text, hint = L.THINKING.format(name=who), prompt.text
         else:
-            text, hint = prompt.text or "Your move", prompt.hint
+            text, hint = prompt.text or L.YOUR_MOVE, prompt.hint
         T.text(screen, text, (rect.left + 44, rect.centery - (7 if hint else 0)),
-               T.ui(13, bold=True), C.INK_BRIGHT, anchor="midleft", max_width=rect.width - 120,
+               T.ui(15, bold=True), C.INK_BRIGHT, anchor="midleft", max_width=rect.width - 120,
                shadow=None)
         if hint:
-            T.text(screen, hint, (rect.left + 44, rect.centery + 10), T.ui(10),
+            T.text(screen, hint, (rect.left + 44, rect.centery + 12), T.ui(12),
                    C.INK_DIM, anchor="midleft", shadow=None, max_width=rect.width - 120)
 
         if isinstance(request, ChooseCards):
@@ -1487,37 +1595,106 @@ class GameScene:
                    fnt=T.ui(11, bold=True))
 
     def _draw_detail(self, screen: pygame.Surface) -> None:
-        """The hover-to-enlarge popup: a big card plus its own text."""
+        """Hover detail: card face on the left, readable rules column on the right."""
         if self.detail_card is None or self.detail_anchor is None:
             return
-        rect = self.layout.detail_at(self.detail_anchor)
-        card_w = rect.width - 24
-        card_h = int(card_w * M.CARD_ASPECT)
-        panel = pygame.Rect(rect.left, rect.top, rect.width, card_h + 34)
+        panel = self.layout.detail_at(self.detail_anchor)
         T.glass(screen, panel, radius=M.RADIUS_L, fill=C.GLASS,
                 rim=T.alpha(C.GOLD, 140))
-        surf = render_card(self.detail_card, card_w, card_h, detail=True)
-        screen.blit(surf, (panel.left + 12, panel.top + 12))
+
+        pad = T.s(12)
+        card_w = min(T.s(240), max(T.s(180), int(panel.width * 0.42)))
+        card_h = int(card_w * M.CARD_ASPECT)
+        # Cap card height so the panel stays compact.
+        max_card_h = panel.height - pad * 2 - T.s(22)
+        if card_h > max_card_h:
+            card_h = max_card_h
+            card_w = int(card_h / M.CARD_ASPECT)
+        card_rect = pygame.Rect(panel.left + pad, panel.top + pad, card_w, card_h)
+        T.drop_shadow(screen, card_rect, radius=10, spread=14, offset=(0, 6), strength=100)
+        screen.blit(render_card(self.detail_card, card_w, card_h, detail=True),
+                    card_rect.topleft)
+
         facts = card_facts(self.detail_card)
-        T.text(screen, "right-click to pin", (panel.centerx, panel.bottom - 13),
+        col_x = card_rect.right + T.s(14)
+        col_w = panel.right - col_x - pad
+        y = panel.top + pad
+
+        name = L.card_name(self.detail_card)
+        T.text(screen, name, (col_x, y), T.display(16), C.INK_BRIGHT,
+               max_width=col_w, shadow=(0, 0, 0, 120))
+        y += T.display(16).get_linesize() + 4
+
+        chip_y = y
+        kind_label = facts.type_line or facts.kind
+        chip_w = min(col_w, T.ui(10, bold=True).size(kind_label)[0] + T.s(16))
+        T.pill(screen, pygame.Rect(col_x, chip_y, chip_w, T.s(20)), kind_label,
+               bg=T.alpha(facts.accent, 70), fg=C.INK_BRIGHT,
+               border=T.alpha(facts.accent, 180), fnt=T.ui(10, bold=True))
+        if facts.card_class:
+            class_label = str(facts.card_class).replace("_", " ")
+            cw = min(col_w - chip_w - 6, T.ui(10, bold=True).size(class_label)[0] + T.s(16))
+            T.pill(screen, pygame.Rect(col_x + chip_w + 6, chip_y, cw, T.s(20)), class_label,
+                   bg=T.alpha(C.INK_FAINT, 40), fg=C.INK,
+                   border=T.alpha(C.INK_FAINT, 100), fnt=T.ui(10, bold=True))
+        y = chip_y + T.s(28)
+
+        if facts.requirement:
+            T.text(screen, f"Necesită: {L.requirement_label(facts.requirement)}",
+                   (col_x, y), T.ui(11, bold=True),
+                   C.WARN, max_width=col_w, shadow=None)
+            y += T.ui(11).get_linesize() + 6
+
+        text_value = L.card_text(self.detail_card) or L.retheme_prompt(
+            str(getattr(self.detail_card, "text", "") or "")
+        )
+        if text_value:
+            # Unscaled serif so rules stay readable regardless of chrome UI scale.
+            rules_font = T.font(14, family=T.FONT_SERIF)
+            text_box = pygame.Rect(col_x, y, col_w, panel.bottom - y - T.s(26))
+            T.draw_wrapped(screen, L.retheme_prompt(text_value), text_box,
+                           rules_font, C.INK, line_gap=3)
+
+        T.text(screen, L.RIGHT_CLICK_PIN, (panel.centerx, panel.bottom - T.s(12)),
                T.ui(9), C.INK_FAINT, anchor="center", shadow=None)
         draw_icon(screen, card_icon_name(facts.kind, facts.card_class),
-                  (panel.right - 18, panel.top + 18), 15, facts.accent)
+                  (panel.right - T.s(18), panel.top + T.s(18)), 15, facts.accent)
 
     def _draw_log(self, screen: pygame.Surface) -> None:
-        """The last few events, tucked under the left rail."""
-        rail = self.layout.left_rail_rect
-        top = (self.active.sprites[-1].rect.bottom + 46) if self.active.sprites else rail.top
-        top = max(top, rail.top)
-        if self.active.occupied:
-            top = max(top, rail.top + 200)
-        rect = pygame.Rect(rail.left, top, rail.width, max(60, rail.bottom - top - 4))
-        if rect.height < 50:
+        """Single journal: limbo notes + recent events above np.random."""
+        rect = pygame.Rect(getattr(self.layout, "log_rect", None) or (0, 0, 0, 0))
+        if rect.width < 40 or rect.height < 40:
             return
-        self.log.rect = pygame.Rect(rect.left + 8, rect.top + 18, rect.width - 16,
-                                    rect.height - 24)
-        T.text(screen, "RECENT", (rect.left + 4, rect.top + 2), T.ui(9, bold=True),
-               T.alpha(C.INK_FAINT, 210), shadow=None)
+        T.glass(screen, rect, radius=T.s(10), fill=(14, 20, 26, 210),
+                rim=T.alpha(C.INK_FAINT, 90))
+        title = L.IN_PLAY if self.active.occupied else L.JOURNAL
+        T.text(screen, title, (rect.left + T.s(10), rect.top + T.s(6)),
+               T.ui(12, bold=True), T.alpha(C.INK_FAINT, 220), shadow=None)
+
+        y = rect.top + T.s(24)
+        # Active notes (pending prompt / recent rolls) share this feed.
+        for note, colour, icon in self.active.notes[:3]:
+            x = rect.left + T.s(10)
+            if icon:
+                draw_icon(screen, icon, (x + 6, y + 7), 13, colour)
+                x += 19
+            used = T.draw_wrapped(
+                screen, note,
+                pygame.Rect(x, y, rect.right - x - T.s(8), T.s(36)),
+                T.ui(10), colour, line_gap=1,
+            )
+            y += max(16, used) + 4
+            if y > rect.bottom - T.s(40):
+                break
+
+        # Limbo card strip claims vertical space when present.
+        if self.active.sprites:
+            y = max(y, self.active.sprites[-1].rect.bottom + 6)
+
+        self.log.rect = pygame.Rect(
+            rect.left + T.s(8), y,
+            rect.width - T.s(16), max(20, rect.bottom - y - T.s(6)),
+        )
         self.log.draw(screen, newest_first=True)
 
     def _draw_spawned(self, screen: pygame.Surface) -> None:
@@ -1638,20 +1815,7 @@ class GameScene:
         return False
 
     def _handle_action_key(self, action_id: str, intents: list[Intent]) -> bool:
-        if not intents:
-            action = self.registry.rules.action(action_id)
-            label = action.label if action else action_id.replace("_", " ")
-            self.toast.show(f"No legal {label} right now", colour=C.WARN, icon="close")
-            return True
-        if len(intents) == 1:
-            self._submit(IntentChosen(intents[0]))
-            return True
-        self._action_filter = action_id
-        self._build_menu()
-        self.toast.show(
-            f"Pick a target ({len(intents)} choices)",
-            colour=C.CYAN, icon="target",
-        )
+        self._handle_action(action_id, intents)
         return True
 
     def _confirm_key(self) -> bool:
@@ -1838,7 +2002,11 @@ class GameScene:
         if isinstance(request, ChooseIntent):
             intents = self.prompt.intents_by_card.get(sprite.card_id, [])
             if len(intents) == 1:
-                self._submit(IntentChosen(intents[0]))
+                intent = intents[0]
+                if intent.action in ROLL_ACTIONS:
+                    self._arm_roll(intent)
+                else:
+                    self._submit(IntentChosen(intent))
                 return True
             if intents:
                 # Two things you could do with this card: scope the menu to it
@@ -2200,7 +2368,9 @@ def _fx_confetti(scene: GameScene) -> None:
 
 
 def _fx_banner(scene: GameScene) -> None:
-    scene.fx.add(BannerAnimation("YOUR TURN", "3 action points", colour=C.GOLD, icon="leader"))
+    scene.fx.add(BannerAnimation(
+        L.YOUR_MOVE, L.ap_label(3), colour=C.GOLD, icon="leader",
+    ))
 
 
 def _fx_trail(scene: GameScene) -> None:
@@ -2211,7 +2381,7 @@ def _fx_trail(scene: GameScene) -> None:
 
 def _fx_deal(scene: GameScene) -> None:
     for i in range(5):
-        scene._deal_flight_to_owner(scene.seat, delay=i * 0.08)
+        scene._deal_flight_to_owner(scene.seat, delay=i * 0.09)
 
 
 def _fx_shake(scene: GameScene) -> None:

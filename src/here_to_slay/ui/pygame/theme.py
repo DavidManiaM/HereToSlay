@@ -410,7 +410,7 @@ def hgradient(width: int, height: int, left: Colour, right: Colour) -> pygame.Su
 
 @lru_cache(maxsize=96)
 def radial_glow(radius: int, colour: Colour, *, power: float = 2.0) -> pygame.Surface:
-    """A soft circular light. Built small and upscaled — smooth *and* cheap.
+    """A soft circular light. Built at high internal resolution then downscaled.
 
     The falloff is baked into the *colour*, not only the alpha, because
     :func:`blit_glow` composites additively and ``BLEND_RGBA_ADD`` ignores the
@@ -418,7 +418,8 @@ def radial_glow(radius: int, colour: Colour, *, power: float = 2.0) -> pygame.Su
     across the whole disc, which reads as a solid blob rather than a light.
     """
     radius = max(2, radius)
-    small = max(8, min(48, radius // 2))
+    # Cap internal res so huge glows stay cheap, but stay sharp at 1080p.
+    small = max(16, min(192, radius))
     surf = surface((small * 2, small * 2))
     base_a = (*colour, 255)[3]
     for r in range(small, 0, -1):
@@ -429,6 +430,8 @@ def radial_glow(radius: int, colour: Colour, *, power: float = 2.0) -> pygame.Su
         scale = falloff * base_a / 255.0
         rgb = (int(colour[0] * scale), int(colour[1] * scale), int(colour[2] * scale))
         pygame.draw.circle(surf, (*rgb, a), (small, small), r)
+    if small == radius:
+        return surf
     return pygame.transform.smoothscale(surf, (radius * 2, radius * 2))
 
 
@@ -446,19 +449,25 @@ def blit_glow(
 
 @lru_cache(maxsize=192)
 def _shadow_sprite(width: int, height: int, radius: int, spread: int, a: int) -> pygame.Surface:
-    surf = surface((width + spread * 2, height + spread * 2))
-    layers = max(3, spread)
+    """Build at 2x then downscale for a soft, full-HD blur look."""
+    scale = 2
+    w2, h2 = width * scale, height * scale
+    spread2, radius2 = max(2, spread) * scale, radius * scale
+    hi = surface((w2 + spread2 * 2, h2 + spread2 * 2))
+    layers = max(4, spread2)
     for i in range(layers, 0, -1):
         t = i / layers
-        grow = int(spread * t)
+        grow = int(spread2 * t)
         step_a = int(a * (1.0 - t) ** 1.6) + 6
         pygame.draw.rect(
-            surf,
+            hi,
             (0, 0, 0, min(255, step_a)),
-            pygame.Rect(spread - grow, spread - grow, width + grow * 2, height + grow * 2),
-            border_radius=radius + grow,
+            pygame.Rect(spread2 - grow, spread2 - grow, w2 + grow * 2, h2 + grow * 2),
+            border_radius=radius2 + grow,
         )
-    return surf
+    out_w = width + max(2, spread) * 2
+    out_h = height + max(2, spread) * 2
+    return pygame.transform.smoothscale(hi, (out_w, out_h))
 
 
 def drop_shadow(
@@ -470,7 +479,7 @@ def drop_shadow(
     offset: tuple[int, int] = (0, 5),
     strength: int = 92,
 ) -> None:
-    """Blur-free soft shadow: concentric rounded rects with falling alpha."""
+    """Soft shadow: 2x concentric rounded rects, smoothscaled down."""
     sprite = _shadow_sprite(rect.width, rect.height, radius, max(2, spread), strength)
     dest.blit(sprite, (rect.left - spread + offset[0], rect.top - spread + offset[1]))
 
@@ -569,10 +578,12 @@ def vignette(size: tuple[int, int], strength: int = 90) -> pygame.Surface:
 
 @lru_cache(maxsize=8)
 def _vignette_sprite(width: int, height: int, strength: int) -> pygame.Surface:
-    small = surface((64, 64))
-    cx, cy = 32, 32
-    for y in range(64):
-        for x in range(64):
+    # 16:9 intermediate so corners stay round when stretched to full HD.
+    sw, sh = 160, 90
+    small = surface((sw, sh))
+    cx, cy = sw / 2, sh / 2
+    for y in range(sh):
+        for x in range(sw):
             d = math.hypot((x - cx) / cx, (y - cy) / cy)
             a = int(max(0.0, min(1.0, (d - 0.55) / 0.85)) ** 1.7 * strength)
             if a:

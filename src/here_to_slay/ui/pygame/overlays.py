@@ -378,8 +378,8 @@ def _draw_line(screen: pygame.Surface, line: Line, x: int, y: int, width: int) -
 def _cost_label(cost: dict[str, Any] | None) -> str:
     points = int((cost or {}).get("action_points", 0) or 0)
     if points <= 0:
-        return "free"
-    return f"{points} AP"
+        return L.FREE
+    return L.ap_label(points)
 
 
 def rules_pages(registry: Any) -> dict[str, list[Line]]:
@@ -556,6 +556,7 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
         Line("row", "pause menu", "Esc", accent=C.GOLD),
         Line("row", "confirm the current choice", "Enter", accent=C.GOOD),
         Line("row", "pass, decline, or take no action", "Space", accent=C.INK_DIM),
+        Line("row", "reaction window auto-pass", "10 s countdown", accent=C.POISON),
         Line("row", "pick the nth option or card", "1 \u2026 9", accent=C.GOLD),
         Line("row", "cycle camera views", "Q / E", accent=C.CYAN),
         Line("row", "draw a card (1 AP)", "D", accent=C.FROST),
@@ -763,7 +764,7 @@ class LogOverlay(Overlay):
         self.entries = list(entries)
         self.subtitle = f"{len(self.entries)} events"
         self.view = ScrollView(self.body_rect)
-        self._line_h = T.ui(12).get_linesize() + 7
+        self._line_h = T.ui(16).get_linesize() + 7
         self.view.content_height = len(self.entries) * self._line_h
         self.view.offset = max(0, self.view.content_height - self.view.rect.height)
 
@@ -787,22 +788,22 @@ class LogOverlay(Overlay):
 
     def draw_body(self, screen: pygame.Surface) -> None:
         if not self.entries:
-            T.text(screen, "Nothing has happened yet.", self.view.rect.center, T.ui(13),
+            T.text(screen, "Nothing has happened yet.", self.view.rect.center, T.ui(14),
                    C.INK_FAINT, anchor="center", shadow=None)
             return
-        fnt = T.ui(12)
+        fnt = T.ui(16)
         self.view.content_height = len(self.entries) * self._line_h
         self.view.begin(screen)
         y = self.view.content_top
         for i, entry in enumerate(self.entries):
             if self.view.rect.top - self._line_h <= y <= self.view.rect.bottom:
                 x = self.view.rect.left + 4
-                T.text(screen, f"{i + 1:>4}", (x, y + 2), T.mono(10), C.INK_FAINT, shadow=None)
-                x += 40
+                T.text(screen, f"{i + 1:>4}", (x, y + 2), T.mono(13), C.INK_FAINT, shadow=None)
+                x += 48
                 if entry.icon:
-                    draw_icon(screen, entry.icon, (x + 7, y + self._line_h // 2 - 1), 13,
+                    draw_icon(screen, entry.icon, (x + 7, y + self._line_h // 2 - 1), T.s(16),
                               entry.colour)
-                    x += 20
+                    x += 24
                 T.text(screen, entry.text, (x, y + 2), fnt, entry.colour, shadow=None,
                        max_width=self.view.rect.right - x - 12)
             y += self._line_h

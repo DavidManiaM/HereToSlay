@@ -53,18 +53,18 @@ zones:
 # --------------------------------------------------------------------------
 actions:
   - id: draw
-    label: "Draw a card"
+    label: "Trage o carte"
     cost: { action_points: 1 }
     effect: { op: draw, target: $self, count: 1 }
 
   - id: play_hero
-    label: "Play a Hero"
+    label: "Joacă o Persoană"
     cost: { action_points: 1 }
     targets:
       - param: card
         from: { selector: cards, of: { player: $self, zone: hand } }
         where: { op: card_kind_is, kind: hero }
-        prompt: "Play which Hero?"
+        prompt: "Care Persoană o joci?"
     effect:
       op: play_card_from_hand
       card: $intent.card
@@ -72,7 +72,7 @@ actions:
       challengeable: true
 
   - id: use_hero_ability
-    label: "Use a Hero's ability"
+    label: "Folosește abilitatea"
     cost: {} # the ability's own `cost:` block pays, as with use_leader_ability
     targets:
       - param: card
@@ -89,27 +89,27 @@ actions:
               of:
                 - { op: card_entered_play_this_turn }
                 - { op: compare, left: $action_points, cmp: ">=", right: 1 }
-        prompt: "Use which Hero's ability?"
+        prompt: "Abilitatea cărei Persoane?"
     effect: { op: use_ability, card: $intent.card }
 
   - id: attack_monster
-    label: "Attack a Monster"
+    label: "Împrietenește o Bestie"
     cost: { action_points: 2 }
     targets:
       - param: target
         from: { selector: monster_row }
         where: { op: requirement_met, player: $self }
-        prompt: "Attack which Monster?"
+        prompt: "Care Bestie?"
     effect: { op: attack_monster, monster: $intent.target, attacker: $self }
 
   - id: equip_item
-    label: "Equip an Item"
+    label: "Echipează un Cheat"
     cost: { action_points: 1 }
     targets:
       - param: card
         from: { selector: cards, of: { player: $self, zone: hand } }
         where: { op: card_kind_is, kind: item }
-        prompt: "Equip which Item?"
+        prompt: "Care Cheat?"
     # Which Hero it may go to is the Item's own business (`equip.to`), so the
     # op asks rather than the menu enumerating heroes it might not allow.
     effect:
@@ -119,13 +119,13 @@ actions:
       challengeable: true
 
   - id: cast_magic
-    label: "Cast a Magic card"
+    label: "Rulează un Script"
     cost: { action_points: 1 }
     targets:
       - param: card
         from: { selector: cards, of: { player: $self, zone: hand } }
         where: { op: card_kind_is, kind: magic }
-        prompt: "Cast which Magic card?"
+        prompt: "Care Script?"
     effect:
       op: play_card_from_hand
       card: $intent.card
@@ -136,7 +136,7 @@ actions:
   # Only The Shadow Claw uses this in the base game; the target filter means the
   # action simply is not offered to the other five.
   - id: use_leader_ability
-    label: "Use your Party Leader's skill"
+    label: "Abilitatea șefului"
     cost: {} # the ability's own `cost:` block pays
     targets:
       - param: card
@@ -146,13 +146,13 @@ actions:
           of:
             - { op: card_has_ability, activation: action }
             - { op: not, of: { op: card_tapped } }
-        prompt: "Use your Party Leader's skill?"
+        prompt: "Folosești abilitatea șefului de grup?"
     effect: { op: use_ability, card: $intent.card }
 
   # The real 3-AP action, per the rulebook: DISCARD every card in your hand
   # (if you have any) and DRAW five new cards.
   - id: discard_and_draw
-    label: "Discard your hand and draw five"
+    label: "Arde mâna, trage 5"
     cost: { action_points: 3 }
     requires: { op: hand_size, player: $self, cmp: ">", value: 0 }
     effect:

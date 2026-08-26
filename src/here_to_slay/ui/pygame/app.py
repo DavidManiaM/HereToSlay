@@ -41,8 +41,9 @@ if TYPE_CHECKING:
 WINDOW_TITLE = "Here to Slay"
 DEFAULT_WIDTH = 1920
 DEFAULT_HEIGHT = 1080
-#: Chrome scale the client ships with: the HUD shrinks so the board can grow.
-DEFAULT_UI_SCALE = 0.85
+#: Chrome scale the client ships with. 1.0 keeps HUD text readable at 1080p;
+#: users can still shrink via ``--ui-scale``.
+DEFAULT_UI_SCALE = 1.0
 #: Room to leave for the window title bar and taskbar when clamping to the
 #: desktop, so asking for 1080p on a 1080p monitor does not open off-screen.
 DESKTOP_MARGIN_W = 32
@@ -53,7 +54,7 @@ DESKTOP_MARGIN_H = 88
 class GameSetup:
     """Everything needed to deal a game. Restart re-deals from one of these."""
 
-    names: tuple[str, ...] = ("Player 1", "Player 2")
+    names: tuple[str, ...] = ("Jucător 1", "Jucător 2")
     seed: int | str = 0
     max_turns: int = 0
     #: The last ``ai_seats`` names are played by the agent. Seat 0 is always
@@ -69,7 +70,7 @@ class GameSetup:
         players = max(2, players)
         names = list(self.names[:players])
         while len(names) < players:
-            names.append(f"Player {len(names) + 1}")
+            names.append(f"Jucător {len(names) + 1}")
         return replace(
             self, names=tuple(names), ai_seats=max(0, min(ai_seats, players - 1)), seed=seed,
         )
@@ -186,14 +187,38 @@ class PygameApp:
         self._sync_size()
 
     def _mode_flags(self) -> int:
-        return pygame.FULLSCREEN | pygame.SCALED if self.fullscreen else pygame.RESIZABLE
+        if self.fullscreen:
+            # Explicit desktop size + SCALED (logical size must be non-zero —
+            # ``(0, 0)`` raises ``Cannot set 0 sized SCALED display mode``).
+            return pygame.FULLSCREEN | pygame.SCALED
+        return pygame.RESIZABLE
+
+    def _desktop_size(self) -> tuple[int, int]:
+        try:
+            desktops = pygame.display.get_desktop_sizes()
+        except (pygame.error, AttributeError):
+            desktops = []
+        if desktops:
+            return int(desktops[0][0]), int(desktops[0][1])
+        return max(MIN_W, self.width), max(MIN_H, self.height)
 
     def _mode_size(self) -> tuple[int, int]:
-        return (0, 0) if self.fullscreen else (self.width, self.height)
+        if self.fullscreen:
+            return self._desktop_size()
+        return (self.width, self.height)
 
     def toggle_fullscreen(self) -> None:
         self.fullscreen = not self.fullscreen
-        self.screen = pygame.display.set_mode(self._mode_size(), self._mode_flags())
+        size = self._mode_size()
+        flags = self._mode_flags()
+        try:
+            self.screen = pygame.display.set_mode(size, flags)
+        except pygame.error:
+            # Fallback without SCALED if the driver rejects the combo.
+            if self.fullscreen:
+                self.screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
+            else:
+                self.screen = pygame.display.set_mode(size, pygame.RESIZABLE)
         self._sync_size()
 
     def _apply_ui_scale(self, height: int | None = None) -> None:

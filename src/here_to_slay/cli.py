@@ -198,10 +198,10 @@ def build_parser() -> argparse.ArgumentParser:
     gui.add_argument(
         "--ui-scale",
         type=float,
-        default=0.85,
+        default=1.0,
         metavar="F",
         help="chrome scale — below 1.0 shrinks the HUD so the board grows "
-             "(default: 0.85)",
+             "(default: 1.0)",
     )
     gui.add_argument(
         "--fullscreen", action="store_true", help="start fullscreen (F11 toggles)"
@@ -426,7 +426,7 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
         names = list(args.names)
     else:
         n = max(2, args.players)
-        names = [f"Player {i}" for i in range(1, n + 1)]
+        names = [f"Jucător {i}" for i in range(1, n + 1)]
 
     n_players = len(names)
     max_p = registry.rules.setup.max_players
@@ -504,7 +504,7 @@ def cmd_gui(args: argparse.Namespace, console: Console) -> int:
         names = list(args.names)
     else:
         n = max(2, args.players)
-        names = [f"Player {i}" for i in range(1, n + 1)]
+        names = [f"Jucător {i}" for i in range(1, n + 1)]
 
     n_players = len(names)
     max_p = registry.rules.setup.max_players
@@ -692,7 +692,7 @@ def cmd_sim(args: argparse.Namespace, console: Console) -> int:
     from here_to_slay.core.victory import satisfied_by
 
     n_players = max(2, args.players)
-    players = [f"Player {i}" for i in range(1, n_players + 1)]
+    players = [f"Jucător {i}" for i in range(1, n_players + 1)]
 
     # Locate default weights if using heuristic and none specified
     weights_path = args.ai_weights

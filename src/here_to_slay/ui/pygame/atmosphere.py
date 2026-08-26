@@ -16,6 +16,7 @@ from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.theme import C
 
 _MOTE_COUNT = 8
+_SS = 2  # supersample factor for table / placemat layers
 
 
 def _hash01(n: int) -> float:
@@ -59,8 +60,8 @@ def _room(width: int, height: int) -> pygame.Surface:
 
 
 @lru_cache(maxsize=6)
-def _felt_noise_tile(size: int = 64) -> pygame.Surface:
-    """Deterministic grain tile for BLEND_RGBA_MULT."""
+def _felt_noise_tile(size: int = 128) -> pygame.Surface:
+    """Deterministic grain tile for BLEND_RGBA_MULT (128px for crisp 1080p)."""
     tile = T.surface((size, size))
     for y in range(size):
         for x in range(size):
@@ -70,36 +71,28 @@ def _felt_noise_tile(size: int = 64) -> pygame.Surface:
     return tile
 
 
-@lru_cache(maxsize=12)
-def _table(width: int, height: int) -> pygame.Surface:
-    """Depth stack: contact shadow, rim bevel, felt, key-light, grain, inlay."""
-    width, height = max(16, width), max(12, height)
-    surf = T.surface((width, height))
+def _paint_table(surf: pygame.Surface, width: int, height: int) -> None:
+    """Paint the oval table stack onto ``surf`` at the given pixel size."""
     rect = pygame.Rect(0, 0, width, height)
 
-    # Contact shadow under the whole oval
     shadow = T.surface((width, height))
     pygame.draw.ellipse(shadow, (0, 0, 0, 55), rect.inflate(8, 6).move(0, 10))
     surf.blit(shadow, (0, 0))
 
-    # Outer rim band (wood/leather)
     outer = rect.inflate(-6, -4)
     pygame.draw.ellipse(surf, C.TABLE_RIM, outer, 0)
     inner = outer.inflate(-14, -10)
     pygame.draw.ellipse(surf, C.FELT_DEEP, inner, 0)
 
-    # Upper-left bevel highlight on the rim
     bevel = T.surface((width, height))
     bevel_rect = outer.inflate(-4, -4)
     pygame.draw.arc(bevel, C.TABLE_RIM_LIT, bevel_rect, math.pi * 0.85, math.pi * 1.65, 3)
     surf.blit(bevel, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-    # Key-light pool centred at 0.42h
     cx, cy = width // 2, int(height * 0.42)
     T.blit_glow(surf, (cx, cy), int(min(width, height) * 0.38),
                 (*T.mix(C.FELT_LIGHT, (255, 255, 255), 0.12), 48), power=1.9)
 
-    # Felt grain
     grain = _felt_noise_tile()
     grain_layer = T.surface((width, height))
     for gy in range(0, height, grain.get_height()):
@@ -107,46 +100,75 @@ def _table(width: int, height: int) -> pygame.Surface:
             grain_layer.blit(grain, (gx, gy))
     surf.blit(grain_layer, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
-    # Thin gold inlay
     inlay = inner.inflate(-18, -14)
     pygame.draw.ellipse(surf, (*T.shade(C.GOLD, 0.6), 80), inlay, 1)
 
-    return surf
+
+@lru_cache(maxsize=12)
+def _table(width: int, height: int) -> pygame.Surface:
+    """Depth stack supersampled 2x then smoothscaled for crisp oval edges."""
+    width, height = max(16, width), max(12, height)
+    hi_w, hi_h = width * _SS, height * _SS
+    hi = T.surface((hi_w, hi_h))
+    _paint_table(hi, hi_w, hi_h)
+    return pygame.transform.smoothscale(hi, (width, height))
+
+
+def _ellipse_arc_rect(width: int, height: int) -> pygame.Rect:
+    """Bounding ellipse matching the felt oval, nudged outside the rim."""
+    outer = pygame.Rect(0, 0, width, height).inflate(-6, -4)
+    inner = outer.inflate(-14, -10)
+    return inner.inflate(10, 8)
 
 
 @lru_cache(maxsize=24)
-def _placemats(
-    width: int, height: int, seat_sig: tuple[tuple[int, int, int, int], ...],
-) -> pygame.Surface:
-    """Per-seat tinted arcs around the table edge."""
-    surf = T.surface((width, height))
-    table_cx, table_cy = width // 2, height // 2
-    for i, (sx, sy, sw, sh) in enumerate(seat_sig):
+def _placemats(width: int, height: int, angles: tuple[float, ...]) -> pygame.Surface:
+    """Elliptical seat arcs on the table oval, keyed by seat angle (radians).
+
+    Drawn at 2x then downscaled so strokes stay smooth at full HD.
+    """
+    width, height = max(16, width), max(12, height)
+    hi_w, hi_h = width * _SS, height * _SS
+    hi = T.surface((hi_w, hi_h))
+    arc_rect = _ellipse_arc_rect(hi_w, hi_h)
+    stroke = max(4, 8 * _SS)
+    half_sweep = math.radians(22)
+
+    for i, angle in enumerate(angles):
         colour = T.seat_colour(i)
-        cx = sx + sw // 2
-        cy = sy + sh // 2
-        angle = math.atan2(cy - table_cy, cx - table_cx)
-        arc_r = int(min(width, height) * 0.44)
-        arc_rect = pygame.Rect(table_cx - arc_r, table_cy - arc_r, arc_r * 2, arc_r * 2)
-        start = math.degrees(angle) - 28
-        end = math.degrees(angle) + 28
-        pygame.draw.arc(surf, (*colour, 30), arc_rect, math.radians(start), math.radians(end), 6)
-    return surf
+        start = angle - half_sweep
+        end = angle + half_sweep
+        pygame.draw.arc(hi, (*colour, 32), arc_rect, start, end, stroke)
+
+    return pygame.transform.smoothscale(hi, (width, height))
 
 
-_mote_sprites: dict[tuple[int, tuple[int, int, int]], pygame.Surface] = {}
+@lru_cache(maxsize=48)
+def _active_arc(
+    width: int, height: int, angle: float, seat_i: int,
+) -> pygame.Surface:
+    """Single brighter arc for the active seat (breath-tinted at draw time)."""
+    width, height = max(16, width), max(12, height)
+    hi_w, hi_h = width * _SS, height * _SS
+    hi = T.surface((hi_w, hi_h))
+    arc_rect = _ellipse_arc_rect(hi_w, hi_h)
+    stroke = max(5, 10 * _SS)
+    half_sweep = math.radians(24)
+    colour = T.seat_colour(seat_i)
+    pygame.draw.arc(
+        hi, (*colour, 90), arc_rect,
+        angle - half_sweep, angle + half_sweep, stroke,
+    )
+    return pygame.transform.smoothscale(hi, (width, height))
 
 
+@lru_cache(maxsize=48)
 def _mote_sprite(radius: int, colour: tuple[int, int, int]) -> pygame.Surface:
-    key = (radius, colour)
-    hit = _mote_sprites.get(key)
-    if hit is not None:
-        return hit
+    """Soft radial disc — no hard circle edges at HD."""
     r = max(1, radius)
-    surf = T.surface((r * 4, r * 4))
-    pygame.draw.circle(surf, (*colour, 255), (r * 2, r * 2), r)
-    _mote_sprites[key] = surf
-    return surf
+    # Build a soft glow a bit larger than the mote radius.
+    glow_r = max(4, r * 3)
+    return T.radial_glow(glow_r, (*colour, 180), power=2.4)
 
 
 class Atmosphere:
@@ -201,9 +223,10 @@ class Atmosphere:
         layout: Any,
         *,
         active_seat: str | None = None,
+        active_index: int | None = None,
         camera_key: str = "local",
     ) -> None:
-        del camera_key  # reserved for camera-specific lighting later
+        del camera_key, active_seat  # active_index is the resolved seat slot
         w, h = screen.get_size()
         screen.blit(_room(w, h), (0, 0))
 
@@ -213,17 +236,16 @@ class Atmosphere:
 
             seats = getattr(layout, "seats", ())
             if seats:
-                sig = tuple(
-                    (s.rect.x, s.rect.y, s.rect.w, s.rect.h) for s in seats
-                )
-                mats = _placemats(table.width, table.height, sig)
-                # Brighten active seat arc
-                if active_seat is not None:
-                    breath = 0.5 + 0.5 * math.sin(self.time * 1.4)
-                    active_layer = mats.copy()
-                    active_layer.set_alpha(int(40 + 35 * breath))
-                    screen.blit(active_layer, table.topleft, special_flags=pygame.BLEND_RGBA_ADD)
+                angles = tuple(float(s.angle) for s in seats)
+                mats = _placemats(table.width, table.height, angles)
                 screen.blit(mats, table.topleft)
+                if active_index is not None and 0 <= active_index < len(angles):
+                    breath = 0.5 + 0.5 * math.sin(self.time * 1.4)
+                    glow = _active_arc(
+                        table.width, table.height, angles[active_index], active_index,
+                    ).copy()
+                    glow.set_alpha(int(90 + 70 * breath))
+                    screen.blit(glow, table.topleft, special_flags=pygame.BLEND_RGBA_ADD)
 
         self._draw_motes(screen)
         screen.blit(T.vignette((w, h), 110), (0, 0))
@@ -231,14 +253,16 @@ class Atmosphere:
     def _draw_motes(self, screen: pygame.Surface) -> None:
         for x, y, _vx, _vy, radius, colour, phase in self._motes:
             fade = 0.25 + 0.4 * (0.5 + 0.5 * math.sin(self.time * 0.8 + phase))
-            a = int(32 * fade)
+            a = int(40 * fade)
             if a < 4:
                 continue
             sprite = _mote_sprite(radius, colour)
-            sprite = sprite.copy()
-            sprite.set_alpha(a)
-            r = radius * 2
-            screen.blit(sprite, (int(x - r * 2), int(y - r * 2)))
+            # Alpha via a cheap copy of the cached glow (no per-frame allocation
+            # of the glow itself — only a thin set_alpha wrapper surface).
+            tinted = sprite.copy()
+            tinted.set_alpha(a)
+            hr = tinted.get_width() // 2
+            screen.blit(tinted, (int(x - hr), int(y - hr)))
 
 
 def blit_card_sheen(dest: pygame.Surface, rect: pygame.Rect, amount: float) -> None:

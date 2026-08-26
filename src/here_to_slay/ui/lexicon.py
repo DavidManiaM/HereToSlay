@@ -67,7 +67,25 @@ EMPTY_HAND = "niciun răspuns AI"
 NO_PARTY = "nicio persoană în grup"
 TABLE = "masa"
 EFFECTS = "efecte active"
-RECENT = "RECENT"
+EFFECTS_YOURS = "efectele tale"
+EFFECTS_THEIRS = "efectele lui {name}"
+EFFECT_PASSIVE = "Pasiv"
+EFFECT_ABILITY = "Abilitate"
+EFFECT_CHEAT = "Cheat"
+EFFECT_HACK = "Hack"
+EFFECT_FLAG = "Stare"
+EFFECT_LEADER = "Șef"
+EFFECT_TABLE = "Masă"
+FLAG_UNCONTESTABLE_TITLE = "De necontestat"
+FLAG_UNCONTESTABLE_DETAIL = "Cărțile jucate în această tură nu pot fi provocare"
+FLAG_EXTRA_TURN_TITLE = "Tură extra"
+FLAG_EXTRA_TURN_DETAIL = "Joacă încă o tură după aceasta"
+FLAG_GENERIC = "stare = {value}"
+FLAG_TABLE_GENERIC = "stare de masă = {value}"
+RECENT = "Jurnal"
+JOURNAL = "Jurnal"
+PRESS_ROLL = 'Apasă np.random("") ca să rulezi'
+FREE = "gratis"
 TURN = "Tura"
 PASS_DEVICE = "Pasează dispozitivul către"
 READY = "Sunt gata"
@@ -79,6 +97,28 @@ ROLL_READY = 'np.random("")'
 ATTACK = "împrietenește"
 SLAY = "împrietenește"
 SLAYN = "besties împrietenite"
+EMPTY = "gol"
+NOTHING_ACTIVE = "nimic activ"
+THINKING = "{name} se gândește…"
+YOUR_MOVE = "Mutarea ta"
+CHOOSE_PLAYER = "Alege un jucător"
+CHOOSE = "Alege"
+CONFIRM = "Confirmi?"
+WAIT = "Așteaptă…"
+PASS = "Treci"
+NO_LEGAL = "Nicio acțiune {label} legală acum"
+PICK_TARGET = "Alege o țintă ({n} opțiuni)"
+YOU = "Tu"
+PLAYER_N = "Jucător {n}"
+EQUIPPED_TO = "Echipat pe {name}"
+ABILITY_READY = "Abilitate gata"
+ABILITY_READY_ROLL = "Abilitate gata · {n}+ pentru succes"
+ABILITY_USED = "Abilitate folosită în această tură"
+PASSIVE_ABILITY = "Abilitate pasivă"
+MORE_SCROLL = "+{n} în plus · derulează"
+RIGHT_CLICK_PIN = "click-dreapta ca să fixezi"
+CAM_HINT = "Q / E camere  ·  click pe un grup inamic"
+SPECTATOR = "SPECTATOR · TOATE MÂINILE VIZIBILE"
 
 
 def kind_label(
@@ -156,10 +196,36 @@ def retheme_prompt(text: str) -> str:
     """Light English→RO tech substitutions for leftover engine prompts."""
     if not text:
         return text
+    # Longer phrases first so "Hero of any class" is not mangled by "Hero".
     replacements = (
+        ("is thinking…", "se gândește…"),
+        ("is thinking...", "se gândește…"),
+        ("Your move", "Mutarea ta"),
+        ("your move", "Mutarea ta"),
+        ("nothing active", "nimic activ"),
+        ("Choose a player", "Alege un jucător"),
+        ("Pick a target", "Alege o țintă"),
+        ("Equipped to", "Echipat pe"),
+        ("Ability ready", "Abilitate gata"),
+        ("Ability already used this turn", "Abilitate folosită în această tură"),
+        ("Passive ability", "Abilitate pasivă"),
+        ("Heroes of any class", "Persoane de orice clasă"),
+        ("Hero of any class", "Persoană de orice clasă"),
+        ("of any class", "de orice clasă"),
+        ("action points", "prompt-uri"),
+        ("Action points", "Prompt-uri"),
         ("action point", "prompt"),
         ("Action point", "Prompt"),
         ("Action Point", "Prompt"),
+        ("(1 AP)", "(1 prompt)"),
+        ("(2 AP)", "(2 prompt-uri)"),
+        ("(3 AP)", "(3 prompt-uri)"),
+        ("1 AP", "1 prompt"),
+        ("2 AP", "2 prompt-uri"),
+        ("3 AP", "3 prompt-uri"),
+        ("Party Leader", "Șeful grupului"),
+        ("party leader", "șeful grupului"),
+        (" and ", " și "),
         ("Hero", "Persoană"),
         ("hero", "persoană"),
         ("Monster", "Bestie"),
@@ -171,7 +237,7 @@ def retheme_prompt(text: str) -> str:
         ("Cursed item", "Hack"),
         ("cursed item", "hack"),
         ("Cursed Item", "Hack"),
-        ("Modifier", "download/upload speed"),
+        ("modifier", "download/upload speed"),
         ("Modifier", "Download/Upload Speed"),
         ("Magic", "Script"),
         ("magic", "script"),
@@ -183,10 +249,16 @@ def retheme_prompt(text: str) -> str:
         ("Slay", "Împrietenește"),
         ("destroy", "șterge"),
         ("Destroy", "Șterge"),
+        ("rolls 2d6", "np.random 2d6"),
         ("roll", "np.random"),
         ("Roll", "np.random"),
         ("hand", "răspunsuri AI"),
         ("Hand", "Răspunsuri AI"),
+        ("Player", "Jucător"),
+        ("player", "jucător"),
+        ("cancelled", "anulat"),
+        ("Cancelled", "Anulat"),
+        ("was cancelled", "a fost anulat"),
     )
     out = text
     for old, new in replacements:
@@ -194,41 +266,86 @@ def retheme_prompt(text: str) -> str:
     return out
 
 
+def requirement_label(text: str) -> str:
+    """Monster party requirement, always Romanian."""
+    return retheme_prompt(text or "")
+
+
 __all__ = [
+    "ABILITY_READY",
+    "ABILITY_READY_ROLL",
+    "ABILITY_USED",
     "AP",
     "ATTACK",
     "BESTIES",
     "BESTIES_ROW",
+    "CAM_HINT",
     "CAN_BEFRIEND",
     "CHEAT",
     "CHEATS",
+    "CHOOSE",
+    "CHOOSE_PLAYER",
     "CLASS_LABEL",
+    "CONFIRM",
     "DECK_DISCARD",
     "DECK_DRAW",
     "DECK_MONSTER",
     "DICE",
     "EFFECTS",
+    "EFFECTS_THEIRS",
+    "EFFECTS_YOURS",
+    "EFFECT_ABILITY",
+    "EFFECT_CHEAT",
+    "EFFECT_FLAG",
+    "EFFECT_HACK",
+    "EFFECT_LEADER",
+    "EFFECT_PASSIVE",
+    "EFFECT_TABLE",
+    "EMPTY",
     "EMPTY_HAND",
+    "EQUIPPED_TO",
+    "FLAG_EXTRA_TURN_DETAIL",
+    "FLAG_EXTRA_TURN_TITLE",
+    "FLAG_GENERIC",
+    "FLAG_TABLE_GENERIC",
+    "FLAG_UNCONTESTABLE_DETAIL",
+    "FLAG_UNCONTESTABLE_TITLE",
+    "FREE",
     "GAME_LOG",
     "HACK",
     "HACKS",
     "HAND",
     "HOW_TO_PLAY",
     "IN_PLAY",
+    "JOURNAL",
     "KIND_LABEL",
     "LEADER",
+    "MORE_SCROLL",
+    "NO_LEGAL",
     "NO_PARTY",
+    "NOTHING_ACTIVE",
     "PARTY",
+    "PASS",
     "PASS_DEVICE",
+    "PASSIVE_ABILITY",
     "PAUSED",
+    "PICK_TARGET",
+    "PLAYER_N",
+    "PRESS_ROLL",
     "READY",
     "RECENT",
+    "RIGHT_CLICK_PIN",
     "ROLL_READY",
     "SLAY",
     "SLAYN",
+    "SPECTATOR",
     "TABLE",
+    "THINKING",
     "TURN",
     "VICTORY",
+    "WAIT",
+    "YOU",
+    "YOUR_MOVE",
     "ap_label",
     "card_name",
     "card_text",
@@ -236,6 +353,7 @@ __all__ = [
     "hand_label",
     "kind_label",
     "np_random_label",
+    "requirement_label",
     "retheme_prompt",
     "type_line",
 ]

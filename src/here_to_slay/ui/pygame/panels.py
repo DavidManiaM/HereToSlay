@@ -151,12 +151,12 @@ class TurnChip:
     def draw(self, screen: pygame.Surface) -> None:
         rect = pygame.Rect(self.layout.turn_chip_rect)
         T.pill(screen, rect, "", bg=T.alpha((16, 24, 28), 160),
-               fg=C.INK_DIM, border=T.alpha(C.INK_FAINT, 80), fnt=T.ui(T.s(9)))
+               fg=C.INK_DIM, border=T.alpha(C.INK_FAINT, 80), fnt=T.ui(12))
         dot_r = max(4, T.s(5))
         dot_c = (rect.left + T.s(10), rect.centery)
         pygame.draw.circle(screen, self.colour, dot_c, dot_r)
         label = f"{self.name}  T{self.turn_number}"
-        T.text(screen, label, (rect.left + T.s(20), rect.centery), T.ui(T.s(9)),
+        T.text(screen, label, (rect.left + T.s(20), rect.centery), T.ui(12),
                T.alpha(C.INK_DIM, 210), anchor="midleft", shadow=None)
         # AP pips on the right
         pip_r = max(3, T.s(3))
@@ -185,7 +185,7 @@ class ActionChip:
 
 
 class ActionBar:
-    """Bottom-centre row of action chips with keys and AP costs."""
+    """Right-side action chips in a 2–3 column grid that grows upward."""
 
     def __init__(self, layout: Any) -> None:
         self.layout = layout
@@ -196,25 +196,39 @@ class ActionBar:
         self,
         entries: list[tuple[str, str, str, str, bool, Callable[[], None]]],
     ) -> None:
-        """Each entry: (action_id, key, label, cost, enabled, callback)."""
-        rect = pygame.Rect(self.layout.action_bar_rect)
-        if not entries or rect.width < 40:
+        """Each entry: (action_id, key, label, cost, enabled, callback).
+
+        Caller must pack ``layout.action_bar_rect`` first (via
+        ``pack_right_column``); this only lays chips inside that rect.
+        """
+        if not entries or self.layout.action_bar_rect.width < 40:
             self.chips = []
             return
-        gap = T.s(4)
-        chip_h = rect.height
-        # Measure widths
-        widths: list[int] = []
-        for _aid, key, label, cost, _en, _cb in entries:
-            text = f"[{key.upper()}] {label} ({cost})"
-            widths.append(T.s(12) + T.ui(T.s(10), bold=True).size(text)[0] + T.s(10))
-        total = sum(widths) + gap * max(0, len(entries) - 1)
-        x = rect.centerx - total // 2
+
+        n = len(entries)
+        cols = 2
+        rows = max(1, (n + cols - 1) // cols)
+
+        rect = pygame.Rect(self.layout.action_bar_rect)
+        pad = T.s(8)
+        gap = T.s(6)
+        chip_h = T.s(40)
+        inner = pygame.Rect(rect.left + pad, rect.top + pad,
+                            rect.width - pad * 2, rect.height - pad * 2)
+        chip_w = max(120, (inner.width - gap * (cols - 1)) // cols)
+        # Bottom-align the grid inside the packed rect.
+        grid_h = rows * chip_h + max(0, rows - 1) * gap
+        y0 = inner.bottom - grid_h
+
         chips: list[ActionChip] = []
-        for (action_id, key, label, cost, enabled, cb), w in zip(entries, widths, strict=True):
-            chip_rect = pygame.Rect(x, rect.top, w, chip_h)
-            chips.append(ActionChip(action_id, key, label, cost, enabled, chip_rect, cb))
-            x += w + gap
+        for i, (action_id, key, label, cost, enabled, cb) in enumerate(entries):
+            row, col = divmod(i, cols)
+            x = inner.left + col * (chip_w + gap)
+            y = y0 + row * (chip_h + gap)
+            chips.append(ActionChip(
+                action_id, key, label, cost, enabled,
+                pygame.Rect(x, y, chip_w, chip_h), cb,
+            ))
         self.chips = chips
 
     def update(self, dt: float) -> None:
@@ -235,21 +249,45 @@ class ActionBar:
         return False
 
     def draw(self, screen: pygame.Surface) -> None:
+        if not self.chips:
+            return
+        # Quiet well behind the grid so it reads as one chrome block.
+        well = pygame.Rect(self.layout.action_bar_rect)
+        T.glass(screen, well, radius=T.s(10), fill=(14, 20, 26, 200),
+                rim=T.alpha(C.INK_FAINT, 90))
+        chip_font = T.ui(11, bold=True)
+        cost_font = T.ui(9)
         for chip in self.chips:
             lit = chip is self._hover
             if not chip.enabled:
                 bg = T.alpha((28, 32, 38), 120)
             else:
-                bg = T.alpha((22, 30, 36), 220 if lit else 180)
+                bg = T.alpha((22, 30, 36), 230 if lit else 190)
             border = T.alpha(C.CYAN if lit and chip.enabled else C.INK_FAINT, 180 if chip.enabled else 80)
             fg = C.INK_BRIGHT if chip.enabled else C.INK_FAINT
             accent = ACTION_STYLE.get(chip.action_id, ("bolt", C.GOLD))[1]
-            text = f"[{chip.key.upper()}] {chip.label} ({chip.cost})"
-            T.pill(screen, chip.rect, text, bg=bg, fg=fg, border=border,
-                   fnt=T.ui(T.s(10), bold=True))
+            T.round_rect(screen, chip.rect, bg, radius=10)
+            T.round_rect(screen, chip.rect, border, radius=10, width=1)
             if chip.enabled:
                 bar = pygame.Rect(chip.rect.left, chip.rect.top, 3, chip.rect.height)
                 T.round_rect(screen, bar, accent, radius=2)
+            key_label = f"[{chip.key.upper()}]"
+            T.text(screen, key_label, (chip.rect.left + 10, chip.rect.top + 4),
+                   cost_font, T.alpha(fg, 200), shadow=None)
+            # Full action name on its own line — no mid-word ellipsis.
+            T.text(
+                screen, chip.label,
+                (chip.rect.left + 10, chip.rect.centery - 2),
+                chip_font, fg, max_width=chip.rect.width - 16, shadow=None,
+            )
+            if chip.cost and chip.cost != "0":
+                cost = L.ap_label(int(chip.cost)) if str(chip.cost).isdigit() else chip.cost
+                T.text(
+                    screen, cost,
+                    (chip.rect.right - 8, chip.rect.bottom - 4),
+                    cost_font, T.alpha(C.GOLD, 230),
+                    anchor="bottomright", shadow=None,
+                )
 
 
 #: Imported late to avoid circular imports — matches scenes.ACTION_STYLE.
@@ -266,20 +304,21 @@ ACTION_STYLE: dict[str, tuple[str, tuple[int, int, int]]] = {
 
 
 # ---------------------------------------------------------------------------
-# Reaction timer — 3s auto-pass arc
+# Reaction timer — 10s auto-pass arc
 # ---------------------------------------------------------------------------
 
-REACTION_SECONDS = 3.0
+REACTION_SECONDS = 10.0
 
 
 class ReactionTimer:
-    """Compact reaction panel with draining arc and option keys."""
+    """Compact reaction panel with draining arc, seconds readout, and option keys."""
 
     def __init__(self) -> None:
         self.visible = False
         self.rect = pygame.Rect(0, 0, 0, 0)
         self.title = ""
         self.fraction = 1.0
+        self.seconds_left = 0.0
         self.options: list[tuple[str, str, Callable[[], None]]] = ()
 
     def sync(
@@ -290,11 +329,13 @@ class ReactionTimer:
         title: str,
         fraction: float,
         options: list[tuple[str, str, Callable[[], None]]],
+        seconds_left: float = 0.0,
     ) -> None:
         self.visible = visible
         self.rect = pygame.Rect(rect)
         self.title = title
         self.fraction = max(0.0, min(1.0, fraction))
+        self.seconds_left = max(0.0, seconds_left)
         self.options = tuple(options)
 
     def draw(self, screen: pygame.Surface) -> None:
@@ -303,9 +344,9 @@ class ReactionTimer:
         T.glass(screen, self.rect, radius=T.s(10), fill=(18, 26, 32, 230),
                 rim=T.alpha(C.POISON, 180))
         T.text(screen, self.title, (self.rect.left + T.s(12), self.rect.top + T.s(8)),
-               T.ui(T.s(11), bold=True), C.INK_BRIGHT, anchor="topleft", shadow=None,
-               max_width=self.rect.width - T.s(40))
-        # Draining arc
+               T.ui(11, bold=True), C.INK_BRIGHT, anchor="topleft", shadow=None,
+               max_width=self.rect.width - T.s(56))
+        # Draining arc + numeric seconds
         cx = self.rect.right - T.s(22)
         cy = self.rect.centery
         r = T.s(14)
@@ -314,12 +355,15 @@ class ReactionTimer:
         if self.fraction > 0.01:
             end = -math.pi / 2 + self.fraction * math.tau
             pygame.draw.arc(screen, C.POISON, arc_rect, -math.pi / 2, end, 3)
+        secs = max(0, int(math.ceil(self.seconds_left)))
+        T.text(screen, str(secs), arc_rect.center, T.ui(10, bold=True), C.INK_BRIGHT,
+               anchor="center", shadow=None)
         # Option chips
         y = self.rect.top + T.s(28)
         for i, (label, key, _cb) in enumerate(self.options):
             chip = pygame.Rect(self.rect.left + T.s(8), y, self.rect.width - T.s(16), T.s(22))
             T.pill(screen, chip, f"[{i + 1}] {label}  ({key})", bg=T.alpha(C.ARCANE, 50),
-                   fg=C.INK_BRIGHT, border=T.alpha(C.ARCANE, 120), fnt=T.ui(T.s(9), bold=True))
+                   fg=C.INK_BRIGHT, border=T.alpha(C.ARCANE, 120), fnt=T.ui(9, bold=True))
             y += T.s(26)
 
 
@@ -398,7 +442,8 @@ class OpponentStrip:
 
     # -- layout ------------------------------------------------------------
 
-    def layout_cards(self, base_card_w: int, highlight_ids: set[str]) -> None:
+    def layout_cards(self, base_card_w: int, highlight_ids: set[str],
+                     *, view: Any = None, registry: Any = None) -> None:
         # Compact header so cards have room inside the seat wedge.
         head = 36 if self.rect.height >= 140 else max(22, self.rect.height // 5)
         grow = T.ease_out_cubic(self.expand)
@@ -407,17 +452,32 @@ class OpponentStrip:
         body = pygame.Rect(self.rect.left + 6, self.rect.top + head,
                            self.rect.width - 12, max(8, self.rect.height - head - 4))
 
+        previous: dict[str, CardSprite] = {}
+        if self.leader_sprite is not None:
+            previous[self.leader_sprite.card_id] = self.leader_sprite
+        for sp in self.sprites:
+            previous[sp.card_id] = sp
+
         lw = min(int(base_card_w * 1.15), max(28, body.width // 4))
         lh = int(lw * M.CARD_ASPECT)
         self.leader_sprite = None
         if self.leader is not None:
             cv, cdef = self.leader
+            atts = tuple(cv.attachments or ())
+            adefs = _attachment_defs(view, registry, atts)
             self.leader_sprite = CardSprite(
                 cv.id, cdef,
                 pygame.Rect(body.left, body.top, lw, min(lh, body.height)),
                 highlighted=cv.id in highlight_ids, owner_colour=self.colour,
+                attachments=atts, attachment_defs=adefs,
                 lift_on_hover=6, depth=0.55,
             )
+            old = previous.get(cv.id)
+            if old is not None:
+                self.leader_sprite.enter = old.enter
+                self.leader_sprite.hover = old.hover
+            else:
+                self.leader_sprite.enter = 1.0
 
         self.sprites = []
         if not self.party:
@@ -435,17 +495,25 @@ class OpponentStrip:
             col = i // rows
             x = start_x + col * step
             y = body.top + row * int(card_h * 0.42)
-            # Fit cards inside the wedge so set_clip does not erase them.
             draw_h = min(card_h, max(24, body.bottom - y))
             draw_w = max(20, int(draw_h / M.CARD_ASPECT)) if draw_h < card_h else card_w
-            self.sprites.append(CardSprite(
+            atts = tuple(cv.attachments or ())
+            adefs = _attachment_defs(view, registry, atts)
+            sprite = CardSprite(
                 cv.id, cdef, pygame.Rect(int(x), int(y), draw_w, draw_h),
                 tapped=False, highlighted=cv.id in highlight_ids,
-                attachments=tuple(cv.attachments or ()),
+                attachments=atts, attachment_defs=adefs,
                 badge_text="\u25cf" if cv.tapped else "",
                 badge_colour=C.IDLE, owner_colour=self.colour, lift_on_hover=8,
                 depth=0.5,
-            ))
+            )
+            old = previous.get(cv.id)
+            if old is not None:
+                sprite.enter = old.enter
+                sprite.hover = old.hover
+            else:
+                sprite.enter = 1.0
+            self.sprites.append(sprite)
 
     @property
     def wants_height(self) -> int:
@@ -586,6 +654,8 @@ class OpponentRail:
             self.strips.append(strip)
             kept[pid] = strip
         self._by_id = kept
+        self._view = view
+        self._registry = registry
         self._place(highlight_cards)
 
     def _place(self, highlight_cards: set[str]) -> None:
@@ -606,7 +676,11 @@ class OpponentRail:
             else:
                 strip.rect = pygame.Rect(12, self.layout.board_rect.top + 40 + i * 90, 140, 80)
                 card_w = 44
-            strip.layout_cards(card_w, highlight_cards)
+            strip.layout_cards(
+                card_w, highlight_cards,
+                view=getattr(self, "_view", None),
+                registry=getattr(self, "_registry", None),
+            )
 
     def update(self, dt: float) -> None:
         for strip in self.strips:
@@ -693,25 +767,18 @@ class ActiveStack:
         extra_cards: Sequence[Any] = (),
         rolls: Sequence[Any] = (),
     ) -> None:
-        self.rect = pygame.Rect(self.layout.left_rail_rect)
-        # Float the active stack near the upper-left of the table, not a side column.
-        table = getattr(self.layout, "table_rect", self.layout.board_rect)
-        self.rect = pygame.Rect(
-            table.left + 8,
-            table.top + 8,
-            max(160, min(220, table.width // 5)),
-            max(180, min(320, table.height // 2)),
-        )
+        # Park limbo cards inside the merged journal panel (left column).
+        self.rect = pygame.Rect(self.layout.log_rect)
         limbo = view.zone("limbo")
         cards = list(limbo.cards) if limbo else []
         cards.extend(extra_cards)
 
         head = 26
-        card_w = min(self.rect.width - 20, 128)
+        card_w = min(max(48, self.rect.width - 24), 96)
         card_h = int(card_w * M.CARD_ASPECT)
         self.sprites = []
-        for i, cv in enumerate(cards[:3]):
-            y = self.rect.top + head + i * (card_h + 8)
+        for i, cv in enumerate(cards[:2]):
+            y = self.rect.top + head + i * (card_h // 2)
             self.sprites.append(CardSprite(
                 cv.id, registry.get(cv.def_id),
                 pygame.Rect(self.rect.left + (self.rect.width - card_w) // 2, y, card_w, card_h),
@@ -720,11 +787,11 @@ class ActiveStack:
 
         self.notes = []
         if pending_note is not None:
-            self.notes.append(pending_note)
+            self.notes.append((L.retheme_prompt(pending_note[0]), pending_note[1], pending_note[2]))
         for roll in list(rolls)[-2:]:
             who = view.players.get(roll.roller)
-            name = who.name if who is not None else "someone"
-            self.notes.append((f"{name}: {roll.describe()}", C.FROST, "dice"))
+            name = who.name if who is not None else "cineva"
+            self.notes.append((f"{name}: {L.retheme_prompt(roll.describe())}", C.FROST, "dice"))
 
     def update(self, dt: float) -> None:
         self.pulse += dt
@@ -744,16 +811,9 @@ class ActiveStack:
         return top
 
     def draw(self, screen: pygame.Surface) -> None:
-        if not self.occupied:
+        """Limbo cards only — the journal frame is drawn by the scene."""
+        if not self.sprites:
             return
-        rect = self.rect
-        # Static accent bar — no pulsing wash over the active stack.
-        T.round_rect(
-            screen, pygame.Rect(rect.left + 4, rect.top + 22, 3, max(12, rect.height - 30)),
-            C.ARCANE, radius=2,
-        )
-        _panel_title(screen, rect, L.IN_PLAY, icon="bolt", colour=C.ARCANE)
-
         hovered = None
         for sprite in self.sprites:
             if sprite.hovered:
@@ -762,23 +822,6 @@ class ActiveStack:
                 sprite.draw(screen)
         if hovered:
             hovered.draw(screen)
-
-        y = (
-            self.sprites[-1].rect.bottom + 10 if self.sprites
-            else rect.top + 32
-        )
-        for note, colour, icon in self.notes:
-            if y > rect.bottom - 18:
-                break
-            x = rect.left + 10
-            if icon:
-                draw_icon(screen, icon, (x + 6, y + 7), 13, colour)
-                x += 19
-            used = T.draw_wrapped(
-                screen, note, pygame.Rect(x, y, rect.right - x - 10, rect.bottom - y - 4),
-                T.ui(10), colour, line_gap=1,
-            )
-            y += max(16, used) + 6
 
 
 # ---------------------------------------------------------------------------
@@ -845,7 +888,7 @@ class DeckArea:
             tone = {"main_deck": 0, "discard": 0, "monster_deck": 1}.get(key, 0)
             if size <= 0 and top is None:
                 T.inset(screen, rect, radius=8)
-                T.text(screen, "empty", rect.center, T.ui(9, italic=True),
+                T.text(screen, L.EMPTY, rect.center, T.ui(9, italic=True),
                        T.alpha(C.INK_FAINT, 190), anchor="center", shadow=None)
             elif key == "discard" and top is not None:
                 if hot:
@@ -953,7 +996,7 @@ class MonsterRow:
         for slot in getattr(self, "_slots", ()):
             if not any(s.rect.colliderect(slot) for s in self.sprites):
                 T.inset(screen, slot, radius=10)
-                T.text(screen, "empty", slot.center, T.ui(10, italic=True),
+                T.text(screen, L.EMPTY, slot.center, T.ui(10, italic=True),
                        T.alpha(C.INK_FAINT, 160), anchor="center", shadow=None)
 
         hovered = None
@@ -977,7 +1020,7 @@ class MonsterRow:
         chip_y = rect.bottom + 4
         if facts.requirement and rect.width >= 70:
             fnt = T.ui(9, bold=True)
-            label = T.ellipsise(facts.requirement, fnt, rect.width - 8)
+            label = T.ellipsise(L.requirement_label(facts.requirement), fnt, rect.width - 8)
             w = fnt.size(label)[0] + 16
             # Solid dark chip + bright text so requirements read on the felt.
             bg = T.alpha((10, 18, 22), 230)
@@ -1032,6 +1075,8 @@ class PartyRow:
              tuple(cv.attachments or ()))
             for cv in cards
         ])
+        for sprite, cv in zip(self.row.sprites, cards, strict=False):
+            sprite.attachment_defs = _attachment_defs(view, registry, cv.attachments or ())
 
         leader_zone = you.zone("leader")
         self.leader_sprite = None
@@ -1043,11 +1088,22 @@ class PartyRow:
             lr = pygame.Rect(self.layout.leader_rect)
             cw = min(lr.width - 12, int((lr.height - 26) / M.CARD_ASPECT))
             ch = int(cw * M.CARD_ASPECT)
+            atts = tuple(cv.attachments or ())
+            old = getattr(self, "_prev_leader", None)
             self.leader_sprite = CardSprite(
                 cv.id, cdef,
                 pygame.Rect(lr.centerx - cw // 2, lr.top + 20, cw, ch),
                 tapped=cv.tapped, highlighted=cv.id in highlight, lift_on_hover=10,
+                attachments=atts, attachment_defs=_attachment_defs(view, registry, atts),
             )
+            if old is not None and old.card_id == cv.id:
+                self.leader_sprite.enter = old.enter
+                self.leader_sprite.hover = old.hover
+            else:
+                self.leader_sprite.enter = 1.0
+            self._prev_leader = self.leader_sprite
+        else:
+            self._prev_leader = None
 
         self.classes = _classes_of([(cv, registry.get(cv.def_id)) for cv in cards], leader_pair)
         slain_zone = you.zone("slain")
@@ -1332,10 +1388,11 @@ class EffectEntry:
     icon: str
     colour: tuple[int, int, int]
     source: str = ""
+    tag: str = ""  # short Romanian chip: Pasiv / Cheat / Hack / …
 
 
 class EffectsPanel:
-    """Passives, equipment and flags in force for whoever is acting.
+    """Compact status board: passives, Cheats/Hacks, abilities and flags.
 
     Everything here is *derived* from the acting seat's cards and flags rather
     than from a list the engine maintains, which means a new Hero with a new
@@ -1350,6 +1407,7 @@ class EffectsPanel:
         self.owner_colour: tuple[int, int, int] = C.GOLD
         self.is_you = True
         self.scroll = 0
+        self._row_heights: list[int] = []
 
     def sync(self, view: Any, registry: Any, *, acting: Any = None) -> None:
         self.rect = pygame.Rect(self.layout.effects_rect)
@@ -1358,45 +1416,88 @@ class EffectsPanel:
         self.owner_colour = T.seat_colour(actor.seat)
         self.is_you = bool(actor.is_you)
         self.entries = list(collect_effects(view, registry, actor))
+        self.scroll = min(self.scroll, max(0, len(self.entries) - 1))
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEWHEEL and self.rect.collidepoint(pygame.mouse.get_pos()):
-            self.scroll = max(0, min(max(0, len(self.entries) - 3), self.scroll - event.y))
+            self.scroll = max(0, min(max(0, len(self.entries) - 1), self.scroll - event.y))
             return True
         return False
 
     def draw(self, screen: pygame.Surface) -> None:
-        who = "ale tale" if self.is_you else f"ale lui {self.owner_name}"
-        _panel_title(screen, self.rect, f"{L.EFFECTS} {who}", icon="flask",
-                     right=str(len(self.entries)) if self.entries else "",
-                     colour=self.owner_colour)
-
+        title = L.EFFECTS_YOURS if self.is_you else L.EFFECTS_THEIRS.format(name=self.owner_name)
         body = _panel_body(self.rect, 24)
+        # Quiet well so the list reads as one board.
+        T.glass(screen, self.rect, radius=T.s(10), fill=(14, 20, 26, 200),
+                rim=T.alpha(self.owner_colour if self.entries else C.INK_FAINT, 110))
+        _panel_title(
+            screen, self.rect, title, icon="flask",
+            right=str(len(self.entries)) if self.entries else "",
+            colour=self.owner_colour,
+        )
+
         if not self.entries:
-            T.text(screen, "nothing active", body.center, T.ui(11, italic=True),
+            T.text(screen, L.NOTHING_ACTIVE, body.center, T.ui(12, italic=True),
                    T.alpha(C.INK_FAINT, 200), anchor="center", shadow=None)
             return
 
-        row_h = 40
-        rows = max(1, body.height // row_h)
-        window = self.entries[self.scroll:self.scroll + rows]
+        title_fnt = T.ui(11, bold=True)
+        detail_fnt = T.ui(10)
+        tag_fnt = T.ui(9, bold=True)
+        pad_x = 8
+        y = body.top + 2
+        shown = 0
         clip = screen.get_clip()
         screen.set_clip(body)
-        for i, entry in enumerate(window):
-            row = pygame.Rect(body.left + 8, body.top + i * row_h, body.width - 16, row_h - 5)
-            T.round_rect(screen, row, T.alpha(entry.colour, 26), radius=8)
-            T.round_rect(screen, pygame.Rect(row.left, row.top + 3, 3, row.height - 6),
+        for entry in self.entries[self.scroll:]:
+            text_w = max(40, body.width - 56)
+            detail = L.retheme_prompt(entry.detail or "")
+            # Estimate wrapped height for the detail.
+            detail_h = 0
+            if detail:
+                # Rough line count from font metrics.
+                words = detail.split()
+                lines, line = [], ""
+                for word in words:
+                    trial = f"{line} {word}".strip()
+                    if detail_fnt.size(trial)[0] <= text_w:
+                        line = trial
+                    else:
+                        if line:
+                            lines.append(line)
+                        line = word
+                if line:
+                    lines.append(line)
+                detail_h = min(3, len(lines)) * (detail_fnt.get_linesize() + 1)
+            row_h = 22 + detail_h + 8
+            if y + row_h > body.bottom - 14:
+                break
+            row = pygame.Rect(body.left + pad_x, y, body.width - pad_x * 2, row_h)
+            T.round_rect(screen, row, T.alpha(entry.colour, 28), radius=8)
+            T.round_rect(screen, pygame.Rect(row.left, row.top + 4, 3, row.height - 8),
                          entry.colour, radius=2)
-            draw_icon(screen, entry.icon, (row.left + 18, row.top + 13), 15, entry.colour)
-            T.text(screen, entry.title, (row.left + 32, row.top + 5), T.ui(11, bold=True),
-                   C.INK, max_width=row.width - 40, shadow=None)
-            if entry.detail:
-                T.text(screen, entry.detail, (row.left + 32, row.top + 20), T.ui(9),
-                       T.alpha(C.INK_DIM, 230), max_width=row.width - 40, shadow=None)
+            draw_icon(screen, entry.icon, (row.left + 18, row.top + 14), 16, entry.colour)
+            tx = row.left + 34
+            T.text(screen, entry.title, (tx, row.top + 4), title_fnt, C.INK_BRIGHT,
+                   max_width=text_w - (56 if entry.tag else 0), shadow=None)
+            if entry.tag:
+                tw = tag_fnt.size(entry.tag)[0] + 10
+                chip = pygame.Rect(row.right - tw - 6, row.top + 4, tw, 16)
+                T.pill(screen, chip, entry.tag, bg=T.alpha(entry.colour, 70),
+                       fg=C.INK_BRIGHT, border=T.alpha(entry.colour, 160), fnt=tag_fnt)
+            if detail:
+                T.draw_wrapped(
+                    screen, detail,
+                    pygame.Rect(tx, row.top + 20, text_w, detail_h + 2),
+                    detail_fnt, T.alpha(C.INK_DIM, 235), line_gap=1,
+                )
+            y += row_h + 4
+            shown += 1
         screen.set_clip(clip)
 
-        if len(self.entries) > rows:
-            T.text(screen, f"+{len(self.entries) - rows - self.scroll} more \u00b7 scroll",
+        remaining = len(self.entries) - self.scroll - shown
+        if remaining > 0:
+            T.text(screen, L.MORE_SCROLL.format(n=remaining),
                    (body.centerx, body.bottom - 2), T.ui(9), T.alpha(C.INK_FAINT, 200),
                    anchor="midbottom", shadow=None)
 
@@ -1404,9 +1505,9 @@ class EffectsPanel:
 #: Player flags the base pack sets, and how to phrase them for a human.
 FLAG_LABELS: dict[str, tuple[str, str, str]] = {
     "uncontestable": (
-        "Cannot be challenged", "Cards you play this turn cannot be challenged", "guardian",
+        L.FLAG_UNCONTESTABLE_TITLE, L.FLAG_UNCONTESTABLE_DETAIL, "guardian",
     ),
-    "extra_turn": ("Extra turn queued", "Takes another turn after this one", "bolt"),
+    "extra_turn": (L.FLAG_EXTRA_TURN_TITLE, L.FLAG_EXTRA_TURN_DETAIL, "bolt"),
 }
 
 
@@ -1414,18 +1515,43 @@ def collect_effects(view: Any, registry: Any, actor: Any) -> list[EffectEntry]:
     """Everything currently modifying ``actor``, as display rows."""
     out: list[EffectEntry] = []
 
+    def _add_attachments(host_name: str, cv: Any) -> None:
+        for item_id in (cv.attachments or ()):
+            item_view = _find_card(view, item_id)
+            item_def = registry.get(item_view.def_id) if item_view else None
+            if item_def is None:
+                continue
+            tags = getattr(item_def, "tags", ()) or ()
+            cursed = "cursed" in {str(t).lower() for t in tags}
+            detail = L.EQUIPPED_TO.format(name=host_name)
+            text = L.retheme_prompt(str(getattr(item_def, "text", "") or ""))
+            if text:
+                detail = f"{detail} — {text}"
+            out.append(EffectEntry(
+                title=L.card_name(item_def),
+                detail=detail,
+                icon="item",
+                colour=C.BLOOD if cursed else C.GOLD,
+                source=item_def.id,
+                tag=L.EFFECT_HACK if cursed else L.EFFECT_CHEAT,
+            ))
+
     leader = actor.zone("leader")
     if leader and leader.cards:
-        cdef = registry.get(leader.cards[0].def_id)
+        lcv = leader.cards[0]
+        cdef = registry.get(lcv.def_id)
         if cdef is not None:
             facts = card_facts(cdef)
+            detail = L.retheme_prompt(cdef.text or L.LEADER)
             out.append(EffectEntry(
-                title=f"{cdef.name} (Leader)",
-                detail=cdef.text or "Party Leader",
+                title=L.card_name(cdef),
+                detail=detail,
                 icon="leader",
                 colour=T.class_colour(facts.card_class, "party_leader"),
                 source=cdef.id,
+                tag=L.EFFECT_LEADER,
             ))
+            _add_attachments(L.card_name(cdef), lcv)
 
     party = actor.zone("party")
     for cv in (party.cards if party else ()):
@@ -1434,6 +1560,7 @@ def collect_effects(view: Any, registry: Any, actor: Any) -> list[EffectEntry]:
             continue
         facts = card_facts(cdef)
         colour = T.class_colour(facts.card_class, facts.kind)
+        name = L.card_name(cdef)
         triggers = getattr(cdef, "triggers", ()) or ()
         ability = getattr(cdef, "ability", None)
         is_passive = bool(triggers) or (
@@ -1441,53 +1568,50 @@ def collect_effects(view: Any, registry: Any, actor: Any) -> list[EffectEntry]:
         )
         if is_passive:
             out.append(EffectEntry(
-                title=cdef.name,
-                detail=cdef.text or "Passive ability",
+                title=name,
+                detail=L.retheme_prompt(cdef.text or L.PASSIVE_ABILITY),
                 icon=card_icon_name(facts.kind, facts.card_class),
                 colour=colour,
                 source=cdef.id,
+                tag=L.EFFECT_PASSIVE,
             ))
         elif ability is not None and not cv.tapped:
             out.append(EffectEntry(
-                title=cdef.name,
+                title=name,
                 detail=(
-                    f"Ability ready \u00b7 {facts.threshold}+ to succeed"
-                    if facts.threshold else "Ability ready"
+                    L.ABILITY_READY_ROLL.format(n=facts.threshold)
+                    if facts.threshold else L.ABILITY_READY
                 ),
-                icon="bolt", colour=C.GOLD, source=cdef.id,
+                icon="bolt", colour=C.GOLD, source=cdef.id, tag=L.EFFECT_ABILITY,
             ))
         elif ability is not None and cv.tapped:
             out.append(EffectEntry(
-                title=cdef.name, detail="Ability already used this turn",
-                icon="close", colour=C.IDLE, source=cdef.id,
+                title=name, detail=L.ABILITY_USED,
+                icon="close", colour=C.IDLE, source=cdef.id, tag=L.EFFECT_ABILITY,
             ))
-        # Equipment attached to this Hero is a buff on the Hero, so it reads
-        # as its own row pointing at its host.
-        for item_id in (cv.attachments or ()):
-            item_view = _find_card(view, item_id)
-            item_def = registry.get(item_view.def_id) if item_view else None
-            if item_def is not None:
-                out.append(EffectEntry(
-                    title=item_def.name,
-                    detail=f"Equipped to {cdef.name} \u00b7 {item_def.text}".strip(" \u00b7"),
-                    icon="item", colour=C.GOLD, source=item_def.id,
-                ))
+        _add_attachments(name, cv)
 
     for key, value in (actor.flags or {}).items():
         if not value:
             continue
         label = FLAG_LABELS.get(key)
         if label is not None:
-            out.append(EffectEntry(label[0], label[1], label[2], C.ARCANE, key))
+            out.append(EffectEntry(
+                label[0], label[1], label[2], C.ARCANE, key, tag=L.EFFECT_FLAG,
+            ))
         else:
             out.append(EffectEntry(
-                key.replace("_", " ").title(), f"flag = {value}", "flask", C.ARCANE, key
+                key.replace("_", " "),
+                L.FLAG_GENERIC.format(value=value),
+                "flask", C.ARCANE, key, tag=L.EFFECT_FLAG,
             ))
 
     for key, value in (view.flags or {}).items():
         if value:
             out.append(EffectEntry(
-                key.replace("_", " ").title(), f"table flag = {value}", "eye", C.FROST, key
+                key.replace("_", " "),
+                L.FLAG_TABLE_GENERIC.format(value=value),
+                "eye", C.FROST, key, tag=L.EFFECT_TABLE,
             ))
     return out
 
@@ -1503,6 +1627,20 @@ def _find_card(view: Any, card_id: str) -> Any:
                 if card.id == card_id:
                     return card
     return None
+
+
+def _attachment_defs(view: Any, registry: Any, ids: Any) -> tuple[Any, ...]:
+    if view is None or registry is None:
+        return ()
+    out: list[Any] = []
+    for item_id in ids or ():
+        item_view = _find_card(view, item_id)
+        if item_view is None:
+            continue
+        item_def = registry.get(item_view.def_id)
+        if item_def is not None:
+            out.append(item_def)
+    return tuple(out)
 
 
 __all__ = [
