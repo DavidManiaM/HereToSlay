@@ -17,10 +17,17 @@ import pytest
 SRC = Path(__file__).resolve().parent.parent / "src" / "here_to_slay"
 
 #: layer -> module prefixes it may never import
+#:
+#: ``modding/`` is the one package allowed to touch both ``content`` and
+#: ``core``: importing a pack's ``plugin.py`` needs the pack directory (which
+#: ``core`` may not read) and the engine registries (which ``content`` may not
+#: import), so the bridge lives there rather than in either of them. It is still
+#: forbidden the layers above it — ``hts`` formats what it returns.
 FORBIDDEN: dict[str, tuple[str, ...]] = {
     "content": ("here_to_slay.core", "here_to_slay.ui", "here_to_slay.ai", "pygame", "rich"),
     "core": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich", "random"),
     "ai": ("here_to_slay.ui", "pygame", "rich"),
+    "modding": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich"),
 }
 
 

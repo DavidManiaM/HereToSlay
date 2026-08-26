@@ -543,19 +543,103 @@ this phase is *only* rendering and input.
 
 ---
 
-## Phase 10 — Modding Support ★ *the actual point of the project*
+## Phase 10 — Modding Support `[x]` ★ *the actual point of the project*
 
 **Deliverable:** proof the architecture holds, by building a variant.
 
-- [ ] `docs/modding_guide.md` — tutorial: new card → new condition → new effect op → new win condition
-- [ ] Pack plugin loading (`plugin.py` registering ops)
-- [ ] `hts new-pack <name>` scaffolder
-- [ ] **A sample variant** exercising every seam: a new class, a new zone, a new action, a new
-      reaction window, an altered win condition
-- [ ] `hts diff-pack base variants/x` — show what a pack changes
+- [x] `docs/modding_guide.md` — tutorial: new card → new condition → new effect op → new win condition
+- [x] Pack plugin loading (`plugin.py` registering ops) — `modding/plugins.py`
+- [x] `hts new-pack <name>` scaffolder — `modding/scaffold.py`
+- [x] **A sample variant** exercising every seam: a new class, a new zone, a new action, a new
+      reaction window, an altered win condition — `data/variants/overclock`
+- [x] `hts diff-pack base variants/x` — show what a pack changes — `modding/diffing.py`
+- [x] `tests/test_modding.py` (29) and `tests/test_variant_overclock.py` (29), plus three
+      pygame tests that draw the variant
 
-**Acceptance:** the sample variant is implemented with **zero edits to `core/`**. If it needs
-one, that's a design bug to fix here — not in your variant.
+**Acceptance:** ✅
+* `data/variants/overclock` adds a class (`hacker`), a zone (`cache`), three actions
+  (`upload`/`download`/`overclock`), a reaction window (`cache_upload`) on an event the engine
+  has never heard of, and a win condition that replaces `full_party` — plus one op in **each of
+  the five registries**, and a dotted `patches:` edit to a base Monster.
+* **Zero edits to `core/`.** `TestNothingInCoreKnowsAboutThisPack` greps every engine source file
+  for the pack's five op names and its own vocabulary, and asks a *subprocess* that imports only
+  `here_to_slay.core` what it has registered. Both must come back empty.
+* `uv run hts validate data/variants/overclock --strict` → OK, 95 card definitions,
+  146 physical cards, 2 packs.
+* `uv run hts sim data/variants/overclock --games 30 --strict` → 0 errors, 0 invariant
+  violations, at three and four players; both win conditions fire (~55% cache, ~10–30%
+  slay), and the pack terminates as reliably as the base game does under random agents.
+* `uv run pytest` → **940 tests**, all green, and again under `HTS_STRICT=1`.
+
+### Decisions taken during Phase 10
+
+1. **A `Plugin` object, not import-time decorators.** The original sketch had a pack's
+   `plugin.py` call `@effect` at import. That works exactly once: Python caches modules in
+   `sys.modules`, so the second `load_plugins` in a process — `diff-pack` loading two packs, or a
+   test that scoped registrations with `temporarily()` — gets a cached module whose decorators
+   never re-run, and no way to get the ops back. So the decorators *record* and `install()`
+   applies. Installing the same plugin twice is a no-op; another pack claiming the same name
+   still raises.
+
+2. **One declaration reaches both tables.** A plugin op has to exist in two places: the engine
+   registry (so it runs) and the vocabulary (so `hts validate` knows it from a typo). Registering
+   in one only is the failure mode that costs a modder an afternoon — it either runs and fails
+   validation, or validates and explodes mid-game. `Plugin.effect(...)` writes both, which is the
+   only reason to have the wrapper at all.
+
+3. **`modding/` is a fourth package, deliberately.** Importing a pack's `plugin.py` needs the
+   pack directory (which `core/` may not read) *and* the engine registries (which `content/` may
+   not import). Rather than weaken either rule, the bridge got its own package, and
+   `test_layering.py` now asserts it: `modding/` may see `content` and `core`, never `ui` or
+   `ai`. `hts` formats what it returns.
+
+4. **`@mutator` declares its event name.** A variant's `cache.uploaded` is unknown to the base
+   vocabulary, so a window or trigger naming it would fail validation with nowhere to fix it.
+   Writing the mutator is what makes the event *mean* something, so that is where the name is
+   declared — rather than a second, forgettable `events=[...]` list.
+
+5. **A required pack one directory up is found without `--search-path`.** `data/variants/x`
+   requires `base`, which lives in `data/`. The loader scanned only the requested pack's own
+   parent, so a modder's first run failed on a flag they had not read about yet. `_implicit_roots`
+   now also scans one level above; the glob depth is unchanged, so this widens *where* the search
+   starts, never how deep it goes.
+
+6. **`diff-pack` compares resolved content, keyed by id.** Comparing files would show a variant's
+   six-line `rules.yaml` and tell you nothing. Comparing the loaded `RuleSet` shows what the
+   engine will actually walk. Lists of `{id: ...}` are addressed by id rather than index for the
+   same reason the loader merges them that way — otherwise prepending one action reports every
+   later action as edited.
+
+7. **Found by building the variant, fixed in the variant.** Two engine-shaped surprises turned up
+   and neither needed an engine change: `choose` binds for its *siblings*, not for a nested
+   effect (so a card that picks and then acts is a `seq`), and a cost is asked once per frame by
+   `legal_intents()`, so `cache_burn` burns the *oldest* cards rather than asking which — a cost
+   that stopped to ask would deadlock the menu. Both are now documented in the modding guide
+   rather than being lore.
+
+8. **Two bugs the variant found in the tooling, both worth the phase on their own.**
+   *One plugin file reached by two spellings was two plugins.* `hts validate <abs path>` then
+   `hts diff-pack data/variants/x` imported `plugin.py` twice — the `sys.modules` cache was keyed
+   on the raw path string, so `data\...` never matched the absolute `__file__`. The second import
+   built a second `Plugin` whose `install()` collided with the first's ops: "already registered",
+   for doing nothing wrong. Paths are resolved before caching now, and the module key carries a
+   digest of the resolved path so two packs in same-named directories cannot evict each other.
+   *And `diff-pack` diffed the global registries*, which reports nothing once the pack is already
+   installed — the normal state after a `validate` in the same process. It reads the `Plugin`
+   objects directly now and installs nothing at all.
+
+9. **The class tracker was counting the palette.** `ui/pygame/panels.py` used
+   `len(T.CLASS_COLOURS)` as "how many classes win the game", so the seven-class variant showed
+   6/6 and silently dropped the seventh dot. `T.CLASS_COLOURS` is a *palette*; the class list is
+   `rules.classes`. The rules overlay had the same bug in prose ("The six classes"). Both read the
+   loaded rule set now — same colours, same layout, one more dot. This is exactly the class of bug
+   Phase 10 exists to find: the engine was already data-driven, and the UI quietly was not.
+
+10. **The scaffolder writes something runnable.** An empty skeleton makes the first edit a guess.
+   `hts new-pack` writes a pack that validates and deals immediately, with the merge rules that
+   catch everyone (`allows:` replaces, `classes:` replaces) commented at the point they bite.
+   `tests/test_modding.py` loads and validates both templates, so the example ops in
+   `--plugin` cannot rot into ops that do not exist.
 
 ---
 
@@ -584,14 +668,22 @@ one, that's a design bug to fix here — not in your variant.
 
 ## Current Status
 
-**Phases 0–9 complete.** `uv run hts validate data/base --strict` is green on 88 card definitions
-and 136 physical cards; `uv run pytest` runs **803 tests**, and the whole suite also passes under
-`HTS_STRICT=1` (invariants checked after every mutation).
+**Phases 0–10 complete.** `uv run hts validate data/base --strict` is green on 88 card
+definitions and 136 physical cards; `uv run pytest` runs **940 tests**, and the whole suite also
+passes under `HTS_STRICT=1` (invariants checked after every mutation).
 
 **The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical
 client with a living tabletop (felt, motes, class constellation), hover-to-enlarge opponent
 parties in play order, tumbling pip-dice, action menus, hot-seat transitions and a
 `Ctrl+Shift+D` developer console. See `docs/ui_guide.md`.
 
-Next up is **Phase 10 — Modding Support**: modding guide, pack plugin loader, `hts new-pack`, and
-the sample variant proving engine modifiability with zero edits to `core/`.
+**The architecture's central claim is now tested, not asserted.**
+`data/variants/overclock` adds a class, a zone, three actions, a reaction window on its own
+event, a replaced win condition and one op in each of the five registries — with zero edits to
+`core/`, proven by a test that greps the engine and by a subprocess that asks a fresh interpreter
+what it has registered. `hts new-pack` scaffolds a runnable pack, `hts diff-pack` says what one
+changes, and `docs/modding_guide.md` is the tour.
+
+Next up is **Phase 11 — Polish**: save/load at quiescent points, a replay viewer in the UI, sound
+hooks and a settings screen, a performance pass, and closing the `ruff` debt the Phase 9 UI rework
+left in `ui/`.

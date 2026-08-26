@@ -22,6 +22,8 @@ from here_to_slay.content.errors import ContentError, ContentIssue, Severity
 from here_to_slay.content.loader import load_packs
 from here_to_slay.content.registry import ContentRegistry
 from here_to_slay.content.validate import validate_registry
+from here_to_slay.content.vocabulary import Vocabulary
+from here_to_slay.modding import load_plugins
 
 EXIT_OK = 0
 EXIT_CONTENT_ERROR = 1
@@ -327,7 +329,89 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sim.set_defaults(func=cmd_sim)
 
+    # ------------------------------------------------------------------
+    # new-pack
+    # ------------------------------------------------------------------
+    new_pack_cmd = subparsers.add_parser(
+        "new-pack",
+        help="scaffold a variant pack you can edit and play immediately",
+        description=(
+            "Write a runnable skeleton pack: a manifest, a rules overlay, one card, "
+            "and optionally a plugin.py. The result validates and plays as soon as "
+            "it is created, so the first edit is a change rather than a guess."
+        ),
+    )
+    new_pack_cmd.add_argument("name", metavar="NAME", help="pack id (lower_snake_case)")
+    new_pack_cmd.add_argument(
+        "--dir",
+        dest="directory",
+        default="data/variants",
+        metavar="DIR",
+        help="where to create it (default: data/variants)",
+    )
+    new_pack_cmd.add_argument(
+        "--requires",
+        nargs="*",
+        default=["base"],
+        metavar="PACK",
+        help="pack ids this one builds on (default: base; pass none for standalone)",
+    )
+    new_pack_cmd.add_argument(
+        "--plugin",
+        action="store_true",
+        help="also write a plugin.py with an example op of each kind",
+    )
+    new_pack_cmd.add_argument(
+        "--force", action="store_true", help="write into a directory that is not empty"
+    )
+    new_pack_cmd.set_defaults(func=cmd_new_pack)
+
+    # ------------------------------------------------------------------
+    # diff-pack
+    # ------------------------------------------------------------------
+    diff = subparsers.add_parser(
+        "diff-pack",
+        help="show what one pack changes about another",
+        description=(
+            "Load both sides and compare the resolved content — the tables the engine "
+            "really walks — so a deep-merged variant shows up as a diff instead of a "
+            "file you have to read next to the original."
+        ),
+    )
+    diff.add_argument("base", metavar="BASE", help="the pack being changed")
+    diff.add_argument("variant", metavar="VARIANT", help="the pack doing the changing")
+    diff.add_argument(
+        "--search-path",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="extra directory to search for required packs (repeatable)",
+    )
+    diff.add_argument(
+        "--cards", action="store_true", help="also list every changed field of every card"
+    )
+    diff.set_defaults(func=cmd_diff_pack)
+
     return parser
+
+
+# ---------------------------------------------------------------------------
+# Loading content, the same way for every command
+# ---------------------------------------------------------------------------
+
+
+def load_content(args: argparse.Namespace) -> tuple[ContentRegistry, Vocabulary]:
+    """Load the requested packs *and* import their plugins.
+
+    Every command goes through here, which is what makes a variant with a
+    ``plugin.py`` work everywhere the base game does: ``play``, ``gui``, ``sim``
+    and ``replay`` need the ops registered before the first effect runs, and
+    ``validate`` needs the vocabulary those ops imply before it can tell a new
+    verb from a typo. Doing it in one place is why adding a command later cannot
+    forget to.
+    """
+    registry = load_packs(args.packs, search_paths=args.search_path)
+    return registry, load_plugins(registry)
 
 
 # ---------------------------------------------------------------------------
@@ -337,13 +421,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cmd_validate(args: argparse.Namespace, console: Console) -> int:
     try:
-        registry = load_packs(args.packs, search_paths=args.search_path)
+        registry, vocabulary = load_content(args)
     except ContentError as exc:
         _report(console, exc.issues, quiet=args.quiet)
         console.print(_summary_line(exc.issues, loaded=False))
         return EXIT_CONTENT_ERROR
 
-    issues = validate_registry(registry, check_art=not args.no_art_check)
+    issues = validate_registry(
+        registry, vocabulary=vocabulary, check_art=not args.no_art_check
+    )
     _report(console, issues, quiet=args.quiet)
 
     errors = [issue for issue in issues if issue.is_error]
@@ -415,7 +501,7 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
 
     # -- load content ------------------------------------------------------
     try:
-        registry = load_packs(args.packs, search_paths=args.search_path)
+        registry, _ = load_content(args)
     except ContentError as exc:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
@@ -494,7 +580,7 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
 
 def cmd_gui(args: argparse.Namespace, console: Console) -> int:
     try:
-        registry = load_packs(args.packs, search_paths=args.search_path)
+        registry, _ = load_content(args)
     except ContentError as exc:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
@@ -576,7 +662,7 @@ def cmd_replay(args: argparse.Namespace, console: Console) -> int:
 
     # -- load content ------------------------------------------------------
     try:
-        registry = load_packs(args.packs, search_paths=args.search_path)
+        registry, _ = load_content(args)
     except ContentError as exc:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
@@ -680,7 +766,7 @@ def cmd_sim(args: argparse.Namespace, console: Console) -> int:
 
     # -- load content ------------------------------------------------------
     try:
-        registry = load_packs(args.packs, search_paths=args.search_path)
+        registry, _ = load_content(args)
     except ContentError as exc:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
@@ -821,6 +907,151 @@ def cmd_sim(args: argparse.Namespace, console: Console) -> int:
         "[bold green]Acceptance test PASSED: 0 errors, 0 invariant violations.[/bold green]\n"
     )
     return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# new-pack
+# ---------------------------------------------------------------------------
+
+
+def cmd_new_pack(args: argparse.Namespace, console: Console) -> int:
+    from here_to_slay.modding import new_pack
+
+    try:
+        result = new_pack(
+            args.name,
+            directory=args.directory,
+            requires=args.requires,
+            with_plugin=args.plugin,
+            force=args.force,
+        )
+    except ContentError as exc:
+        _report(console, exc.issues)
+        return EXIT_USAGE
+
+    console.print()
+    console.print(f"[bold bright_green]Created[/bold bright_green] {result.root.as_posix()}")
+    for path in result.files:
+        console.print(f"  [dim]{path.as_posix()}[/dim]")
+    console.print()
+    console.print("Next:")
+    console.print(f"  [cyan]uv run hts validate {result.root.as_posix()}[/cyan]")
+    console.print(f"  [cyan]uv run hts diff-pack data/base {result.root.as_posix()}[/cyan]")
+    console.print(f"  [cyan]uv run hts play {result.root.as_posix()}[/cyan]")
+    console.print()
+    console.print("[dim]The tour is in docs/modding_guide.md.[/dim]")
+    return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# diff-pack
+# ---------------------------------------------------------------------------
+
+
+def cmd_diff_pack(args: argparse.Namespace, console: Console) -> int:
+    from here_to_slay.modding.diffing import diff_packs, render_value
+
+    try:
+        diff = diff_packs([args.base], [args.variant], search_paths=args.search_path)
+    except ContentError as exc:
+        _report(console, exc.issues)
+        console.print(_summary_line(exc.issues, loaded=False))
+        return EXIT_CONTENT_ERROR
+
+    console.print()
+    header = Text()
+    header.append(args.base, style="bold bright_cyan")
+    header.append(" -> ")
+    header.append(args.variant, style="bold bright_green")
+    console.print(header)
+    added_packs = ", ".join(diff.added_packs) or "none"
+    console.print(f"[dim]packs added: {added_packs}[/dim]")
+    console.print()
+
+    if diff.is_empty:
+        console.print("[green]No differences — this pack changes nothing.[/green]\n")
+        return EXIT_OK
+
+    if diff.ops:
+        table = Table(title="New ops (from plugin.py)", header_style="bold cyan")
+        table.add_column("registry", style="cyan")
+        table.add_column("names")
+        for registry_name, names in diff.ops.items():
+            table.add_row(registry_name, ", ".join(names))
+        console.print(table)
+        console.print()
+
+    if diff.rules:
+        table = Table(title="rules.yaml", header_style="bold cyan")
+        table.add_column("", width=1)
+        table.add_column("path", style="cyan", overflow="fold")
+        table.add_column("base", overflow="fold")
+        table.add_column("variant", overflow="fold")
+        for change in diff.rules:
+            # Text(), not str: a dotted path contains '[draw]', which rich would
+            # otherwise swallow as a style tag and print as nothing.
+            table.add_row(
+                _CHANGE_MARK[change.kind],
+                Text(change.path, style="cyan"),
+                Text(render_value(change.before)),
+                Text(render_value(change.after)),
+            )
+        console.print(table)
+        console.print()
+
+    if diff.cards:
+        table = Table(title="cards", header_style="bold cyan")
+        table.add_column("", width=1)
+        table.add_column("card", style="cyan", overflow="fold")
+        table.add_column("name", overflow="fold")
+        table.add_column("what", overflow="fold")
+        for card in diff.cards:
+            what = ""
+            if card.kind == "changed":
+                fields = [change.path for change in card.changes]
+                what = ", ".join(fields[:4])
+                if len(fields) > 4:
+                    what += f", +{len(fields) - 4} more"
+            table.add_row(
+                _CHANGE_MARK[card.kind],
+                Text(card.card_id, style="cyan"),
+                Text(card.name),
+                Text(what),
+            )
+        console.print(table)
+        console.print()
+
+        if args.cards:
+            for card in diff.cards_changed:
+                console.print(Text(card.card_id, style="bold"))
+                for change in card.changes:
+                    line = Text("  ")
+                    line.append(change.path, style="cyan")
+                    line.append(
+                        f"  {render_value(change.before)} -> {render_value(change.after)}"
+                    )
+                    console.print(line)
+                console.print()
+
+    console.print(
+        Text(
+            f"{len(diff.rules)} rule change(s), "
+            f"{len(diff.cards_added)} card(s) added, "
+            f"{len(diff.cards_removed)} removed, "
+            f"{len(diff.cards_changed)} edited",
+            style="bold",
+        )
+    )
+    console.print()
+    return EXIT_OK
+
+
+#: how each kind of change is marked in the diff tables
+_CHANGE_MARK: dict[str, Text] = {
+    "added": Text("+", style="bold green"),
+    "removed": Text("-", style="bold red"),
+    "changed": Text("~", style="bold yellow"),
+}
 
 
 def _make_console() -> Console:

@@ -42,14 +42,25 @@ from here_to_slay.ui.pygame.theme import C, M
 from here_to_slay.ui.pygame.widgets import (
     Button,
     CardSprite,
-    Chip,
     IconButton,
     ZoneWidget,
 )
 
-#: Victory needs three slain Monsters or all six classes; both are shown as
-#: progress, and both numbers come from the rules rather than being assumed.
+#: Victory needs three slain Monsters or a Hero of every class; both are shown
+#: as progress, and both numbers come from the rules rather than being assumed.
 DEFAULT_SLAY_TARGET = 3
+
+
+def _rule_classes(registry: Any) -> tuple[str, ...]:
+    """The class list this rule set declares — never the palette's six.
+
+    ``T.CLASS_COLOURS`` is a *palette*. Using its length as "how many classes
+    win the game" made the tracker read 6/6 in a pack with a seventh class, and
+    silently dropped that class's dot. The palette still supplies the colour,
+    with a fallback for a class it has never seen.
+    """
+    declared = tuple(getattr(getattr(registry, "rules", None), "classes", ()) or ())
+    return declared or tuple(T.CLASS_COLOURS)
 
 
 def _initials(name: str) -> str:
@@ -185,7 +196,7 @@ class ActionChip:
 
 
 class ActionBar:
-    """Right-side action chips in a 2–3 column grid that grows upward."""
+    """Right-side action chips in a 2-3 column grid that grows upward."""
 
     def __init__(self, layout: Any) -> None:
         self.layout = layout
@@ -237,7 +248,9 @@ class ActionBar:
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEMOTION:
             pos = event.pos
-            self._hover = next((c for c in self.chips if c.enabled and c.rect.collidepoint(pos)), None)
+            self._hover = next(
+                (c for c in self.chips if c.enabled and c.rect.collidepoint(pos)), None
+            )
             return False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             chip = self._hover or next(
@@ -263,7 +276,10 @@ class ActionBar:
                 bg = T.alpha((28, 32, 38), 120)
             else:
                 bg = T.alpha((22, 30, 36), 230 if lit else 190)
-            border = T.alpha(C.CYAN if lit and chip.enabled else C.INK_FAINT, 180 if chip.enabled else 80)
+            border = T.alpha(
+                C.CYAN if lit and chip.enabled else C.INK_FAINT,
+                180 if chip.enabled else 80,
+            )
             fg = C.INK_BRIGHT if chip.enabled else C.INK_FAINT
             accent = ACTION_STYLE.get(chip.action_id, ("bolt", C.GOLD))[1]
             T.round_rect(screen, chip.rect, bg, radius=10)
@@ -355,7 +371,7 @@ class ReactionTimer:
         if self.fraction > 0.01:
             end = -math.pi / 2 + self.fraction * math.tau
             pygame.draw.arc(screen, C.POISON, arc_rect, -math.pi / 2, end, 3)
-        secs = max(0, int(math.ceil(self.seconds_left)))
+        secs = max(0, math.ceil(self.seconds_left))
         T.text(screen, str(secs), arc_rect.center, T.ui(10, bold=True), C.INK_BRIGHT,
                anchor="center", shadow=None)
         # Option chips
@@ -409,6 +425,7 @@ class OpponentStrip:
         self.party: list[tuple[Any, Any]] = []
         self.leader: tuple[Any, Any] | None = None
         self.classes: tuple[str, ...] = ()
+        self.all_classes: tuple[str, ...] = tuple(T.CLASS_COLOURS)
         self.expand = 0.0
         self.hovered = False
         self.highlighted = False
@@ -565,12 +582,14 @@ class OpponentStrip:
             T.text(screen, str(len(self.slain)), (rect.right - 8, stats.centery),
                    stat_font, C.BLOOD, anchor="midright", shadow=None)
 
-        # Class dots: the six-class win condition at a glance.
+        # Class dots: the all-classes win condition at a glance, one per class
+        # the *rule set* declares.
         dot_x = x
-        for cls in T.CLASS_COLOURS:
+        for cls in self.all_classes:
             has = cls in self.classes
             pygame.draw.circle(
-                screen, T.CLASS_COLOURS[cls] if has else (190, 200, 212),
+                screen,
+                T.CLASS_COLOURS.get(cls, C.INK_DIM) if has else (190, 200, 212),
                 (dot_x + 4, rect.top + 33), 4,
             )
             if not has:
@@ -649,6 +668,7 @@ class OpponentRail:
                 cv = leader_zone.cards[0]
                 strip.leader = (cv, registry.get(cv.def_id))
             strip.classes = _classes_of(strip.party, strip.leader)
+            strip.all_classes = _rule_classes(registry)
             strip.targetable = pid in target_players
             strip.highlighted = pid in target_players
             self.strips.append(strip)
@@ -852,7 +872,9 @@ class DeckArea:
         self.discard_top = (
             registry.get(discard.cards[-1].def_id) if discard and discard.cards else None
         )
-        entries.append(("discard", discard.size if discard else 0, self.discard_top, L.DECK_DISCARD))
+        entries.append(
+            ("discard", discard.size if discard else 0, self.discard_top, L.DECK_DISCARD)
+        )
         monsters = view.zone("monster_deck")
         entries.append(("monster_deck", monsters.size if monsters else 0, None, L.DECK_MONSTER))
 
@@ -1049,6 +1071,7 @@ class PartyRow:
                               empty_hint=L.NO_PARTY, panel=False)
         self.leader_sprite: CardSprite | None = None
         self.classes: tuple[str, ...] = ()
+        self.all_classes: tuple[str, ...] = tuple(T.CLASS_COLOURS)
         self.slain = 0
         self.slay_target = DEFAULT_SLAY_TARGET
 
@@ -1106,6 +1129,7 @@ class PartyRow:
             self._prev_leader = None
 
         self.classes = _classes_of([(cv, registry.get(cv.def_id)) for cv in cards], leader_pair)
+        self.all_classes = _rule_classes(registry)
         slain_zone = you.zone("slain")
         self.slain = len(slain_zone.cards) if slain_zone else 0
 
@@ -1145,9 +1169,10 @@ class PartyRow:
         # Progress toward the two victory conditions, along the bottom edge.
         rect = self.row.rect
         bar = pygame.Rect(rect.left + 12, rect.bottom - 15, 108, 6)
-        T.progress_bar(screen, bar, len(self.classes) / max(1, len(T.CLASS_COLOURS)),
-                       fill=C.ARCANE)
-        T.text(screen, f"{len(self.classes)}/{len(T.CLASS_COLOURS)} clase",
+        total_classes = max(1, len(self.all_classes))
+        covered = sum(1 for cls in self.all_classes if cls in self.classes)
+        T.progress_bar(screen, bar, covered / total_classes, fill=C.ARCANE)
+        T.text(screen, f"{covered}/{total_classes} clase",
                (bar.right + 8, bar.centery), T.ui(9, bold=True), C.INK_FAINT,
                anchor="midleft", shadow=None)
         bar2 = pygame.Rect(bar.left + 190, bar.top, 78, 6)
@@ -1156,11 +1181,15 @@ class PartyRow:
                (bar2.right + 8, bar2.centery), T.ui(9, bold=True), C.INK_FAINT,
                anchor="midleft", shadow=None)
 
-        dot_x = rect.right - 12 - len(T.CLASS_COLOURS) * 13
-        for cls in T.CLASS_COLOURS:
+        dot_x = rect.right - 12 - len(self.all_classes) * 13
+        for cls in self.all_classes:
             has = cls in self.classes
             centre = (dot_x + 5, rect.bottom - 12)
-            pygame.draw.circle(screen, T.CLASS_COLOURS[cls] if has else (190, 200, 212), centre, 5)
+            pygame.draw.circle(
+                screen,
+                T.CLASS_COLOURS.get(cls, C.INK_DIM) if has else (190, 200, 212),
+                centre, 5,
+            )
             if has:
                 pygame.draw.circle(screen, C.INK, centre, 5, 1)
             dot_x += 13

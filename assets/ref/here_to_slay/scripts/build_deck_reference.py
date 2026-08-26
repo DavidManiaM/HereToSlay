@@ -90,7 +90,8 @@ def main() -> None:
         "scans": scans,
         "notes": [
             "Official Unstable Games Wiki is Cloudflare-protected; HTML recovered via Wayback.",
-            "Full-resolution scan binaries may need manual download if Wayback image CDN is unreachable.",
+            "Full-resolution scan binaries may need manual download if the "
+            "Wayback image CDN is unreachable.",
             "Per-card art also available under images/cards/ from here-to-slay.fandom.com.",
         ],
     }

@@ -18,7 +18,7 @@ version: "1.0.0"
 schema_version: 1
 requires: []            # other pack ids
 load_after: []          # ordering hint
-plugin: null            # optional "plugin.py" registering new effect ops
+plugin: null            # optional "plugin.py" registering new ops (modding_guide.md §4)
 provides:
   rules: rules.yaml
   cards: [cards/*.yaml]
@@ -174,7 +174,8 @@ This table is machine-readable: `content/vocabulary.py` declares each op with th
 parameter (`effect`, `condition`, `filter`, `selector`, `zone`, `value`, `name`, …). That is how
 the validator knows `if.then` holds an effect while `if.condition` holds a predicate, and how it
 tracks which `$bindings` are live where — without the schema having to close the union over op
-names. A plugin adds its ops with `Vocabulary.extend(...)`.
+names. A plugin adds its ops with one `@plugin.effect(...)` declaration, which writes the engine
+registry and this table at once — see [`modding_guide.md` §4](modding_guide.md).
 
 ---
 

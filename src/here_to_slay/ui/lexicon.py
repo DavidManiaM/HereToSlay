@@ -171,7 +171,7 @@ def hand_label(n: int) -> str:
 
 
 def np_random_label(total: int | None = None) -> str:
-    """Dice control caption: idle quotes empty, resolved quotes hold 2–12."""
+    """Dice control caption: idle quotes empty, resolved quotes hold 2-12."""
     if total is None:
         return ROLL_READY
     return f'np.random("{int(total)}")'
@@ -321,13 +321,13 @@ __all__ = [
     "KIND_LABEL",
     "LEADER",
     "MORE_SCROLL",
+    "NOTHING_ACTIVE",
     "NO_LEGAL",
     "NO_PARTY",
-    "NOTHING_ACTIVE",
     "PARTY",
     "PASS",
-    "PASS_DEVICE",
     "PASSIVE_ABILITY",
+    "PASS_DEVICE",
     "PAUSED",
     "PICK_TARGET",
     "PLAYER_N",

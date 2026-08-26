@@ -23,9 +23,9 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
+from here_to_slay.ui.pygame import materials
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import clear_card_cache
-from here_to_slay.ui.pygame import materials
 from here_to_slay.ui.pygame.icons import draw_icon
 from here_to_slay.ui.pygame.layout import MIN_H, MIN_W, LayoutManager
 from here_to_slay.ui.pygame.presenter import DEFAULT_AI_DELAY, PygamePresenter

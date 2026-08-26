@@ -124,10 +124,7 @@ def card_facts(card_def: Any) -> CardFacts:
 
     slot = ""
     equip = getattr(card_def, "equip", None)
-    if equip is not None:
-        tags = tuple(str(t) for t in (getattr(card_def, "tags", ()) or ()))
-        slot = L.HACK if "cursed" in {t.lower() for t in tags} else L.CHEAT
-    elif kind == "item":
+    if equip is not None or kind == "item":
         tags = tuple(str(t) for t in (getattr(card_def, "tags", ()) or ()))
         slot = L.HACK if "cursed" in {t.lower() for t in tags} else L.CHEAT
     else:
@@ -386,7 +383,10 @@ def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surf
     )
     blocks: list[tuple[str, tuple[int, int, int], bool]] = []
     if facts.requirement:
-        blocks.append((f"Necesită: {L.requirement_label(facts.requirement)}", T.shade(accent, 0.7), True))
+        blocks.append(
+            (f"Necesită: {L.requirement_label(facts.requirement)}",
+             T.shade(accent, 0.7), True)
+        )
     text_value = L.card_text(card_def) or L.retheme_prompt(str(getattr(card_def, "text", "") or ""))
     if text_value:
         blocks.append((L.retheme_prompt(text_value), C.CARD_INK, False))

@@ -93,3 +93,59 @@ def test_quiet_prints_only_the_summary(fixtures: Path, capsys: pytest.CaptureFix
     out = capsys.readouterr().out
     assert "FAILED" in out
     assert "unknown effect op" not in out
+
+
+# ---------------------------------------------------------------------------
+# Phase 10 — the modding commands
+# ---------------------------------------------------------------------------
+
+
+def test_validate_accepts_a_pack_whose_ops_come_from_a_plugin(project_root: Path) -> None:
+    """Without plugin loading this exits 1 on five 'unknown op' errors — which
+    is exactly what `validate` did before Phase 10."""
+    variant = str(project_root / "data" / "variants" / "overclock")
+    assert main(["validate", variant]) == EXIT_OK
+    assert main(["validate", variant, "--strict"]) == EXIT_OK
+
+
+def test_a_required_pack_one_directory_up_is_found_without_a_search_path(
+    project_root: Path,
+) -> None:
+    """`data/variants/overclock` requires `base`, which lives in `data/`. A
+    modder's first run must not need to learn --search-path."""
+    assert main(["validate", str(project_root / "data" / "variants" / "overclock")]) == EXIT_OK
+
+
+def test_new_pack_writes_something_that_validates(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["new-pack", "scaffolded", "--dir", str(tmp_path)]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "Created" in out
+    assert (tmp_path / "scaffolded" / "pack.yaml").is_file()
+    assert main(["validate", str(tmp_path / "scaffolded"), "--search-path", "data"]) == EXIT_OK
+
+
+def test_new_pack_refuses_a_bad_id(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["new-pack", "Bad Id", "--dir", str(tmp_path)]) == EXIT_USAGE
+    assert "lower_snake_case" in capsys.readouterr().out
+
+
+def test_diff_pack_lists_the_new_ops_and_the_new_zone(
+    project_root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    variant = str(project_root / "data" / "variants" / "overclock")
+    assert main(["diff-pack", str(project_root / "data" / "base"), variant]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "upload_card" in out
+    assert "cache_burn" in out
+    assert "zones[cache].scope" in out
+    assert "rule change(s)" in out
+
+
+def test_diff_pack_of_a_pack_against_itself_says_so(
+    project_root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = str(project_root / "data" / "base")
+    assert main(["diff-pack", base, base]) == EXIT_OK
+    assert "No differences" in capsys.readouterr().out

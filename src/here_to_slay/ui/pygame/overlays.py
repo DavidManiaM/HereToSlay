@@ -417,7 +417,9 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
             for v in getattr(rules, "victory", ()) or ()
         ],
         Line("gap"),
-        Line("h", "The six classes", accent=C.ARCANE, icon="wizard"),
+        # "The six classes" was true of the base pack and of nothing else; the
+        # rules screen describes the *loaded* rule set, so it counts them.
+        Line("h", f"The {len(classes)} classes", accent=C.ARCANE, icon="wizard"),
         Line("chips", chips=tuple(
             (cls.title(), T.CLASS_COLOURS.get(cls, C.INK_DIM), card_icon_name("hero", cls))
             for cls in classes

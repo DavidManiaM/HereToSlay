@@ -265,10 +265,28 @@ def _load_pack_def(pack_dir: Path, issues: list[ContentIssue]) -> PackDef | None
         return None
 
 
+def _implicit_roots(requested: Sequence[Path]) -> list[Path]:
+    """Where to look for a ``requires:`` nobody named a search path for.
+
+    A pack's own directory, its neighbours, and one level above them — which is
+    exactly what makes ``hts validate data/variants/overclock`` find
+    ``data/base`` without the modder having to learn ``--search-path`` on their
+    first run. Two levels is the same depth :func:`_discover` globs, so this
+    widens *where* the scan starts, never how deep it goes.
+    """
+    roots: list[Path] = []
+    for path in requested:
+        parent = _pack_dir(path).parent
+        for candidate in (parent, parent.parent):
+            if candidate not in roots:
+                roots.append(candidate)
+    return roots
+
+
 def _collect_pack_graph(
     requested: Sequence[Path], search_paths: Sequence[Path], issues: list[ContentIssue]
 ) -> dict[str, tuple[PackDef, Path]]:
-    roots = [*search_paths, *{_pack_dir(p).parent for p in requested}]
+    roots = [*search_paths, *_implicit_roots(requested)]
     index = _discover(roots)
     packs: dict[str, tuple[PackDef, Path]] = {}
     queue: list[Path] = [_pack_dir(p) for p in requested]

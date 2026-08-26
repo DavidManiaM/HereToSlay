@@ -1267,7 +1267,6 @@ def test_reaction_timer_auto_passes(registry) -> None:
 
 
 def test_reaction_timer_freezes_while_overlay_open(registry) -> None:
-    import time as time_module
 
     engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
     engine.start()
@@ -1360,3 +1359,69 @@ def _answer_with_the_mouse(scene: GameScene) -> bool:
         if button.enabled:
             return _click(scene, button.rect.center)
     return _press(scene, pygame.K_RETURN)
+
+
+# ---------------------------------------------------------------------------
+# Phase 10 — the client under a variant pack
+# ---------------------------------------------------------------------------
+
+VARIANT_PACK = Path(__file__).resolve().parent.parent / "data" / "variants" / "overclock"
+
+
+@pytest.fixture
+def variant_registry():
+    """The sample variant, with its plugin installed only for one test."""
+    from here_to_slay.core.registry import temporarily
+    from here_to_slay.modding import load_plugins
+
+    with temporarily():
+        registry = load_pack(VARIANT_PACK, search_paths=[BASE_PACK.parent])
+        load_plugins(registry)
+        yield registry
+
+
+def test_the_board_draws_a_variant_with_a_seventh_class(variant_registry, screen) -> None:
+    """A pack the UI has never seen must render, not crash.
+
+    Every class-keyed lookup in the client falls back rather than raising, so a
+    `hacker` with no colour and no icon still gets a card, a chip and a dot.
+    """
+    engine, presenter, scene = _build_scene(variant_registry, ["Alice", "Bob", "Cid"])
+    status = engine.start()
+    if getattr(status, "request", None) is not None:
+        _ask(presenter, status.request)
+    scene.update(0.016)
+    scene.draw(screen)
+    presenter.close()
+
+
+def test_the_class_tracker_counts_the_rule_sets_classes_not_the_palette(
+    variant_registry, registry, screen
+) -> None:
+    """`T.CLASS_COLOURS` is a palette, not a rule. A seven-class pack must show
+    seven dots and a 0/7 bar, or the tracker quietly lies about the win."""
+    _, presenter, scene = _build_scene(variant_registry, ["Alice", "Bob"])
+    scene.update(0.016)
+    scene.draw(screen)
+    assert len(scene.party.all_classes) == 7
+    assert "hacker" in scene.party.all_classes
+    assert all(len(strip.all_classes) == 7 for strip in scene.rail.strips)
+    presenter.close()
+
+    _, base_presenter, base_scene = _build_scene(registry, ["Alice", "Bob"])
+    base_scene.update(0.016)
+    base_scene.draw(screen)
+    assert len(base_scene.party.all_classes) == 6
+    base_presenter.close()
+
+
+def test_the_rules_screen_describes_the_loaded_pack(variant_registry) -> None:
+    """The rules overlay reads `RuleSet`, so a variant's screen is the variant's."""
+    from here_to_slay.ui.pygame.overlays import rules_pages
+
+    pages = rules_pages(variant_registry)
+    flat = " ".join(
+        str(getattr(line, "text", "") or "") for page in pages.values() for line in page
+    )
+    assert "The 7 classes" in flat
+    assert "Tine patru carti in cache" in flat  # the variant's own win condition

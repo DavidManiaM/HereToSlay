@@ -259,8 +259,20 @@ back in the business of knowing every verb; keying on the same strings the cards
 vocabulary. And **selectors yield ids** (`CardId`/`PlayerId`), never live objects, so `exclude:`
 can compare them, a filter can bind one as `$candidate`, and a decision log can print one.
 
-A content pack may ship `plugin.py`; the loader imports it, which runs the decorators. So a mod
-that needs a truly new verb is *still* a drop-in directory, not a fork.
+A content pack may ship `plugin.py`; `modding/plugins.py` imports it and applies what it
+declares. So a mod that needs a truly new verb is *still* a drop-in directory, not a fork.
+
+Two details settled in Phase 10. **Registration is deferred, not done at import time** — a
+plugin's decorators record onto a `Plugin` object and `install()` applies them, because
+`sys.modules` caches a module and its import-time decorators would run exactly once per process,
+stranding anything that loads two packs in a row. And **one declaration reaches both tables**: an
+op has to exist in the engine registry *and* in `content/vocabulary.py`, or it either runs and
+fails `hts validate` or validates and explodes mid-game. `Plugin.effect(...)` writes both.
+
+`modding/` is a fourth package for a reason worth stating: importing a pack's `plugin.py` needs
+the pack directory (which `core/` may not read) and the engine registries (which `content/` may
+not import). Rather than weaken either rule, the bridge got its own home, asserted by
+`tests/test_layering.py`. See `docs/modding_guide.md`.
 
 `ctx` (`EffectContext`) is the only API surface effects get: state access, target resolution,
 `emit`, `ask_*`, and variable binding. Keeping it narrow keeps mods from reaching into engine

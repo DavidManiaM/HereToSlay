@@ -171,7 +171,10 @@ def main() -> None:
                     img_list = [
                         u
                         for u in imgs
-                        if any(u.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp"))
+                        if any(
+                            u.lower().endswith(ext)
+                            for ext in (".png", ".jpg", ".jpeg", ".webp")
+                        )
                         and "wiki" not in Path(u).name.lower()
                     ]
                     (META / "wayback_preview_images.json").write_text(

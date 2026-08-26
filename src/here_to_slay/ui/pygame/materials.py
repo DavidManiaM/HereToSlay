@@ -92,7 +92,7 @@ def init(_screen: pygame.Surface | None = None) -> bool:
     if _available:
         return True
     try:
-        import moderngl  # noqa: WPS433 — optional GPU path
+        import moderngl
     except ImportError:
         _available = False
         return False

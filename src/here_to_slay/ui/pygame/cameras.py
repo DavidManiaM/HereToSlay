@@ -1,6 +1,6 @@
 """Multi-camera director for the table.
 
-Views cycle: local (party + hand) → each opponent’s deployed persoane → centre
+Views cycle: local (party + hand) → each opponent's deployed persoane → centre
 (besties + decks) → local. Arrow keys and clicking an opponent pile switch
 the active camera.
 """

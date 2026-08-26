@@ -1,0 +1,39 @@
+# Overclock — the acceptance test for Phase 10, shipped as a pack.
+#
+# Every seam the architecture claims to have is exercised here exactly once:
+#
+#   new class            -> rules.classes + a Hero and a Party Leader that use it
+#   new zone             -> rules.zones: `cache`, one per seat
+#   new action           -> rules.actions: upload / download / overclock
+#   new reaction window  -> rules.windows: `cache_upload`, on this pack's own event
+#   altered win condition-> rules.victory: `full_cache` in, `full_party` out
+#   new effect op        -> plugin.py: upload_card
+#   new condition op     -> plugin.py: cache_size
+#   new selector         -> plugin.py: cached
+#   new mutator + event  -> plugin.py: cache.uploaded
+#   new cost type        -> plugin.py: cache_burn
+#
+# Nothing in src/here_to_slay/core/ was edited to make any of it work. If a
+# future variant needs an engine change, that is a bug to fix in the engine, not
+# a licence to fork it.
+id: overclock
+name: "Overclock — cache si latenta"
+version: "0.1.0"
+schema_version: 1
+requires: [base]
+load_after: []
+plugin: plugin.py
+
+provides:
+  rules: rules.yaml
+  cards: [cards/*.yaml]
+
+# A patch, so the pack also demonstrates editing somebody else's card without
+# copying it. A dotted path reaches one band inside one roll: here Dracos is
+# tuned down a pip, because a variant that offers a second route to victory
+# should not also make the first route harder.
+patches:
+  - target: base.monster.dracos
+    set:
+      roll.outcomes.0.min: 8
+      roll.outcomes.1.max: 7

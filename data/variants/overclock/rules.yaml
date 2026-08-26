@@ -1,0 +1,121 @@
+# Overclock — merged over data/base/rules.yaml.
+#
+# Read this next to the base file: everything absent here is inherited. What is
+# present is either a key that deep-merges (mappings), an entry that merges by
+# id (actions, zones, victory), or a list that replaces wholesale (`classes`,
+# a phase's `allows`). Getting that distinction wrong is the single most common
+# variant bug, so both cases appear below, labelled.
+id: overclock
+
+# REPLACES. A plain list of strings has no ids to merge on, so a seventh class
+# means restating the six. `party_covers_all_classes` reads this table, which is
+# why adding `hacker` alone would silently make the base six-class win harder —
+# hence the victory edit further down.
+classes: [bard, fighter, guardian, ranger, thief, wizard, hacker]
+
+setup:
+  # Deep-merges into base `setup`: the other four keys are inherited.
+  starting_hand: 5
+
+turn:
+  action_points_per_turn: 3
+
+# --------------------------------------------------------------------------
+# MERGES BY ID. The base zones are untouched; `cache` is appended.
+#
+# `scope: player` mints one per seat at setup, with no code change, because
+# core/setup.py walks this table rather than naming zones. `visibility: public`
+# matters for the win condition: everyone must be able to see how close a rival
+# is to a full cache.
+# --------------------------------------------------------------------------
+zones:
+  - { id: cache, scope: player, visibility: public, ordered: true }
+
+# --------------------------------------------------------------------------
+# MERGES BY ID. Three new actions; every base action still stands.
+# --------------------------------------------------------------------------
+actions:
+  # The variant's engine: turn a card in hand into progress toward the win.
+  # Deliberately challengeable — `upload_card` emits an event, and the
+  # `cache_upload` window below opens inside that dispatch.
+  - id: upload
+    label: "Upload in cache"
+    cost: { action_points: 1 }
+    targets:
+      - param: card
+        from: { selector: cards, of: { player: $self, zone: hand } }
+        prompt: "Ce urci in cache?"
+    effect: { op: upload_card, card: $intent.card, player: $self }
+
+  # The way back out, priced so that cycling a card is never free. `cached` is
+  # this pack's selector; the effect is the base game's generic mover.
+  - id: download
+    label: "Download din cache"
+    cost: { action_points: 2 }
+    targets:
+      - param: card
+        from: { selector: cached, of: $self }
+        prompt: "Ce cobori din cache?"
+    effect: { op: move_card, card: $intent.card, to: { player: $self, zone: hand } }
+
+  # A whole action that costs no action points: `cache_burn` is a currency this
+  # pack invented, and the cost system took it without knowing what it is.
+  - id: overclock
+    label: "Overclock (arde doua din cache)"
+    cost: { cache_burn: 2 }
+    effect: { op: gain_action_points, target: $self, amount: 2 }
+
+# --------------------------------------------------------------------------
+# MERGES BY ID, but `allows` REPLACES — a new action is invisible until the
+# phase that permits it names it, so the whole list is restated.
+# --------------------------------------------------------------------------
+phases:
+  - id: main
+    allows:
+      [
+        draw,
+        play_hero,
+        use_hero_ability,
+        use_leader_ability,
+        attack_monster,
+        equip_item,
+        cast_magic,
+        discard_and_draw,
+        upload,
+        download,
+        overclock,
+      ]
+
+# --------------------------------------------------------------------------
+# DEEP-MERGES. A new window on an event the base game has never heard of.
+#
+# `cache.uploaded` exists because plugin.py registers a mutator for it; that is
+# what makes the name legal here. `seat_left_of_actor` anchors the poll on the
+# uploader rather than the active player, which is the same thing but says so.
+# --------------------------------------------------------------------------
+windows:
+  cache_upload:
+    on: cache.uploaded
+    timing: pre
+    order: seat_left_of_actor
+    reopen_on_action: false
+    # Iron Resolve's flag is honoured here too, so the base Hero that says
+    # "cards you play cannot be challenged" also protects your uploads without
+    # anyone editing that card.
+    condition:
+      op: not
+      of: { op: flag_set, scope: player, key: uncontestable, target: $event.player }
+
+# --------------------------------------------------------------------------
+# MERGES BY ID — including `remove: true`, which is how a variant deletes an
+# inherited entry instead of overriding it into uselessness.
+# --------------------------------------------------------------------------
+victory:
+  # Out: with seven classes the six-class win is a different, much longer game,
+  # and this pack would rather offer a new route than lengthen the old one.
+  - { id: full_party, remove: true }
+  # In: the new route. `cache_size` is plugin.py's condition, and `$player` is
+  # the seat being tested — victory is checked for everybody after every event.
+  - id: full_cache
+    text: "Tine patru carti in cache"
+    condition: { op: cache_size, player: $player, cmp: ">=", value: 4 }

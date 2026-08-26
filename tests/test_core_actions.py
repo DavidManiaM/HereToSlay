@@ -164,9 +164,16 @@ class TestTheMenu:
         in_main(quiet_state)
         place(quiet_state, "play.hero.lump", "hand", "p1")
         (intent,) = intents_for(quiet_state, PlayerId("p1"), "play_hero")
-        # ASCII: the label crosses into the CLI, and an em dash is unencodable
-        # on a legacy Windows console. Typography is the UI's business anyway.
-        assert str(intent) == "Play a Hero - Lump"
+        action = quiet_state.rules.action("play_hero")
+        assert action is not None
+        # The label is the rule set's, never the engine's: spelling the base
+        # pack's English here coupled this test to wording a later pack was free
+        # to change, and did. What must hold is the *shape* — action label, an
+        # ASCII separator, card name. ASCII because the label crosses into the
+        # CLI, and an em dash is unencodable on a legacy Windows console;
+        # typography is the UI's business anyway.
+        assert str(intent) == f"{action.label} - Lump"
+        assert "—" not in str(intent)
 
     def test_legality_is_checked_by_key_not_by_identity(
         self, quiet_state: GameState, place: Place

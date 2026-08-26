@@ -1,0 +1,61 @@
+# The card that proves the new reaction window is real.
+#
+# A Firewall is played out of turn, for free, into `cache_upload` — a window
+# this pack invented, on an event this pack invented, opened by an op this pack
+# invented. The engine knows none of those three names. It only knows how to
+# walk `rules.windows`, which is the whole claim Phase 10 is testing.
+
+- id: overclock.challenge.firewall
+  kind: challenge
+  name: "Firewall"
+  copies: 3
+  text: >-
+    Cand cineva urca o carte in cache, joaca asta: rostogoliti amandoi, iar
+    daca rezultatul tau este mai mare sau egal, uploadul esueaza si cartea
+    ajunge la gunoi.
+  reaction:
+    window: cache_upload
+    challengeable: false
+    condition:
+      op: all
+      of:
+        # Somebody else's upload. `not_self` reads $event.player, which
+        # `upload_card` puts in its payload.
+        - { op: not_self }
+        # One Firewall per upload, the same way the base game limits Challenges:
+        # a flag on the card being uploaded, so a second copy is not offered.
+        - { op: not, of: { op: flag_set, scope: card, key: firewalled, target: $event.card } }
+    effect:
+      op: seq
+      steps:
+        - { op: set_flag, scope: card, key: firewalled, target: $event.card, value: true }
+        - op: contest_roll
+          a: { roller: $self, dice: "2d6", kind: challenge }
+          b: { roller: $event.player, dice: "2d6", kind: challenge }
+          # Ties go to the blocker, matching the base Challenge card so that a
+          # player does not have to learn a second tiebreak rule.
+          on_a_wins: { op: cancel_event, and_discard: true, reason: "Firewall" }
+          on_tie: { op: cancel_event, and_discard: true, reason: "Firewall (egalitate)" }
+          on_b_wins: { op: noop }
+
+# A Magic card that reads the new zone, to show that ordinary content can talk
+# about a variant's additions without any special support.
+- id: overclock.magic.cache_flush
+  kind: magic
+  name: "Cache Flush"
+  copies: 2
+  text: "Trimite la gunoi tot ce are un adversar in cache."
+  play:
+    effect:
+      op: seq
+      steps:
+        - op: choose
+          chooser: $self
+          from: { selector: players, exclude: [$self] }
+          count: 1
+          bind: victim
+          prompt: "Cui ii golesti cache-ul?"
+        - op: for_each
+          over: { selector: cached, of: $victim }
+          bind: purged
+          effect: { op: move_card, card: $purged, to: { zone: discard } }

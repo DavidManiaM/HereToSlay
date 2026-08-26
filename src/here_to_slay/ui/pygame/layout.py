@@ -24,10 +24,10 @@ NARROW = 1180
 
 def _lerp_rect(a: pygame.Rect, b: pygame.Rect, t: float) -> pygame.Rect:
     return pygame.Rect(
-        int(round(a.x + (b.x - a.x) * t)),
-        int(round(a.y + (b.y - a.y) * t)),
-        max(0, int(round(a.w + (b.w - a.w) * t))),
-        max(0, int(round(a.h + (b.h - a.h) * t))),
+        round(a.x + (b.x - a.x) * t),
+        round(a.y + (b.y - a.y) * t),
+        max(0, round(a.w + (b.w - a.w) * t)),
+        max(0, round(a.h + (b.h - a.h) * t)),
     )
 
 
@@ -269,8 +269,10 @@ class LayoutManager:
         """
         w, h = self.width, self.height
         # Left stays compact; right is wider so action labels stay readable.
-        left_w = max(200, min(280 if not compact else 220, int(w * (0.14 if not compact else 0.12))))
-        right_w = max(300, min(420 if not compact else 340, int(w * (0.22 if not compact else 0.18))))
+        left_w = max(200, min(280 if not compact else 220,
+                              int(w * (0.14 if not compact else 0.12))))
+        right_w = max(300, min(420 if not compact else 340,
+                               int(w * (0.22 if not compact else 0.18))))
         pad = max(8, gap)
 
         # --- left column: dice at bottom, merged journal above -----------
@@ -498,7 +500,7 @@ class LayoutManager:
                 setattr(self, name, _lerp_rect(a, b, t))
         for name in self._LERP_INTS:
             if name in frm and name in to:
-                setattr(self, name, int(round(frm[name] + (to[name] - frm[name]) * t)))
+                setattr(self, name, round(frm[name] + (to[name] - frm[name]) * t))
         seats_a = frm.get("seats") or []
         seats_b = to.get("seats") or []
         for i, seat in enumerate(self.seats):
@@ -508,10 +510,10 @@ class LayoutManager:
             seat.rect = _lerp_rect(a["rect"], b["rect"], t)
             seat.party_rect = _lerp_rect(a["party_rect"], b["party_rect"], t)
             seat.centre = (
-                int(round(a["centre"][0] + (b["centre"][0] - a["centre"][0]) * t)),
-                int(round(a["centre"][1] + (b["centre"][1] - a["centre"][1]) * t)),
+                round(a["centre"][0] + (b["centre"][0] - a["centre"][0]) * t),
+                round(a["centre"][1] + (b["centre"][1] - a["centre"][1]) * t),
             )
-            seat.card_w = int(round(a["card_w"] + (b["card_w"] - a["card_w"]) * t))
+            seat.card_w = round(a["card_w"] + (b["card_w"] - a["card_w"]) * t)
             seat.angle = a["angle"] + (b["angle"] - a["angle"]) * t
 
     @property
@@ -631,7 +633,7 @@ class LayoutManager:
                 party = pygame.Rect(self.party_rect)
                 card_w = self.party_card_w
             else:
-                # Side/north wedges — larger than the old 34–56px rail minis.
+                # Side/north wedges — larger than the old 34-56px rail minis.
                 card_w = max(64, min(96, int(min(table.width, table.height) * 0.07)))
                 self.seat_card_w = card_w
                 self.rail_card_w = card_w

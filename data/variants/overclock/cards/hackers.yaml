@@ -1,0 +1,132 @@
+# The seventh class, as cards.
+#
+# Nothing about a class is Python. `rules.classes` lists the name; these cards
+# claim it in `card_class:`; the validator checks the two agree. A Monster that
+# wanted "1 Hacker" would say `{op: party_has_class, class: hacker}` and work
+# immediately, because `party_has_class` reads the card, not a table of six.
+
+# ==========================================================================
+# HACKER — Heroes
+# ==========================================================================
+
+- id: overclock.hero.script_kiddie
+  kind: hero
+  name: "Script Kiddie"
+  card_class: hacker
+  copies: 1
+  text: "Rostogoleste 6+: urca o carte din mana direct in cache."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 6
+          tag: success
+          # `choose` binds for its *siblings*, not for a nested effect — hence
+          # the seq. Pick, then act on the pick.
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                chooser: $self
+                from: { selector: cards, of: { player: $self, zone: hand } }
+                count: 1
+                bind: uploaded
+                prompt: "Ce urci in cache?"
+              - { op: upload_card, card: $uploaded, player: $self }
+        - { max: 5, tag: fail, effect: { op: noop } }
+
+- id: overclock.hero.packet_sniffer
+  kind: hero
+  name: "Packet Sniffer"
+  card_class: hacker
+  copies: 1
+  text: "Rostogoleste 7+: trage doua carti."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - { min: 7, tag: success, effect: { op: draw, target: $self, count: 2 } }
+        - { max: 6, tag: fail, effect: { op: noop } }
+
+- id: overclock.hero.root_access
+  kind: hero
+  name: "Root Access"
+  card_class: hacker
+  copies: 1
+  text: "Rostogoleste 8+: coboara o carte din cache-ul unui adversar in mana ta."
+  ability:
+    activation: action
+    once_per_turn: true
+    cost: { action_points: 1 }
+    roll:
+      dice: "2d6"
+      kind: hero_ability
+      outcomes:
+        - min: 8
+          tag: success
+          effect:
+            op: seq
+            steps:
+              - op: choose
+                chooser: $self
+                from: { selector: cached, of: $opponents }
+                count: 1
+                bind: stolen
+                prompt: "Ce extragi din cache-ul altcuiva?"
+              - { op: move_card, card: $stolen, to: { player: $self, zone: hand } }
+        - { max: 7, tag: fail, effect: { op: noop } }
+
+- id: overclock.hero.cold_boot
+  kind: hero
+  name: "Cold Boot"
+  card_class: hacker
+  copies: 1
+  text: "Fiecare carte pe care o urci in cache iti da inca un punct de actiune, o data pe tura."
+  triggers:
+    - on: cache.uploaded
+      timing: post
+      while_in: party
+      condition:
+        op: all
+        of:
+          - { op: event_actor_is, player: $self }
+          - { op: not, of: { op: flag_set, scope: card, key: booted } }
+      effect:
+        op: seq
+        steps:
+          - { op: set_flag, scope: card, key: booted, value: true }
+          - { op: gain_action_points, target: $self, amount: 1 }
+    # The flag is per turn, not per game: cleared when the turn ends, so the
+    # bonus comes back next turn without the card needing to know what a turn is.
+    - on: turn.ended
+      timing: post
+      while_in: party
+      effect: { op: clear_flag, scope: card, key: booted }
+
+# ==========================================================================
+# HACKER — Party Leader
+# ==========================================================================
+
+- id: overclock.leader.the_zero_day
+  kind: party_leader
+  name: "The Zero Day"
+  card_class: hacker
+  text: "De fiecare data cand rostogolesti pentru abilitatea unei Persoane, +1."
+  triggers:
+    - on: roll.started
+      timing: pre
+      while_in: leader
+      condition:
+        op: all
+        of:
+          - { op: roll_is, kind: hero_ability }
+          - { op: roll_is, roller: $self }
+      effect: { op: modify_roll, amount: 1, source: $card }

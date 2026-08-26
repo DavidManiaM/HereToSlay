@@ -96,8 +96,8 @@ from here_to_slay.ui.pygame.overlays import (
 from here_to_slay.ui.pygame.panels import (
     DEFAULT_SLAY_TARGET,
     REACTION_SECONDS,
-    ActiveStack,
     ActionBar,
+    ActiveStack,
     CornerButtons,
     DeckArea,
     DicePanel,
@@ -899,7 +899,9 @@ class GameScene:
             return _Prompt(
                 request=request,
                 text=L.retheme_prompt(
-                    request.prompt or f"Alege {span} {L.HAND if request.maximum != 1 else L.HAND_ONE}"
+                    request.prompt
+                    or f"Alege {span} "
+                       f"{L.HAND if request.maximum != 1 else L.HAND_ONE}"
                 ),
                 hint="click pe cardurile marcate, apoi confirmă",
                 accent=C.ARCANE, icon="target",
@@ -1757,10 +1759,12 @@ class GameScene:
         if key == pygame.K_q or key == pygame.K_LEFT:
             self._switch_camera(self.cameras.prev)
             return True
-        if key == pygame.K_e or key == pygame.K_RIGHT:
-            if not ((mods & pygame.KMOD_CTRL) and (mods & pygame.KMOD_SHIFT)):
-                self._switch_camera(self.cameras.next)
-                return True
+        # Ctrl+Shift+E is the dev console's neighbour, not a camera step.
+        if (key in (pygame.K_e, pygame.K_RIGHT)) and not (
+            (mods & pygame.KMOD_CTRL) and (mods & pygame.KMOD_SHIFT)
+        ):
+            self._switch_camera(self.cameras.next)
+            return True
         if key == pygame.K_d and (mods & pygame.KMOD_CTRL) and (mods & pygame.KMOD_SHIFT):
             self.open_dev_console()
             return True
@@ -1934,10 +1938,13 @@ class GameScene:
 
         # Click an opponent pile → look at their seat (animated camera move).
         opponent = self.rail.player_at(pos)
-        if opponent and not self.prompt.players:
-            if self.cameras.active.player_id != opponent:
-                self._switch_camera(lambda: self.cameras.jump_opponent(opponent))
-                return True
+        if (
+            opponent
+            and not self.prompt.players
+            and self.cameras.active.player_id != opponent
+        ):
+            self._switch_camera(lambda: self.cameras.jump_opponent(opponent))
+            return True
 
         if sprite is not None:
             self.open_card(sprite.card_def)
