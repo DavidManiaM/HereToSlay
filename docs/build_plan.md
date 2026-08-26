@@ -560,9 +560,10 @@ this phase is *only* rendering and input.
 - [x] **A sample variant** exercising every seam: a new class, a new zone, a new action, a new
       reaction window, an altered win condition — `data/variants/overclock`
 - [x] `hts diff-pack base variants/x` — show what a pack changes — `modding/diffing.py`
-- [x] `tests/test_modding.py` (34) and `tests/test_variant_overclock.py` (29), plus three
-      pygame tests that draw the variant and twelve regression tests for the determinism
-      and CLI defects the phase turned up
+- [x] `tests/test_modding.py` (33) and `tests/test_variant_overclock.py` (28), plus three
+      pygame tests that draw the variant, and seventeen regression tests for the determinism
+      and CLI defects the phase turned up (8 in `test_core_log.py`, 4 in `test_modding.py`,
+      5 in `test_cli_play.py`) — each verified to fail on the code before the fix
 
 **Acceptance:** ✅
 * `data/variants/overclock` adds a class (`hacker`), a zone (`cache`), three actions
@@ -643,6 +644,16 @@ this phase is *only* rendering and input.
    loaded rule set now — same colours, same layout, one more dot. This is exactly the class of bug
    Phase 10 exists to find: the engine was already data-driven, and the UI quietly was not.
 
+### One test the Romanian relabelling had already broken
+
+`test_intents_carry_a_label_a_menu_can_print` asserted the literal string `"Play a Hero - Lump"`.
+The base pack's action labels were translated during the Phase 9 UI work, so the suite had been
+red on `main` since then. The assertion was wrong in kind, not only in wording: an `Intent`'s
+label comes from `rules.yaml`, so spelling out one pack's English coupled an *engine* test to
+content any pack is free to change. It now reads the label off the loaded `ActionDef` and asserts
+the **shape** — action label, ASCII separator, card name — plus the thing the original comment
+actually cared about, that the separator is not an em dash a legacy Windows console cannot encode.
+
 ### Determinism bugs found auditing Phase 10
 
 Phase 10's own tooling put pressure on the replay contract, and it broke in two places. Both are
@@ -693,10 +704,25 @@ fixed with regression tests that fail on the old code.
 ## Phase 11 — Polish
 
 - [ ] Save/load at quiescent points
-- [ ] Replay viewer (step through a logged game in the UI)
+- [ ] Replay viewer (step through a logged game in the UI) — `hts replay` does this in the
+      terminal already, and the log now carries everything a faithful replay needs (Phase 10)
 - [ ] Sound hooks, settings screen
 - [ ] Performance pass (view construction, sprite caching)
-- [ ] `README.md` with real instructions
+- [x] `README.md` with real instructions — quick start, play, mod, status
+- [x] `ruff check .` clean across the whole repository, `assets/ref/` scripts included
+      (33 findings the Phase 9 UI rework left, plus Phase 5's gap 7, closed in Phase 10)
+
+### Already done in Phase 10, out of order
+
+Two items on this list were pulled forward because Phase 10 needed them:
+
+* **`content_hash` and `DecisionLog` are now complete enough for save/load.** The log records the
+  turn cap and the hash covers a pack's `plugin.py`, so "reload this game" and "step through this
+  game" have a trustworthy substrate to build on rather than one that silently reproduces a
+  different game.
+* **`ContentRegistry.content_hash` is memoised**, which was the first item on the performance
+  pass without anyone noticing: `build_view` asked for it once per view, and answering
+  re-serialised every card definition to JSON and re-hashed it.
 
 ---
 
@@ -731,6 +757,8 @@ event, a replaced win condition and one op in each of the five registries — wi
 what it has registered. `hts new-pack` scaffolds a runnable pack, `hts diff-pack` says what one
 changes, and `docs/modding_guide.md` is the tour.
 
+`ruff check .` is clean across the whole repository — the 33 findings the Phase 9 UI rework left
+behind, and Phase 5's gap 7, are closed.
+
 Next up is **Phase 11 — Polish**: save/load at quiescent points, a replay viewer in the UI, sound
-hooks and a settings screen, a performance pass, and closing the `ruff` debt the Phase 9 UI rework
-left in `ui/`.
+hooks and a settings screen, and the rest of the performance pass. Not started.

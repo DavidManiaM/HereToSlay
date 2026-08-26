@@ -299,6 +299,26 @@ Rules:
 4. **Save/load is only legal at `Quiescent`** (between actions), because a suspended generator
    stack isn't serialisable. Mid-decision saves are rejected with a clear error. Accepted
    trade-off — see `architecture_notes.md §4`.
+5. **An interrupted game still writes its log.** Ctrl+C and a closed stdin are the two commonest
+   ways a hot-seat session ends, and both used to return before the save. The log *is* the undo
+   and replay mechanism; discarding it exactly when a player wanted to stop was the wrong trade.
+   An empty log still writes no file.
+
+### 6.1 The two things the log has to record besides the decisions
+
+Both were missing until Phase 10 audited them, and each produced a replay that looked like a
+success while being a different game. Regression tests in `tests/test_core_log.py` and
+`tests/test_modding.py`.
+
+| Recorded | Why it is an *input*, not a preference |
+|---|---|
+| `max_turns` | The cap ends games. A game stopped at turn 40 and replayed with no cap runs past the turn it ended on, asks for decisions the log has not got, and reports that as an ordinary end-of-log. `Engine.replaying` now takes the cap from the log unless the caller overrides it; a log written before the field existed loads as 0, which is what those games used. |
+| the pack's `plugin.py`, hashed into `content_hash` | `check_content` refuses a replay against edited *cards*, because a plausible wrong game is worse than no replay. A variant's Python deserves the same refusal: two `plugin.py` files can leave every card byte-identical and still change what an op does. Added to `as_data()` **only for packs that ship one**, so `data/base` hashes to exactly what it always did. |
+
+And the visible half: `hts replay` used to print "Replay finished" over a log that ran out
+mid-game — which is precisely how a divergence hides. It now reports how many decisions the log
+held and that the game is still waiting, with the two explanations that fit (an interrupted save,
+or a pack that is not the one the log was recorded against).
 
 ---
 
@@ -323,12 +343,23 @@ The test of the design: for each rule, which file changes if the variant changes
 | "a leader gives +1 to hero rolls" | `cards/leaders.yaml → triggers` |
 | "a monster needs 2 Fighters" | `cards/monsters.yaml → requirement` |
 | "reaction windows poll left-of-active" | `rules.yaml → windows` |
+| "a cache zone exists, one per seat" | `rules.yaml → zones` |
+| "uploading is an action that can be blocked" | `rules.yaml → actions` + `windows` |
+| "an action is paid for in cached cards" | a pack's `plugin.py` → `@plugin.cost` |
+| "four cached cards wins" | `rules.yaml → victory[]` + `@plugin.condition` |
 | *how* a roll pipeline works | `core/rolls.py` ← **engine** |
 | *how* windows re-enter | `core/interpreter.py` ← **engine** |
 | *what `steal_hero` means* | `core/effects/party.py` ← **engine (or a pack plugin)** |
 
 Everything above the line is your mod's surface. If you find yourself editing below the line for
 a *content* change, the design has failed and we should add a registry seam instead.
+
+Phase 10 tested that claim by building `data/variants/overclock`, which needed every row above
+and **no edit below the line at all** — a new class, a new zone, three new actions, a new reaction
+window on its own event, a replaced win condition, and one op in each of the five registries. The
+test that keeps it honest greps `core/` for the pack's vocabulary and asks a subprocess importing
+only `here_to_slay.core` what it has registered; both must come back empty. See
+[`modding_guide.md`](modding_guide.md).
 
 **Known no-op:** `play.cost` / `equip.cost` on Magic and Item cards in YAML are never read —
 neither `_run_play` nor `_equip` calls `pay_costs`. Only the action-menu `cost:` blocks charge

@@ -54,6 +54,17 @@ Useful flags:
 The same pack the CLI uses (`data/base`, or any variant directory) is what the
 GUI loads. A card added to YAML this afternoon is on the table this afternoon.
 
+### Running a variant
+
+```bash
+uv run hts gui data/variants/overclock --players 4 --ai 3
+```
+
+Any pack the CLI loads, the GUI loads — including one with a `plugin.py`, whose
+ops are registered before the first frame. Nothing in `ui/pygame/` knows a card,
+a zone or a class by name, so a variant's additions render as soon as its YAML
+does. See [`modding_guide.md`](modding_guide.md).
+
 ---
 
 ## 2. The board — camera views
@@ -239,6 +250,29 @@ The rules overlay is generated from the loaded `RuleSet`, not typed out.
 Action-point costs, the class list, player bounds and the victory conditions
 are read from content, so a variant that makes attacking cost three points
 gets a rules screen that says three.
+
+### The class tracker reads the rule set, not the palette (fixed in Phase 10)
+
+The party row and every opponent strip show a dot per class and an *n*/*m* bar
+for the all-classes win. Both used to count `theme.CLASS_COLOURS`, which is a
+**palette** — six entries because the base game has six classes. Loading the
+seven-class sample variant made the bar read 6/6 forever and silently dropped
+the seventh dot, because a class with no colour was a class the tracker could
+not see.
+
+They now count `rules.classes` and look the colour up with a fallback, so:
+
+- a variant's extra class gets a dot, a chip and a slot in the bar;
+- a class the palette has never heard of renders in the neutral ink instead of
+  raising;
+- the base game is unchanged, pixel for pixel — its six classes are the same
+  six, in the same order.
+
+The rules screen had the same bug in prose (`The six classes`) and now counts
+too. `tests/test_pygame_ui.py` asserts all three against both packs.
+
+This is the class of bug Phase 10 exists to find: the engine was already
+data-driven and the UI quietly was not.
 
 ---
 

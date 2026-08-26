@@ -15,6 +15,8 @@ The tour, in the order it gets harder:
 | 5 | add a zone, an action, a reaction window, a win condition | `rules.yaml` |
 | 6 | edit somebody else's card | `pack.yaml` → `patches:` |
 | 7 | know what you changed | `hts diff-pack` |
+| 8 | prove it works | `hts validate --strict`, `hts sim --strict` |
+| 10 | look up a command | the table in §10 |
 
 The worked example is [`data/variants/overclock`](../data/variants/overclock), which does all of
 it. `tests/test_variant_overclock.py` is its acceptance test, including the one that greps
@@ -178,6 +180,19 @@ conditions or selectors:
 
 Get this wrong and the op still runs — but `hts validate` will not look inside the nested effect,
 so a typo in it surfaces mid-game instead of at load time.
+
+### Your `plugin.py` is part of the content hash
+
+`hts play` saves a decision log, and `hts replay` refuses to run it against content that has
+changed since — a replay that quietly runs against different rules produces a plausible, wrong
+game, which is worse than no replay. Your Python counts as content: the hash covers a sha256 of
+each pack's `plugin.py`, because two versions of one file can leave every card byte-identical and
+still change what an op does.
+
+So: **editing `plugin.py` invalidates the logs you recorded before the edit.** That is the
+intended behaviour, not a bug to work around. If you need an old log to keep replaying, keep the
+old plugin next to it. A pack with no plugin is unaffected — the digest is only added when there
+is one, so `data/base` hashes to exactly what it always did.
 
 ### Registration is deferred, and why that matters
 
@@ -350,7 +365,43 @@ out of a pack, that is a bug in the loader worth reporting.
 
 ---
 
-## 10. Further reading
+## 10. The commands, in one place
+
+| Command | What it does |
+|---|---|
+| `hts new-pack <name> [--plugin] [--dir D] [--requires ...] [--force]` | Write a runnable skeleton pack |
+| `hts validate <pack> [--strict] [--no-art-check] [-q]` | Load, structurally validate, semantically validate. Imports the pack's plugin first, so its ops are known. CI-able: non-zero on error |
+| `hts diff-pack <base> <variant> [--cards]` | What the variant changes: rules, cards, and the ops its plugin adds |
+| `hts play <pack> [--players N] [--seed S] [--max-turns N] [--no-save]` | Terminal hot-seat |
+| `hts gui <pack> [--players N] [--ai N] [--seed S] [--reveal-all] …` | The PyGame client |
+| `hts sim <pack> [--games N] [--players N] [--agent random\|heuristic] [--strict]` | Headless fuzzing: errors, invariant violations, which win condition fired |
+| `hts replay <log.json> <pack> [--step]` | Re-run a saved decision log |
+
+Every one of them loads content the same way (`cli.load_content`), which is why a variant with a
+`plugin.py` works everywhere the base game does.
+
+Two flags worth knowing early:
+
+* **`--strict` on `validate`** promotes warnings to errors. Run it before you ship a pack.
+* **`--strict` on `sim`** turns on the invariant checker after *every* mutation, so a card that
+  strands a copy in `limbo` fails on the game it happened rather than three turns later. A few
+  hundred games is the cheapest bug-finder in the project.
+
+### A pack next door is found for you
+
+`data/variants/overclock` says `requires: [base]`, and `base` lives in `data/`. The loader scans
+the requested pack's own directory, its neighbours, *and one level up*, so this works with no
+flags:
+
+```bash
+uv run hts validate data/variants/overclock
+```
+
+`--search-path DIR` (repeatable) is still there for a pack that lives somewhere unusual.
+
+---
+
+## 11. Further reading
 
 * [`card_schemas.md`](card_schemas.md) — every schema, and the full op catalogue
 * [`rules_engine.md`](rules_engine.md) — how the event bus, windows and victory checks fit together

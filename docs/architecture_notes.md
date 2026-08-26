@@ -26,6 +26,14 @@
 │                    data/<pack>/*.yaml                      │
 │  - card definitions, rule constants, win conditions        │
 └───────────────────────────────────────────────────────────┘
+
+        ┌───────────────────────────────────────────────────┐
+        │  MODDING   modding/  (added in Phase 10)          │
+        │  - imports a pack's plugin.py, scaffolds a pack,  │
+        │    diffs two of them                              │
+        │  - the ONE package that sees content/ and core/   │
+        │    at the same time, on purpose (§5)              │
+        └───────────────────────────────────────────────────┘
 ```
 
 **Enforced invariants** (a test in `tests/test_layering.py` will assert these by walking imports):
@@ -36,6 +44,7 @@
 | `core/` never imports `ui/` or `ai/` | one-way dependency |
 | `ui/` never mutates `GameState` directly — only via `engine.submit(...)` | single write path = single place to log/replay/network |
 | `content/` never imports `core/` | schemas describe data, they don't execute it |
+| `modding/` may import `content/` and `core/`, never `ui/` or `ai/` | it is the bridge, not a fifth layer; `hts` formats what it returns |
 
 The last one matters most: **`CardDef` is inert data.** It has no `.play()` method. Behaviour
 lives in the interpreter, keyed by strings found in the data. This is what makes a mod possible
@@ -315,6 +324,21 @@ Consequences we get for free:
 - **Bug reports** — a seed + log is a reproducible test case.
 - **Regression tests** — golden logs assert card behaviour end to end.
 
+**What `f`'s first three arguments cover** (both learned the hard way in Phase 10, each with a
+regression test):
+
+* `max_turns` is an *input*, not a preference. It ends games, so a log that does not record it
+  replays a different game — one that runs past the turn the original stopped on and then reports
+  the decisions it is missing as an ordinary end-of-log. `DecisionLog` carries it, and
+  `Engine.replaying` takes the cap from the log unless the caller overrides it.
+* `content_hash` covers a pack's **Python as well as its YAML**. `check_content` refuses a replay
+  against edited cards because a silently wrong replay is worse than none — and a variant's
+  `plugin.py` is just as much part of what a game was played with, since two versions of it can
+  leave every card byte-identical while changing what an op does. `ContentRegistry.as_data()`
+  therefore includes a per-pack sha256 of the plugin source, added **only when a pack ships one**
+  so that a pack without a plugin hashes over exactly the bytes it always did and its existing
+  logs keep replaying.
+
 Rule: `random` is banned in `core/`; only `state.rng` may be used, and every draw from it is
 logged. `DeterministicRng` implements splitmix64 itself rather than wrapping `random.Random`,
 because the standard library makes no promise that `shuffle` produces the same permutation in a
@@ -363,24 +387,33 @@ the moment its YAML and PNG exist.
 here-to-slay/
 ├─ pyproject.toml            # uv-managed
 ├─ docs/                     # this directory — living memory
+│  ├─ architecture_notes.md  # this file
+│  ├─ card_schemas.md        # every schema, and the op catalogue
+│  ├─ rules_engine.md        # bus, windows, victory, the game loop
+│  ├─ modding_guide.md       # the tour: card → op → zone → win condition
+│  ├─ rules_reference.md     # what the printed game says, and where we differ
+│  ├─ build_plan.md          # phases, decisions, acceptance
 │  └─ ui_guide.md            # the PyGame board: layout, hotkeys, console
 ├─ data/
 │  ├─ base/                  # the official game as a content pack
 │  │  ├─ pack.yaml           # id, name, version, load order, deps
 │  │  ├─ rules.yaml          # zones, phases, action costs, win conditions
-│  │  └─ cards/{heroes,monsters,items,magic,modifiers,challenges,leaders}.yaml
+│  │  └─ cards/{heroes,monsters,items,magic,reactions,leaders}.yaml
 │  └─ variants/              # ← your mod lives here, base untouched
+│     └─ overclock/          # the sample variant: pack.yaml rules.yaml
+│                            # plugin.py cards/ — every seam, zero core edits
 ├─ assets/                   # art, fonts (pygame only)
 ├─ src/here_to_slay/
-│  ├─ content/   schema.py loader.py registry.py
+│  ├─ content/   schema.py loader.py registry.py validate.py vocabulary.py
 │  ├─ core/      state.py zones.py events.py bus.py interpreter.py
-│  │             effects/ conditions/ selectors/ turn_machine.py
+│  │             effects/ conditions/ selectors.py turn_machine.py
 │  │             rolls.py victory.py rng.py view.py engine.py
+│  ├─ modding/   plugins.py scaffold.py diffing.py     # Phase 10
 │  ├─ ui/cli/    presenter.py render.py
 │  ├─ ui/pygame/ app.py scenes.py panels.py atmosphere.py
 │  │             layout.py widgets.py animations.py presenter.py
 │  ├─ ai/        random_agent.py heuristic_agent.py
-│  └─ cli.py     # entry point: validate | play | replay | gui
+│  └─ cli.py     # validate | play | gui | replay | sim | new-pack | diff-pack
 └─ tests/
 ```
 
