@@ -67,6 +67,28 @@ last week, which is why they have no numeric default of their own.
 The same pack the CLI uses (`data/base`, or any variant directory) is what the
 GUI loads. A card added to YAML this afternoon is on the table this afternoon.
 
+### The start screen
+
+`hts gui` opens on **here to vibe(code)** rather than dealing immediately. Three
+things happen there and nothing else:
+
+| | |
+|---|---|
+| **Nume** | who you are at the table |
+| **Hot-seat** | everybody on this keyboard, plus bots |
+| **Găzduiește** | open a port and read the address out to your friends |
+| **Intră în joc** | type somebody's address and take a seat |
+
+`Enter` starts, `Tab` moves between fields, `Esc` backs out — of the lobby first,
+then of the program. `--no-menu` skips the whole thing and deals from the command
+line flags, which is what a demo or a script wants.
+
+It is drawn from the board's own furniture — the same `Atmosphere` ground and
+motes, the same glass panel, the same pill buttons and cyan accent — so starting
+a game and playing one feel like the same program. The multiplayer half is
+[`multiplayer.md`](multiplayer.md); the trust model is worth reading before you
+open a port.
+
 ### Running a variant
 
 ```bash
@@ -357,7 +379,9 @@ Modules, bottom up:
 | `devconsole` | `Ctrl+Shift+D` |
 | `scenes` | Wires the above to the open `Request` |
 | `presenter` | Engine-thread / GUI-thread bridge |
-| `app` | Window, clock, restart |
+| `menu` | The start screen and the lobby |
+| `netplay` | Turns a menu choice into a live table — the only module that knows both a socket and a surface |
+| `app` | Window, clock, restart, and which of the two screens is up |
 
 The rules overlay is generated from the loaded `RuleSet`, not typed out.
 Action-point costs, the class list, player bounds and the victory conditions

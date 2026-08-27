@@ -45,6 +45,9 @@ CLASS_LABEL: dict[str, str] = {
     "wizard": "Wizard",
 }
 
+#: shown while this machine waits for a networked seat to answer
+WAITING_FOR = "Se așteaptă {name}…"
+
 # -- chrome ------------------------------------------------------------------
 
 AP = "prompts"
@@ -387,6 +390,7 @@ __all__ = [
     "TURN",
     "VICTORY",
     "WAIT",
+    "WAITING_FOR",
     "YOU",
     "YOUR_MOVE",
     "ap_label",

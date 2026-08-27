@@ -33,6 +33,10 @@
         │    diffs two of them                              │
         │  - the ONE package that sees content/ and core/   │
         │    at the same time, on purpose (§5)              │
+        ├───────────────────────────────────────────────────┤
+        │  NETWORK   net/      (added in Phase 12)          │
+        │  - lockstep play: only Decisions cross the wire   │
+        │  - sees core/, never ui/ — §7 is why              │
         └───────────────────────────────────────────────────┘
 ```
 
@@ -45,6 +49,7 @@
 | `ui/` never mutates `GameState` directly — only via `engine.submit(...)` | single write path = single place to log/replay/network |
 | `content/` never imports `core/` | schemas describe data, they don't execute it |
 | `modding/` may import `content/` and `core/`, never `ui/` or `ai/` | it is the bridge, not a fifth layer; `hts` formats what it returns |
+| `net/` may import `core/`, never `ui/` or `ai/` | it speaks in `Decision`s; an import of `ui` would be the first step away from sending decisions rather than state |
 
 The last one matters most: **`CardDef` is inert data.** It has no `.play()` method. Behaviour
 lives in the interpreter, keyed by strings found in the data. This is what makes a mod possible
@@ -324,7 +329,10 @@ Because the core has no ambient randomness or I/O, the decision log fully reprod
 Consequences we get for free:
 
 - **Replay / undo** — re-run the log to step *n*.
-- **Network play** — send decisions, not state.
+- **Save / load** — a save *is* a decision log (Phase 11, `core/savegame.py`).
+- **Network play** — send decisions, not state. Taken literally in Phase 12: `net/` gives every
+  machine the same content and seed and ships only the decisions, so a client computes its own
+  board instead of receiving one. See [`multiplayer.md`](multiplayer.md).
 - **AI search** — deep-copy state, run rollouts with a scripted policy.
 - **Bug reports** — a seed + log is a reproducible test case.
 - **Regression tests** — golden logs assert card behaviour end to end.
@@ -396,6 +404,7 @@ here-to-slay/
 │  ├─ card_schemas.md        # every schema, and the op catalogue
 │  ├─ rules_engine.md        # bus, windows, victory, the game loop
 │  ├─ modding_guide.md       # the tour: card → op → zone → win condition
+│  ├─ multiplayer.md         # lockstep, the handshake, the trust model
 │  ├─ rules_reference.md     # what the printed game says, and where we differ
 │  ├─ build_plan.md          # phases, decisions, acceptance
 │  └─ ui_guide.md            # the PyGame board: layout, hotkeys, console
@@ -414,8 +423,9 @@ here-to-slay/
 │  │             effects/ conditions/ selectors.py turn_machine.py
 │  │             rolls.py victory.py rng.py view.py engine.py
 │  ├─ modding/   plugins.py scaffold.py diffing.py     # Phase 10
+│  ├─ net/       protocol.py session.py host.py client.py  # Phase 12
 │  ├─ ui/cli/    presenter.py render.py
-│  ├─ ui/pygame/ app.py scenes.py panels.py atmosphere.py
+│  ├─ ui/pygame/ app.py scenes.py panels.py atmosphere.py menu.py netplay.py
 │  │             layout.py widgets.py animations.py presenter.py
 │  ├─ ai/        random_agent.py heuristic_agent.py
 │  └─ cli.py     # validate | play | gui | replay | sim | new-pack | diff-pack

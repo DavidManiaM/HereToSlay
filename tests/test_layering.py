@@ -28,6 +28,10 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
     "core": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich", "random"),
     "ai": ("here_to_slay.ui", "pygame", "rich"),
     "modding": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich"),
+    # net/ speaks in Decisions and sockets. It may not know what a board
+    # looks like: the whole design rests on sending decisions, not state,
+    # and an import of `ui` here would be the first step away from that.
+    "net": ("here_to_slay.ui", "here_to_slay.ai", "pygame", "rich"),
 }
 
 

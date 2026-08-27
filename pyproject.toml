@@ -30,6 +30,7 @@ packages = ["src/here_to_slay"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: end-to-end runs that drive whole games"]
 addopts = "-q"
 pythonpath = ["src"]
 

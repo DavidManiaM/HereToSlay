@@ -875,35 +875,92 @@ Two items on this list were pulled forward because Phase 10 needed them:
 
 ---
 
+## Phase 12 — Start Screen & Multiplayer `[x]`
+
+**Deliverable:** a front door, and more than one person behind it.
+
+- [x] `ui/pygame/menu.py` — the start screen: name, mode, table size, lobby. Titled
+      **here to vibe(code)**, drawn out of the board's own furniture (the same `Atmosphere`
+      ground and motes, the same glass panels, the same pill buttons and cyan accent) so
+      starting a game and playing one feel like one program
+- [x] `net/protocol.py` — newline-delimited JSON over TCP, stdlib only
+- [x] `net/session.py` — the decision relay and `NetworkSource`
+- [x] `net/host.py` / `net/client.py` — lobby, seating, and the settled decision stream
+- [x] `ui/pygame/netplay.py` — the one module that knows both a socket and a surface
+- [x] `hts gui` opens on the start screen; `--no-menu` deals straight away
+- [x] `docs/multiplayer.md`, and a layering rule for `net/`
+- [x] `tests/test_net.py` (30) and `tests/test_menu_and_netplay.py` (29)
+
+**Acceptance:** ✅
+* **Two real windows, a real socket, and every answer submitted through the same call a mouse
+  click makes** — both engines finish on the same turn, with the same winner, and every card in
+  every zone in the same place. That is `TestTwoWindowsPlayOneGame`, and it is the only test
+  that would have caught the seat-ownership bug class.
+* `uv run pytest` → **1096 tests**, all green.
+* `ruff check .` clean.
+
+### Decisions taken during Phase 12
+
+1. **Lockstep, not host-authoritative.** `architecture_notes.md §7` has said "network play — send
+   decisions, not state" since Phase 0, and Phase 10 finished making that literally true: the log
+   already records everything a game needs, `content_hash` already covers a pack's Python, and
+   `max_turns` was added as the missing fourth input. So a client runs a *whole engine* and
+   receives only decisions. Nothing in `net/` serialises a board, and the redaction that stops a
+   player seeing another hand is the same `build_view` the single-player game uses — not a second
+   implementation that could disagree with the first.
+
+2. **The host orders; it does not own the state.** Every decision is broadcast *and then* applied,
+   including the host's own. Applying locally and broadcasting afterwards would work almost
+   always, and drift the one time a message crossed something else — so `settle()` is the only
+   way in, for everybody.
+
+3. **A gap in the sequence stops the game.** Lockstep cannot resynchronise: a lost decision means
+   the engines have already diverged. Failing loudly at the moment it happens is worse UX and far
+   better engineering than a board that is quietly wrong three turns later.
+
+4. **Seat ownership is a partition, and it is tested as one.** The host answers its own seat *and
+   every AI seat*, because two machines both running an agent would both publish an answer to the
+   same question. This is the one rule whose breach corrupts a game silently, so the test asserts
+   the whole table is covered exactly once rather than checking each side in isolation.
+
+5. **Content is compared, never sent.** The handshake refuses a mismatch with both hashes in the
+   message. Shipping the pack would have been friendlier and wrong: it would make the two sides
+   disagree about what "the same game" means, and it reuses nothing — whereas comparing hashes is
+   the check `hts replay` already runs, over the same bytes, including `plugin.py`.
+
+6. **The trust model is written down rather than implied.** Lockstep means every machine holds
+   the whole state. The UI never shows another hand, but a modified client could look. That is
+   stated in `net/session.py`, in `docs/multiplayer.md` and on this page, because the alternative
+   — letting somebody discover it — is the dishonest option.
+
+7. **Found by the acceptance test, not by reasoning.** `message(kind, **data)` collided with its
+   own payload the moment a decision message carried `kind="confirmed"`; `kind` is positional-only
+   now. And a `pygame.quit()` in a module fixture tore the display out from under every later test
+   module — passing alone, failing in the suite, which is the shape of bug that only a full run
+   finds.
+
+---
+
 ## Current Status
 
-**Phases 0–11 complete.** `uv run hts validate data/base --strict` is green on 88 card
-definitions and 136 physical cards; `uv run pytest` runs **1031 tests**, and the whole suite also
-passes under `HTS_STRICT=1` (invariants checked after every mutation). `ruff check .` is clean
-across the repository.
+**Phases 0–12 complete.** `uv run pytest` runs **1096 tests**, all green;
+`uv run hts validate data/base --strict` is green on 88 card definitions and 136 physical cards,
+and `data/variants/overclock` on 95 and 146 across 2 packs. `ruff check .` is clean across the
+whole repository.
 
-**The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical
-client with a living tabletop (felt, motes, class constellation), hover-to-enlarge opponent
-parties in play order, tumbling pip-dice, action menus, hot-seat transitions, a settings screen,
-save and load, a replay viewer, and a `Ctrl+Shift+D` developer console. See `docs/ui_guide.md`.
+**The game has a front door.** `hts gui` opens on **here to vibe(code)** — a name, a mode, a
+table size, and a lobby — drawn from the board's own furniture so the two screens read as one
+program. `--no-menu` still deals straight away for a demo or a script.
 
-**The architecture's central claim is tested, not asserted.**
-`data/variants/overclock` adds a class, a zone, three actions, a reaction window on its own
-event, a replaced win condition, one op in each of the five registries, and — since Phase 11 —
-its own sounds, with zero edits to `core/`, proven by a test that greps the engine and by a
-subprocess that asks a fresh interpreter what it has registered. `hts new-pack` scaffolds a
-runnable pack, `hts diff-pack` says what one changes, and `docs/modding_guide.md` is the tour.
+**And more than one person can walk through it.** Multiplayer is the engine's determinism
+theorem used in anger: every machine runs its own engine on the same content and seed, and only
+decisions cross the wire. No board is ever serialised, and the redaction that hides another
+player's hand is the same one single-player uses. See [`multiplayer.md`](multiplayer.md) — the
+trust model is written down there, because lockstep means every machine holds the whole state.
 
-**A save game is a decision log.** `Game = f(content_hash, seed, max_turns, decisions)` is now
-load-bearing rather than aspirational: saving writes the inputs, loading replays them, and a
-restored game is bit-identical by `GameState.snapshot()` or refuses to load. `hts saves`,
-`hts play --load`, `hts gui --load` and `hts gui --watch` all speak the same file, and so does
-`hts replay`.
+**The architecture's central claim stayed tested, not asserted.** `data/variants/overclock` still
+adds a class, a zone, three actions, a reaction window on its own event, a replaced win condition
+and one op in each of the five registries — with zero edits to `core/`, and none of the Phase 11
+or Phase 12 work needed an exception to that.
 
-**The client runs about 2.6x faster per frame** than it did at the end of Phase 10 (15.2 ms →
-5.8 ms at 1920x1080 with four seats), and both surface caches are bounded rather than growing
-for the life of the process. `docs/ui_guide.md` records the before/after numbers, including the
-one optimisation that measured worse and was dropped.
-
-Every item on the build plan is done. What remains is content and variants — which is what the
-architecture was for.
+Nothing is queued. The next thing is whatever the variant you are writing turns out to need.

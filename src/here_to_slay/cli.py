@@ -253,6 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="spectator mode: show every hand (for demos and debugging)",
     )
     gui.add_argument(
+        "--no-menu",
+        action="store_true",
+        help="skip the start screen and deal straight away, using the flags above",
+    )
+    gui.add_argument(
         "--load",
         default=None,
         metavar="SAVE",
@@ -824,7 +829,13 @@ def cmd_gui(args: argparse.Namespace, console: Console) -> int:
     code = launch(
         registry, names,
         seed=seed, max_turns=args.max_turns, ai_seats=ai_seats,
-        engine=engine, **common,
+        engine=engine,
+        # The start screen is the front door: it is where a name is typed and
+        # where a network game is arranged. Skipped when a save is being resumed
+        # (there is a game already) and by --no-menu, which is what a demo or a
+        # script wants.
+        start_on_menu=not args.no_menu and engine is None,
+        **common,
     )
     return EXIT_OK if code == 0 else EXIT_RUNTIME_ERROR
 

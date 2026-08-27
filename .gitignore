@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Game artefacts. A decision log and a save are the same file, and both are
+# written by simply playing (or by running the test suite) - they describe one
+# session on one machine, not the project.
+hts_logs/
+hts_saves/

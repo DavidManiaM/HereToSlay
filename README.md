@@ -5,7 +5,7 @@ ships as a directory of YAML, not a fork of the codebase.
 
 ```
 ui/, ai/  →  core/  →  content/  →  data/<pack>/*.yaml
-              ↖ modding/ ↗
+       net/ ↗       ↖ modding/ ↗
 ```
 
 Python provides *mechanisms*; YAML provides *policy*. `modding/` is the one
@@ -24,6 +24,9 @@ uv run pytest
 ## Play
 
 ```bash
+# The start screen: name, mode, table size, lobby
+uv run hts gui data/base
+
 # Terminal, hot-seat
 uv run hts play data/base
 
@@ -52,6 +55,21 @@ save stores the *inputs* and loading replays them. One consequence worth
 knowing: a restored game is bit-identical or it refuses to load, and `hts play`,
 `hts gui`, `hts replay` and `hts saves` all speak the same file. Pressing `s` at
 any prompt in the terminal client saves too.
+
+## Play together
+
+```bash
+# both machines, same pack
+uv run hts gui data/base
+```
+
+Pick **Găzduiește** on one, read out the address the lobby shows, pick **Intră în
+joc** on the other. Every machine runs its own engine on the same content and
+seed, and only *decisions* cross the wire — no board is ever serialised, and the
+redaction that hides your hand is the same one single-player uses.
+
+Lockstep does mean every machine holds the whole state. Play with people you can
+see; the trust model is spelled out in [`docs/multiplayer.md`](docs/multiplayer.md).
 
 ## Mod
 
