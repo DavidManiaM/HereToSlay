@@ -95,14 +95,14 @@ Original: 6 kinds × 2 copies. Here: the 12 names below, **one copy each**.
 
 **Six extra cards** in the main deck (not replacing cheats/hacks). Equipped persoană counts as the printed class instead of its own.
 
-| Slug | Name | Class it maps to | Text to print |
-|------|------|------------------|---------------|
-| `mask_0` | **/0** | Magician | Persoana echipată e considerată **Magician**. |
-| `mask_6` | **/6** | Hoț | Persoana echipată e considerată **Hoț**. |
-| `mask_12` | **/12** | Gardian | Persoana echipată e considerată **Gardian**. |
-| `mask_18` | **/18** | Luptător | Persoana echipată e considerată **Luptător**. |
-| `mask_24` | **/24** | Arcaș | Persoana echipată e considerată **Arcaș**. |
-| `mask_30` | **/30** | Cântăreț | Persoana echipată e considerată **Cântăreț**. |
+| Slug | Name | Class it maps to | Text to print | Map |
+|------|------|------------------|---------------|-----|
+| `mask_0` | **/0** | Magician | Persoana echipată e considerată **Magician**. | art generated |
+| `mask_6` | **/6** | Hoț | Persoana echipată e considerată **Hoț**. | art generated |
+| `mask_12` | **/12** | Gardian | Persoana echipată e considerată **Gardian**. | art generated |
+| `mask_18` | **/18** | Luptător | Persoana echipată e considerată **Luptător**. | art generated |
+| `mask_24` | **/24** | Arcaș | Persoana echipată e considerată **Arcaș**. | art generated |
+| `mask_30` | **/30** | Cântăreț | Persoana echipată e considerată **Cântăreț**. | art generated |
 
 ## Download/upload speed (Modifiers)
 

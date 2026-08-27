@@ -99,7 +99,13 @@ class TestBands:
     def test_bounds_are_inclusive(self) -> None:
         band = [{"min": 7, "max": 7, "effect": {"op": "noop"}}]
         assert select_band(band, 7) is not None
-        assert select_band(band, 8) is None
+        assert select_band(band, 8) is band[0]
+
+    def test_a_modifier_off_the_range_lands_on_the_nearest_band(self) -> None:
+        band = select_band(self.BANDS, -1)
+        assert band is not None and band["effect"] == {"op": "discard"}
+        band = select_band(self.BANDS, 99)
+        assert band is not None and band["effect"] == {"op": "noop"}
 
 
 class TestThePipeline:
@@ -137,16 +143,20 @@ class TestThePipeline:
         run(quiet_state, flow())
         assert len(quiet_state.zone(zone_id("hand", PlayerId("p1")))) == before + 1
 
-    def test_a_total_no_band_covers_names_the_roll(self, quiet_state: GameState) -> None:
+    def test_a_total_no_band_covers_uses_the_nearest_band(self, quiet_state: GameState) -> None:
         ctx = EffectContext.root(quiet_state, player=PlayerId("p1"))
+        ran: list[str] = []
 
         def flow() -> Any:
             yield from perform_roll(
-                ctx, dice="2d6", outcomes=[{"min": 99, "effect": {"op": "noop"}}]
+                ctx,
+                dice="2d6",
+                outcomes=[{"min": 99, "effect": {"op": "noop"}}],
             )
+            ran.append("ok")
 
-        with pytest.raises(EffectError, match="no outcome band covers"):
-            run(quiet_state, flow())
+        run(quiet_state, flow())
+        assert ran == ["ok"]
 
     def test_every_roll_is_recorded_on_the_execution(self, quiet_state: GameState) -> None:
         ctx = EffectContext.root(quiet_state, player=PlayerId("p1"))

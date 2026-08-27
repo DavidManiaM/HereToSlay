@@ -763,7 +763,7 @@ class GameScene:
         rect = pygame.Rect(0, 0, T.s(210), T.s(22))
         corner = self.layout.corner_buttons_rect
         rect.topright = (corner.right, corner.bottom + T.s(10))
-        T.pill(screen, rect, "SPECTATOR \u00b7 ALL HANDS VISIBLE", bg=T.alpha(C.BLOOD, 70),
+        T.pill(screen, rect, L.SPECTATOR, bg=T.alpha(C.BLOOD, 70),
                fg=C.INK_BRIGHT, border=T.alpha(C.BLOOD, 190), fnt=T.ui(9, bold=True))
 
     # ------------------------------------------------------------------
@@ -1421,12 +1421,14 @@ class GameScene:
         name = self._card_name(change.def_id)
         who = self._owner_name(change.to.owner)
         self.cue("zone.slain")
-        self.toast.show(f"{who} slew {name}!", colour=C.GOLD, duration=2.6, icon="skull")
+        self.toast.show(
+            f"{who} s-a împrietenit cu {name}!", colour=C.GOLD, duration=2.6, icon="skull",
+        )
         if not self.flags["animations"]:
             return
         self.fx.shake(5.0)
         self.fx.add(RingBurstAnimation(at, C.BLOOD, 0.8, radius=150, rings=4))
-        self.fx.add(BannerAnimation("SLAIN", f"{who} \u2014 {name}", colour=C.BLOOD,
+        self.fx.add(BannerAnimation("BESTIE", f"{who} \u2014 {name}", colour=C.GOLD,
                                     icon="skull", duration=0.85, y_fraction=0.18))
         card_def = self.registry.get(change.def_id)
         slain_end = self._place_centre(change.to)
@@ -1527,7 +1529,7 @@ class GameScene:
         who = self._owner_name(getattr(roll, "roller", None))
         tag = getattr(roll, "band_tag", "") or ""
         colour = C.GOOD if tag in ("success", "slay") else (C.BAD if tag == "failure" else C.INK)
-        self.log.add(f"{who} rolled {roll.describe()}", colour=colour, icon="dice")
+        self.log.add(f"{who} np.random() {roll.describe()}", colour=colour, icon="dice")
         # A band's tag is base-pack convention, not an engine concept
         # (`rules_engine.md`, Phase 7 decision 4), so which of them cheer is a
         # table a variant can extend rather than a comparison in this file.
@@ -1536,7 +1538,7 @@ class GameScene:
     def _on_game_won(self, change: GameWon) -> None:
         player = self.view.players.get(change.winner)
         name = player.name if player else str(change.winner)
-        self.log.add(f"{name} wins!", colour=C.GOLD, icon="leader")
+        self.log.add(f"{name} {L.VICTORY_TROPHY.lower()}!", colour=C.GOLD, icon="leader")
         self.cue("game.victory")
         if self.flags["animations"]:
             self.fx.add(ConfettiAnimation((self.layout.width, self.layout.height), 5.0))
@@ -2004,11 +2006,11 @@ class GameScene:
                 return button.tooltip
         slot = self.decks.slot_at(pos)
         if slot == "main_deck":
-            return "Main deck \u2014 Heroes, Items, Magic, Modifiers, Challenges"
+            return "Inbox \u2014 persoane, cheats, scripts, download/upload, Șiaolin"
         if slot == "discard":
-            return "Discard \u2014 the burnt cards"
+            return "Trash \u2014 barfele aruncate"
         if slot == "monster_deck":
-            return "Monster deck \u2014 refills the row"
+            return "Besties \u2014 reumple rândul"
         return ""
 
     def _on_click(self, pos: tuple[int, int]) -> bool:
@@ -2363,8 +2365,8 @@ class GameScene:
             rows.append(ScoreRow(
                 name=player.name,
                 detail=(
-                    f"{len(slain.cards) if slain else 0} slain \u00b7 "
-                    f"{len(party.cards) if party else 0} in party"
+                    f"{len(slain.cards) if slain else 0} besties \u00b7 "
+                    f"{len(party.cards) if party else 0} în grup"
                 ),
                 colour=T.seat_colour(player.seat),
                 winner=pid == winner,
@@ -2373,9 +2375,9 @@ class GameScene:
         winner_player = self.view.players.get(winner) if winner else None
         self.overlays.push(GameOverOverlay(
             self.layout,
-            f"{winner_player.name} wins" if winner_player else "No winner",
+            winner_player.name if winner_player else "Niciun câștigător",
             rows,
-            reason=self._victory_reason(winner) if winner else "the turn limit ran out",
+            reason=self._victory_reason(winner) if winner else "s-a terminat limita de ture",
             winner_colour=T.seat_colour(winner_player.seat) if winner_player else C.INK_DIM,
             turns=self.view.turn_number,
         ))
@@ -2387,8 +2389,8 @@ class GameScene:
             return ""
         slain = player.zone("slain")
         if slain and len(slain.cards) >= self._slay_target:
-            return f"slew {len(slain.cards)} monsters"
-        return "assembled a Hero of every class"
+            return f"s-a împrietenit cu {len(slain.cards)} besties"
+        return "a adunat o persoană din fiecare clasă"
 
     # ------------------------------------------------------------------
     # DevHost
@@ -2541,11 +2543,11 @@ def _fx_slay(scene: GameScene) -> None:
     scene.fx.shake(12.0)
     scene.fx.add(RingBurstAnimation(at, C.BLOOD, 0.9, radius=170, rings=4))
     scene.fx.add(ParticleBurstAnimation(at, (C.BLOOD, C.EMBER, C.GOLD), 0.85, count=18))
-    scene.fx.add(BannerAnimation("SLAIN", "a Monster falls", colour=C.BLOOD, icon="skull"))
+    scene.fx.add(BannerAnimation("BESTIE", "o bestie e acum prietenă", colour=C.GOLD, icon="skull"))
 
 
 def _fx_challenge(scene: GameScene) -> None:
-    scene.fx.add(BannerAnimation("CHALLENGED", "both sides roll", colour=C.EMBER,
+    scene.fx.add(BannerAnimation("ȘIAOLIN", "ambele părți dau np.random()", colour=C.EMBER,
                                  icon="challenge"))
     scene.fx.add(FlashAnimation(scene.layout.hand_rect, C.EMBER, 0.6))
     scene.fx.add(RunePulseAnimation(scene.layout.left_rail_rect.center, C.EMBER, 1.1, radius=110))
@@ -2635,13 +2637,13 @@ def _fx_game_over(scene: GameScene) -> None:
     for i, player in enumerate(scene.view.players.values()):
         slain = player.zone("slain")
         rows.append(ScoreRow(
-            player.name, f"{len(slain.cards) if slain else 0} slain",
+            player.name, f"{len(slain.cards) if slain else 0} besties",
             colour=T.seat_colour(player.seat), winner=i == 0,
             classes=("bard", "fighter") if i == 0 else (),
         ))
     scene.overlays.push(GameOverOverlay(
-        scene.layout, f"{rows[0].name} wins" if rows else "Nobody wins", rows,
-        reason="a developer said so", turns=scene.view.turn_number,
+        scene.layout, f"{rows[0].name}" if rows else "Niciun câștigător", rows,
+        reason=L.VICTORY_TROPHY, turns=scene.view.turn_number,
     ))
 
 

@@ -47,6 +47,7 @@ Locked from Matei (2026-08-27):
 | AlEXTRACT / Ale-X-tra / AleX-TREME | **Alexandra** | same person, three photos; Luptător + Gardian + Hoț; art generated |
 | Ralu-CAUTĂ | **Raluca** | Gardian; art generated |
 | TRAGOȘ | **Dragoș** | Hoț; art generated |
+| Legitimația lui Andrei | **Andrei Rozmarin** | Winning trophy (badge); art generated — not merged with 1+1 Gratis or Dictator |
 | Cartela de la ușă | **object** (door card) | Napping Nibbles; art generated |
 | SiemensGPT | **object** (helpful AI tool) | Mega Slime; art generated from scratch; name on art |
 | Claude Max | **object** (AI wizard) | Cloaked Sage leader; art generated from scratch |

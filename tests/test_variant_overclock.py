@@ -154,6 +154,29 @@ def cache_of(state: GameState, seat: str) -> tuple[Any, ...]:
     return tuple(state.zone(zone_id("cache", PlayerId(seat))).cards)
 
 
+def pin_next_rolls(state: GameState, *pairs: tuple[int, int]) -> None:
+    """Force the next ``rng.roll`` calls, then fall back to the real generator.
+
+    Contest tests care about who won the roll, not about which seed shuffled
+    the deck — extra base cards must not retune these seeds.
+    """
+
+    class _Pinned:
+        def __init__(self, inner: Any, leftover: list[tuple[int, int]]) -> None:
+            self._inner = inner
+            self._leftover = leftover
+
+        def roll(self, count: int, faces: int) -> tuple[int, ...]:
+            if self._leftover and count == len(self._leftover[0]):
+                return self._leftover.pop(0)
+            return self._inner.roll(count, faces)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._inner, name)
+
+    state.rng = _Pinned(state.rng, list(pairs))  # type: ignore[assignment]
+
+
 # ---------------------------------------------------------------------------
 # It loads
 # ---------------------------------------------------------------------------
@@ -314,6 +337,7 @@ class TestTheFirewall:
         state = make_state(self.BLOCKS)
         card = place(state, "base.hero.bad_axe", "hand", "p1")
         firewall = place(state, FIREWALL, "hand", "p2")
+        pin_next_rolls(state, (6, 6), (1, 1))  # blocker high, uploader low
 
         script = Scripted({"p2": [FIREWALL]})
         run(state, {"op": "upload_card", "card": card, "player": "p1"}, script=script)
@@ -334,6 +358,7 @@ class TestTheFirewall:
         state = make_state(self.SURVIVES)
         card = place(state, "base.hero.bad_axe", "hand", "p1")
         firewall = place(state, FIREWALL, "hand", "p2")
+        pin_next_rolls(state, (1, 1), (6, 6))  # blocker low, uploader high
 
         run(
             state,

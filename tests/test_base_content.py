@@ -80,15 +80,15 @@ def _ids(base: ContentRegistry, kind: str) -> list[str]:
 
 
 class TestTheBox:
-    """The printed contents: 115 main-deck cards, 15 Monsters, 6 Party Leaders."""
+    """The printed contents: 121 main-deck cards (115 + 6 CIDR masks), 15 Monsters, 6 Party Leaders."""
 
-    def test_the_main_deck_holds_115_cards(self, base: ContentRegistry) -> None:
+    def test_the_main_deck_holds_121_cards(self, base: ContentRegistry) -> None:
         total = sum(
             card.copies
             for card in base.cards.values()
             if DECK_FOR_KIND[card.kind] == "main_deck"
         )
-        assert total == 115
+        assert total == 121
 
     def test_there_are_15_monsters_and_6_leaders(self, base: ContentRegistry) -> None:
         assert sum(c.copies for c in _defs(base, "monster")) == 15
@@ -173,6 +173,22 @@ class TestCardShapes:
                 assert target == "$opponents", item.id
             else:
                 assert target == "$self", item.id
+
+    def test_six_cidr_masks_are_in_the_deck(self, base: ContentRegistry) -> None:
+        masks = [card for card in _defs(base, "item") if "mask" in card.tags]
+        assert [card.id.rsplit(".", 1)[-1] for card in masks] == [
+            "mask_0", "mask_12", "mask_18", "mask_24", "mask_30", "mask_6",
+        ]
+        by_class = {card.card_class: card.id for card in masks}
+        assert by_class == {
+            "wizard": "base.item.mask_0",
+            "thief": "base.item.mask_6",
+            "guardian": "base.item.mask_12",
+            "fighter": "base.item.mask_18",
+            "ranger": "base.item.mask_24",
+            "bard": "base.item.mask_30",
+        }
+        assert all(card.copies == 1 for card in masks)
 
 
 def _ops_in(node: Any) -> set[str]:
@@ -349,3 +365,19 @@ def test_wiggles_can_steal_a_hero_that_has_already_been_used(
 
     assert state.card(victim).zone == zone_id("party", P1), "the steal still happens"
     assert find_violations(state) == []
+
+
+def test_a_mask_replaces_the_equipped_hero_class(base: ContentRegistry, place) -> None:
+    """A CIDR mask makes the host persoană count as that class, not both."""
+    state = _dealt(base)
+    hero = place(state, "base.hero.bad_axe", "party", "p1")
+    mask = place(state, "base.item.mask_0", "party", "p1")
+    state.attach(mask, hero)
+
+    ctx = EffectContext.root(state, player=P1, source=hero)
+    assert ctx.test({"op": "card_class_is", "class": "wizard"})
+    assert not ctx.test({"op": "card_class_is", "class": "fighter"})
+    from here_to_slay.core.conditions.board import party_classes
+
+    counts = party_classes(ctx, P1)
+    assert counts.get("wizard", 0) >= 1

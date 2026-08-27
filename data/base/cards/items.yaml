@@ -150,3 +150,85 @@
           - { op: compare, left: $event.action, cmp: "==", right: use_hero_ability }
           - { op: compare, left: $event.card, cmp: "==", right: $card.attached_to }
       effect: { op: cancel_event, reason: "Sealing Key" }
+
+# CIDR masks — six extra unelte. Equipped persoană counts as that class
+# instead of its printed one (QUESTIONS.md #4). `card_class` + tag `mask`
+# is what `party_classes` reads; no per-mask Python.
+
+- id: base.item.mask_0
+  kind: item
+  name: "/0"
+  copies: 1
+  card_class: wizard
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_0.png
+  text: "Persoana echipată e considerată Magician."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+
+- id: base.item.mask_6
+  kind: item
+  name: "/6"
+  copies: 1
+  card_class: thief
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_6.png
+  text: "Persoana echipată e considerată Hoț."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+
+- id: base.item.mask_12
+  kind: item
+  name: "/12"
+  copies: 1
+  card_class: guardian
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_12.png
+  text: "Persoana echipată e considerată Gardian."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+
+- id: base.item.mask_18
+  kind: item
+  name: "/18"
+  copies: 1
+  card_class: fighter
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_18.png
+  text: "Persoana echipată e considerată Luptător."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+
+- id: base.item.mask_24
+  kind: item
+  name: "/24"
+  copies: 1
+  card_class: ranger
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_24.png
+  text: "Persoana echipată e considerată Arcaș."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true
+
+- id: base.item.mask_30
+  kind: item
+  name: "/30"
+  copies: 1
+  card_class: bard
+  tags: [mask]
+  art: ref/here_to_vibe/images/by_type/items/mask_30.png
+  text: "Persoana echipată e considerată Cântăreț."
+  equip:
+    to: { selector: heroes, of: $self }
+    cost: { action_points: 1 }
+    challengeable: true

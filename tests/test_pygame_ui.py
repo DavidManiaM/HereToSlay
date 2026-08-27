@@ -276,7 +276,23 @@ def test_table_faces_are_full_art_and_hover_text_is_romanian(registry) -> None:
     challenge = registry["base.challenge.challenge"]
     assert L.card_name(challenge) == "Șia all in"
     assert library().has_art(challenge)
-    assert L.kind_label("challenge") == "Șia all in"
+    assert L.kind_label("challenge") == "Confruntare xiaolin"
+    assert L.kind_label("hero") == "Persoană"
+    assert L.kind_label("monster", plural=True) == "Besties"
+    assert L.kind_label("magic") == "Script"
+    assert L.kind_label("modifier") == "Download/Upload Speed"
+    assert L.kind_label("item") == "Cheat"
+    assert L.kind_label("item", tags=["cursed"]) == "Hack"
+    assert L.kind_label("party_leader") == "Șeful grupului"
+    assert L.AP == "prompts"
+    assert L.HAND_ONE == "barfă"
+    assert L.HAND == "răspunsuri de la AI"
+    assert L.VICTORY == "Ai câștigat, dictatorul îți e subjugat"
+    assert L.VICTORY_TROPHY == "Primești legitimația lui Andrei"
+
+    mask = registry["base.item.mask_0"]
+    assert L.card_name(mask) == "/0"
+    assert library().has_art(mask)
 
     clear_card_cache()
     surf = render_card(hero, CARD_W, CARD_H)
@@ -615,7 +631,8 @@ def test_rules_pages_come_from_content(registry) -> None:
         if action.enabled:
             assert action.label in text, f"{action.id} is missing from the rules page"
     for cls in registry.rules.classes:
-        assert cls.title() in text, f"class {cls} is missing from the rules page"
+        from here_to_slay.ui import lexicon as L
+        assert L.class_label(cls) in text, f"class {cls} is missing from the rules page"
     for victory in registry.rules.victory:
         assert victory.text in text, f"{victory.id} is missing from the rules page"
     assert str(registry.rules.turn.action_points_per_turn) in text
@@ -639,7 +656,7 @@ def test_every_overlay_draws(registry, screen) -> None:
             MenuItem("quit", "Quit", danger=True),
         ]),
         HandoverOverlay(layout, "Bob", turn=3),
-        GameOverOverlay(layout, "Alice wins", rows, reason="slew 3 monsters", turns=9),
+        GameOverOverlay(layout, "Alice", rows, reason="s-a împrietenit cu 3 besties", turns=9),
     ]
     for overlay in overlays:
         stack.push(overlay)
@@ -1066,7 +1083,7 @@ def test_scene_celebrates_a_slain_monster(registry, screen) -> None:
     monster_id = engine.state.zone_of("monster_row").top()[0]
     engine.state.move_card(monster_id, zone_id("slain", "p1"))
     scene.update(0.016)
-    assert scene.toast.message and "slew" in scene.toast.message
+    assert scene.toast.message and "împrietenit" in scene.toast.message
     assert scene.fx.shake_offset != (0, 0) or scene.fx.count() > 0
     scene.draw(screen)
     presenter.close()
@@ -1445,7 +1462,7 @@ def test_the_rules_screen_describes_the_loaded_pack(variant_registry) -> None:
     flat = " ".join(
         str(getattr(line, "text", "") or "") for page in pages.values() for line in page
     )
-    assert "The 7 classes" in flat
+    assert "7 clase" in flat
     assert "Tine patru carti in cache" in flat  # the variant's own win condition
 
 

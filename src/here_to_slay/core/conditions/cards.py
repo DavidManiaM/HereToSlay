@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
+from here_to_slay.core.conditions.board import effective_card_class
 from here_to_slay.core.errors import EffectError
 from here_to_slay.core.ids import CardId, PlayerId
 from here_to_slay.core.registry import condition
@@ -51,8 +52,7 @@ def _card_kind_is(ctx: EffectContext, params: Params) -> bool:
 
 @condition("card_class_is")
 def _card_class_is(ctx: EffectContext, params: Params) -> bool:
-    definition = ctx.definition(subject(ctx, params))
-    card_class = getattr(definition, "card_class", None)
+    card_class = effective_card_class(ctx, subject(ctx, params))
     return card_class is not None and card_class in _values(ctx.resolve(params.get("class")))
 
 
@@ -147,8 +147,12 @@ def _event_matches(ctx: EffectContext, params: Params) -> bool:
         return False
 
     classes = _values(ctx.resolve(params.get("class_in")))
-    if classes and (definition is None or getattr(definition, "card_class", None) not in classes):
-        return False
+    if classes:
+        live_class = (
+            effective_card_class(ctx, CardId(card_id)) if card_id in ctx.state.cards else None
+        )
+        if live_class not in classes:
+            return False
 
     tags = set(_values(ctx.resolve(params.get("tag_in"))))
     if tags and (definition is None or not tags & set(definition.tags)):

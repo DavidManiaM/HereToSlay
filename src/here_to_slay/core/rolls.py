@@ -200,12 +200,30 @@ def band_tag(band: Any) -> str | None:
 
 def select_band(bands: Iterable[Any], total: int) -> Any | None:
     """The first band matching ``total``, in declaration order. ``min``/``max``
-    are inclusive, and both omitted means catch-all."""
-    for band in bands:
+    are inclusive, and both omitted means catch-all.
+
+    If a modifier has pushed the total off every printed range, land on the
+    nearest band so play continues — a -4 on a 2 is a miss, not a crash.
+    """
+    listed = list(bands)
+    for band in listed:
         low, high, _effect = band_bounds(band)
         if (low is None or total >= low) and (high is None or total <= high):
             return band
-    return None
+    if not listed:
+        return None
+
+    def distance(band: Any) -> int:
+        low, high, _effect = band_bounds(band)
+        if low is None and high is None:
+            return 0
+        if high is not None and total > high:
+            return total - high
+        if low is not None and total < low:
+            return low - total
+        return 0
+
+    return min(listed, key=distance)
 
 
 # ---------------------------------------------------------------------------

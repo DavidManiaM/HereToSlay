@@ -57,6 +57,8 @@ class TestTheMenu:
         is met, which the next test covers.
         """
         in_main(quiet_state)
+        for card in list(quiet_state.zone("monster_row").cards):
+            quiet_state.move_card(card, "discard")
         offered = legal_intents(quiet_state)
 
         assert {intent.action for intent in offered} == {"draw"}

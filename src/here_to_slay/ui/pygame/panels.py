@@ -667,7 +667,7 @@ class OpponentRail:
             if leader_zone and leader_zone.cards:
                 cv = leader_zone.cards[0]
                 strip.leader = (cv, registry.get(cv.def_id))
-            strip.classes = _classes_of(strip.party, strip.leader)
+            strip.classes = _classes_of(strip.party, strip.leader, view=view, registry=registry)
             strip.all_classes = _rule_classes(registry)
             strip.targetable = pid in target_players
             strip.highlighted = pid in target_players
@@ -733,13 +733,29 @@ class OpponentRail:
             strip.draw(screen)
 
 
+def _host_class(cdef: Any, attachment_defs: Sequence[Any] = ()) -> str | None:
+    """Printed class, or the mask's class if a CIDR mask is equipped."""
+    cls = getattr(cdef, "card_class", None)
+    for item in attachment_defs or ():
+        tags = {str(tag).lower() for tag in (getattr(item, "tags", ()) or ())}
+        masked = getattr(item, "card_class", None)
+        if masked and "mask" in tags:
+            return masked
+    return cls
+
+
 def _classes_of(
-    party: Sequence[tuple[Any, Any]], leader: tuple[Any, Any] | None
+    party: Sequence[tuple[Any, Any]],
+    leader: tuple[Any, Any] | None,
+    *,
+    view: Any = None,
+    registry: Any = None,
 ) -> tuple[str, ...]:
     """Every Hero class a seat covers — Leaders count, per the rulebook."""
     found: set[str] = set()
-    for _cv, cdef in party:
-        cls = getattr(cdef, "card_class", None)
+    for cv, cdef in party:
+        atts = _attachment_defs(view, registry, getattr(cv, "attachments", ()) or ())
+        cls = _host_class(cdef, atts)
         if cls:
             found.add(cls)
     if leader is not None:
@@ -1128,7 +1144,10 @@ class PartyRow:
         else:
             self._prev_leader = None
 
-        self.classes = _classes_of([(cv, registry.get(cv.def_id)) for cv in cards], leader_pair)
+        self.classes = _classes_of(
+            [(cv, registry.get(cv.def_id)) for cv in cards], leader_pair,
+            view=view, registry=registry,
+        )
         self.all_classes = _rule_classes(registry)
         slain_zone = you.zone("slain")
         self.slain = len(slain_zone.cards) if slain_zone else 0

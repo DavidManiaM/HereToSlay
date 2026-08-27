@@ -4,9 +4,9 @@
 # turn into an open window declared in rules.yaml. That is why they have a
 # `reaction:` block instead of `play:` and never appear in the action menu.
 #
-# Deck arithmetic for the 115-card main deck:
-#     48 Heroes (1 each) + 12 Items (6x2) + 16 Magic (8x2)
-#   + 32 Modifiers (4x8) + 7 Challenges = 115
+# Deck arithmetic for the 121-card main deck:
+#     48 Heroes (1 each) + 12 Items (6x2) + 6 CIDR masks + 16 Magic (8x2)
+#   + 32 Modifiers (4x8) + 7 Challenges = 121
 # The 48/12/16 counts follow from confirmed card lists; the 32/7 split is
 # UNVERIFIED — I could not find a primary source for how many Modifier and
 # Challenge cards the box holds, so these are chosen to hit the printed 115.

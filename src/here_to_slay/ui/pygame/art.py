@@ -11,7 +11,8 @@ So this module has two halves:
   ``assets/ref/here_to_vibe/`` (Here to Vibe (Code) art), then from
   ``assets/ref/here_to_slay/``. Within a pack it uses ``meta/catalog.json``'s
   ``game_id`` field, then slug against the ``images/by_type/`` folders, then a
-  couple of naming fixups (Leaders are filed as ``the_shadow_claw``). Surfaces are cached per requested size.
+  couple of naming fixups (Leaders are filed as ``the_shadow_claw``).
+  Surfaces are cached per requested size.
 * When there is no file, :func:`procedural_art` draws a **sigil**: a coloured
   field plus a geometric emblem seeded from the card id, so every card gets a
   distinct, stable, obviously-intentional image. Nothing on screen ever says
@@ -57,6 +58,7 @@ KIND_FOLDERS: dict[str, tuple[str, ...]] = {
     "party_leader": ("leaders", "unknown"),
     "modifier": ("modifiers", "misc", "unknown"),
     "challenge": ("challenges", "misc", "unknown"),
+    "misc": ("misc", "unknown"),
 }
 
 
@@ -334,6 +336,25 @@ class ArtLibrary:
                             return candidate
         return None
 
+    def named_art(self, *relative: str, size: tuple[int, int]) -> pygame.Surface | None:
+        """Load pack-relative artwork that is not a playable card (trophy, UI)."""
+        width, height = max(4, size[0]), max(4, size[1])
+        self._scan()
+        for rel in relative:
+            key = Path(rel).stem.lower()
+            candidates: list[Path] = []
+            hit = self._slugs.get(key)
+            if hit is not None:
+                candidates.append(hit)
+            for pack in self._packs:
+                candidates.append(pack / rel)
+            for path in candidates:
+                if path.is_file():
+                    loaded = self._load_cropped(path, width, height)
+                    if loaded is not None:
+                        return loaded
+        return None
+
     def has_art(self, card_def: Any) -> bool:
         return self.path_for(card_def) is not None
 
@@ -427,6 +448,18 @@ def library() -> ArtLibrary:
     return _library
 
 
+def trophy_card(size: tuple[int, int]) -> pygame.Surface:
+    """Legitimația lui Andrei — the win trophy, not a playable card."""
+    surf = library().named_art(
+        "images/cards/Legitimatia_lui_Andrei_Here_to_Vibe.png",
+        "images/by_type/misc/legitimatia_andrei.png",
+        size=size,
+    )
+    if surf is not None:
+        return surf
+    return procedural_art("legitimatia_andrei", "item", None, size)
+
+
 def clear_art_cache() -> None:
     if _library is not None:
         _library.clear()
@@ -441,4 +474,5 @@ __all__ = [
     "clear_art_cache",
     "library",
     "procedural_art",
+    "trophy_card",
 ]

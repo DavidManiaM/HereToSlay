@@ -29,6 +29,7 @@ import pygame
 from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.animations import AnimationManager, ConfettiAnimation
+from here_to_slay.ui.pygame.art import trophy_card
 from here_to_slay.ui.pygame.card_renderer import card_facts, render_card
 from here_to_slay.ui.pygame.icons import card_icon_name, draw_icon
 from here_to_slay.ui.pygame.theme import C, M
@@ -405,42 +406,40 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
     paid_actions.sort(key=lambda a: int((getattr(a, "cost", None) or {}).get("action_points", 0)))
 
     overview: list[Line] = [
-        Line("h", "The goal", accent=C.GOLD, icon="target"),
+        Line("h", "Scopul", accent=C.GOLD, icon="target"),
         Line("p", (
-            f"Build a party of Heroes and slay Monsters. {lo}\u2013{hi} players. "
-            "The first player to meet a victory condition wins immediately, "
-            "mid-turn if that is when it happens."
+            f"Adună persoane și împrietenește-te cu besties. {lo}\u2013{hi} jucători. "
+            "Primul care primește legitimația lui Andrei câștigă imediat, "
+            "chiar în mijlocul turei."
         )),
         Line("gap"),
-        Line("h", "Victory", accent=C.GOOD, icon="check"),
+        Line("h", L.VICTORY_TROPHY, accent=C.GOOD, icon="check"),
         *[
             Line("bullet", str(getattr(v, "text", None) or getattr(v, "id", "")), accent=C.GOOD)
             for v in getattr(rules, "victory", ()) or ()
         ],
         Line("gap"),
-        # "The six classes" was true of the base pack and of nothing else; the
-        # rules screen describes the *loaded* rule set, so it counts them.
-        Line("h", f"The {len(classes)} classes", accent=C.ARCANE, icon="wizard"),
+        Line("h", f"{len(classes)} clase", accent=C.ARCANE, icon="wizard"),
         Line("chips", chips=tuple(
-            (cls.title(), T.CLASS_COLOURS.get(cls, C.INK_DIM), card_icon_name("hero", cls))
+            (L.class_label(cls), T.CLASS_COLOURS.get(cls, C.INK_DIM), card_icon_name("hero", cls))
             for cls in classes
         )),
         Line("p", (
-            "A Party Leader's class counts toward a class requirement and toward "
-            "the all-classes win, but a Leader is never a Hero."
+            "Clasa șefului de grup contează la cerințe și la victoria pe clase, "
+            "dar șeful nu e o persoană."
         ), accent=C.INK_DIM),
         Line("gap"),
         Line("h", "Setup", accent=C.FROST, icon="scroll"),
-        Line("row", "cards dealt to each player", f"{hand}", accent=C.FROST),
-        Line("row", "Monsters face up in the row at all times", f"{row}", accent=C.FROST),
-        Line("row", "one Party Leader each, with a passive ability", "1", accent=C.FROST),
+        Line("row", "barfe împărțite fiecărui jucător", f"{hand}", accent=C.FROST),
+        Line("row", "besties cu fața în sus pe masă", f"{row}", accent=C.FROST),
+        Line("row", "un șef de grup, cu abilitate pasivă", "1", accent=C.FROST),
     ]
 
     turn_page: list[Line] = [
-        Line("h", f"{ap} action points per turn", accent=C.GOLD, icon="bolt"),
+        Line("h", f"{ap} prompts pe tură", accent=C.GOLD, icon="bolt"),
         Line("p", (
-            "Spend them in any combination, repeating whatever you like. "
-            "Unspent points do not carry over."
+            "Cheltuie-le cum vrei, repetând ce-ți place. "
+            "Prompturile necheltuite nu trec în tura următoare."
         )),
         Line("gap"),
         *[
@@ -449,148 +448,146 @@ def rules_pages(registry: Any) -> dict[str, list[Line]]:
             for a in paid_actions
         ],
         Line("gap"),
-        Line("h", "Free and out of turn", accent=C.POISON, icon="modifier"),
+        Line("h", "Gratis și în afara turei", accent=C.POISON, icon="modifier"),
         Line("bullet", (
-            "Modifier \u2014 played into any roll by anyone, any number of times. "
-            "A base Modifier offers two values; you declare which on play."
+            "Download/Upload Speed \u2014 se joacă pe orice np.random(), de oricine, "
+            "de câte ori vrei. O carte de bază are două valori; alegi la joc."
         ), accent=C.POISON),
         Line("bullet", (
-            "Challenge \u2014 played when someone plays a Hero, Item or Magic card. "
-            "Both sides roll 2d6 and the challenger wins ties. If the challenger "
-            "wins the card is discarded and the action point is not refunded. "
-            "Each card can be challenged only once, and a Hero's ability is never "
-            "challengeable \u2014 only playing a card is."
+            "Confruntare xiaolin (Șiaolin / Șia all in) \u2014 când cineva joacă "
+            "o persoană, un cheat sau un script. Ambele părți dau np.random() "
+            "și provocatorul câștigă la egalitate. Dacă câștigă, barfa e aruncată "
+            "și promptul nu se înapoiază. O barfă se confruntă o singură dată; "
+            "abilitatea unei persoane nu e contestabilă \u2014 doar jucarea ei."
         ), accent=C.BLOOD),
         *[
-            Line("bullet", f"{getattr(a, 'label', '')} \u2014 costs no action point",
+            Line("bullet", f"{getattr(a, 'label', '')} \u2014 nu costă prompt",
                  accent=C.INK_DIM)
             for a in free_actions
         ],
         Line("gap"),
-        Line("h", "Heroes", accent=C.INK, icon="hero"),
+        Line("h", "Persoane", accent=C.INK, icon="hero"),
         Line("p", (
-            "Playing a Hero lets you roll its effect immediately at no extra cost. "
-            "Once it is in your party you may spend a point to use it, once per "
-            "turn \u2014 and a failed roll still spends the point."
+            "Jucând o persoană poți da np.random() pe efect imediat, fără prompt extra. "
+            "Odată în grup, cheltuie un prompt ca s-o folosești, o dată pe tură "
+            "\u2014 și un np.random() eșuat tot consumă promptul."
         )),
     ]
 
     rolls_page: list[Line] = [
-        Line("h", "Every roll is 2d6", accent=C.GOLD, icon="dice"),
+        Line("h", "Fiecare aruncare e np.random()", accent=C.GOLD, icon="dice"),
         Line("p", (
-            "Two dice, plus every Modifier played into the roll, compared against "
-            "the card's bands. A band is a range with an outcome; the card decides "
-            "what counts as success, not the engine."
+            "Două zaruri, plus fiecare download/upload speed jucat, comparate cu "
+            "benzile cărții. O bandă e un interval cu un rezultat; cartea decide "
+            "ce e succes, nu motorul."
         )),
         Line("gap"),
-        Line("h", "The modification window", accent=C.ARCANE, icon="bolt"),
+        Line("h", "Fereastra de modificare", accent=C.ARCANE, icon="bolt"),
         Line("p", (
-            "After the dice land and before the result is read, everyone may play "
-            "Modifiers. Modifiers can be answered by more Modifiers; the stack "
-            "resolves outermost first."
+            "După ce cade np.random() și înainte de rezultat, oricine poate juca "
+            "download/upload speed. Acestea se pot răspunde între ele; stiva "
+            "se rezolvă de la ultima spre prima."
         )),
         Line("gap"),
-        Line("h", "Challenges", accent=C.BLOOD, icon="challenge"),
+        Line("h", "Confruntare xiaolin", accent=C.BLOOD, icon="challenge"),
         Line("p", (
-            "Both sides roll before any Modifier is played, so a Modifier on a "
-            "Challenge is an informed decision and can swing either roll. Ties go "
-            "to the challenger."
+            "Ambele părți dau np.random() înainte de orice download/upload speed, "
+            "deci modificarea e o decizie informată. La egalitate câștigă Șiaolin."
         )),
         Line("gap"),
-        Line("h", "Reading the pill", accent=C.INK_DIM, icon="eye"),
+        Line("h", "Citirea pragului", accent=C.INK_DIM, icon="eye"),
         Line("p", (
-            "The number on a card's footer is the threshold its own text calls "
-            "success \u2014 'to use' for a Hero ability, 'to slay' for a Monster."
+            "Numărul de pe o barfă e pragul pe care textul îl numește succes "
+            "\u2014 'ca să folosești' pentru o persoană, 'ca să te împrietenești' "
+            "pentru o bestie."
         ), accent=C.INK_DIM),
     ]
 
     monsters_page: list[Line] = [
-        Line("h", "Attacking", accent=C.BLOOD, icon="monster"),
+        Line("h", "Împrietenirea", accent=C.BLOOD, icon="monster"),
         Line("p", (
-            "Attacking costs the points shown on the action list and needs the "
-            "Monster's party requirement met. Roll 2d6 against its bands: slay, "
-            "nothing, or a penalty that applies immediately. A failed attack "
-            "leaves the Monster in the row."
+            "Să te împrietenești costă prompturile din listă și cere cerința "
+            "bestiei îndeplinită. np.random() pe benzi: împrietenire, nimic, "
+            "sau o pedeapsă imediată. Un eșec lasă bestia pe masă."
         )),
         Line("gap"),
-        Line("h", "Requirements", accent=C.WARN, icon="target"),
-        Line("bullet", "A class symbol is paid by a Hero of that class or by your Leader.",
+        Line("h", "Cerințe", accent=C.WARN, icon="target"),
+        Line("bullet", "Un simbol de clasă e platit de o persoană de acea clasă sau de șeful tău.",
              accent=C.WARN),
         Line("bullet",
-             "A generic symbol needs a Hero of any class \u2014 the Leader does not count.",
+             "Un simbol generic cere o persoană de orice clasă \u2014 șeful nu contează.",
              accent=C.WARN),
-        Line("bullet", "One Hero cannot pay for two symbols.", accent=C.WARN),
+        Line("bullet", "O persoană nu poate plăti două simboluri.", accent=C.WARN),
         Line("gap"),
-        Line("h", "After the slay", accent=C.GOOD, icon="skull"),
+        Line("h", "După împrietenire", accent=C.GOOD, icon="skull"),
         Line("p", (
-            "A slain Monster joins your party, grants a permanent skill, and can "
-            "never be stolen, destroyed or attacked again. The row refills."
+            "Bestia împrietenită se alătură grupului, dă o abilitate permanentă "
+            "și nu mai poate fi furată, ștearsă sau atacată. Rândul se reumple."
         ), accent=C.GOOD),
     ]
 
     board_page: list[Line] = [
-        Line("h", "Where things are", accent=C.GOLD, icon="eye"),
-        Line("row", "your hand, dice and effects", "bottom", accent=C.GOLD),
-        Line("row", "your Leader and party", "centre", accent=C.GOLD),
-        Line("row", "the Monster row you can attack", "middle", accent=C.GOLD),
-        Line("row", "main deck, discard and Monster deck", "top", accent=C.GOLD),
-        Line("row", "every opponent's party, newest first", "right", accent=C.GOLD),
-        Line("row", "cards resolving now \u2014 Challenges, Magic, Modifiers", "left",
+        Line("h", "Unde e fiecare lucru", accent=C.GOLD, icon="eye"),
+        Line("row", "barfele tale, np.random() și efecte", "jos", accent=C.GOLD),
+        Line("row", "șeful și grupul tău", "centru", accent=C.GOLD),
+        Line("row", "besties cu care te poți împrieteni", "mijloc", accent=C.GOLD),
+        Line("row", "inbox, trash și teancul de besties", "sus", accent=C.GOLD),
+        Line("row", "grupul fiecărui adversar", "dreapta", accent=C.GOLD),
+        Line("row", "în execuție \u2014 Șiaolin, scripts, download/upload", "stânga",
              accent=C.GOLD),
-        Line("row", "turn order, with the active seat lit", "turn chip", accent=C.GOLD),
+        Line("row", "ordinea tururilor, scaunul activ luminat", "chip tură", accent=C.GOLD),
         Line("gap"),
-        Line("h", "Reading the rail", accent=C.FROST, icon="hand_cards"),
+        Line("h", "Banda adversarilor", accent=C.FROST, icon="hand_cards"),
         Line("p", (
-            "Opponent strips show the Leader, initials, remaining action points "
-            "and party. Hover one to expand it; hover a card in it to read the "
-            "card. Counts you are not allowed to see stay as counts."
+            "Benzile arată șeful, inițialele, prompturile rămase și grupul. "
+            "Hover pe o bandă s-o extinzi; hover pe o barfă s-o citești."
         ), accent=C.INK_DIM),
         Line("gap"),
-        Line("h", "Highlights", accent=C.POISON, icon="check"),
-        Line("bullet", "A cyan ring means a legal target for the open choice.", accent=C.GOLD),
-        Line("bullet", "A dimmed card is visible but not selectable right now.", accent=C.INK_DIM),
-        Line("bullet", "A tilted card has already been used this turn.", accent=C.INK_DIM),
+        Line("h", "Evidențieri", accent=C.POISON, icon="check"),
+        Line("bullet", "Un inel cyan e o țintă legală pentru alegerea deschisă.", accent=C.GOLD),
+        Line("bullet", "O barfă estompată se vede, dar nu e selectabilă acum.", accent=C.INK_DIM),
+        Line("bullet", "O barfă înclinată a fost deja folosită în tura asta.", accent=C.INK_DIM),
     ]
 
     keys_page: list[Line] = [
-        Line("h", "Keyboard", accent=C.GOLD, icon="gear"),
-        Line("row", "open and close these rules", "I  /  F1", accent=C.GOLD),
-        Line("row", "game log", "L", accent=C.GOLD),
-        Line("row", "pause menu", "Esc", accent=C.GOLD),
-        Line("row", "confirm the current choice", "Enter", accent=C.GOOD),
-        Line("row", "pass, decline, or take no action", "Space", accent=C.INK_DIM),
-        Line("row", "reaction window auto-pass", "10 s countdown", accent=C.POISON),
-        Line("row", "pick the nth option or card", "1 \u2026 9", accent=C.GOLD),
-        Line("row", "cycle camera views", "Q / E", accent=C.CYAN),
-        Line("row", "draw a card (1 AP)", "D", accent=C.FROST),
-        Line("row", "play a Hero (1 AP)", "H", accent=C.GOOD),
-        Line("row", "use a Hero ability (1 AP, free if played this turn)", "A", accent=C.GOLD),
-        Line("row", "use Party Leader skill", "S", accent=C.GOLD),
-        Line("row", "befriend a bestie (2 AP)", "F", accent=C.BLOOD),
-        Line("row", "equip Gear (1 AP)", "G", accent=C.GOLD),
-        Line("row", "cast Magic (1 AP)", "C", accent=C.ARCANE),
-        Line("row", "burn hand and draw five (3 AP)", "B", accent=C.WARN),
-        Line("row", "roll the dice when asked", "R", accent=C.FROST),
-        Line("row", "inspect the card under the cursor", "click", accent=C.ARCANE),
-        Line("row", "toggle sound", "M", accent=C.INK_DIM),
+        Line("h", "Tastatură", accent=C.GOLD, icon="gear"),
+        Line("row", "deschide și închide regulile", "I  /  F1", accent=C.GOLD),
+        Line("row", "jurnal", "L", accent=C.GOLD),
+        Line("row", "meniu pauză", "Esc", accent=C.GOLD),
+        Line("row", "confirmă alegerea", "Enter", accent=C.GOOD),
+        Line("row", "treci, refuzi, sau nicio acțiune", "Space", accent=C.INK_DIM),
+        Line("row", "auto-pass pe fereastra de reacție", "numărătoare 10 s", accent=C.POISON),
+        Line("row", "a n-a opțiune sau barfă", "1 \u2026 9", accent=C.GOLD),
+        Line("row", "schimbă camera", "Q / E", accent=C.CYAN),
+        Line("row", "trage o barfă (1 prompt)", "D", accent=C.FROST),
+        Line("row", "joacă o persoană (1 prompt)", "H", accent=C.GOOD),
+        Line("row", "folosește abilitatea (1 prompt, gratis dacă e jucată acum)",
+             "A", accent=C.GOLD),
+        Line("row", "abilitatea șefului de grup", "S", accent=C.GOLD),
+        Line("row", "împrietenește-te cu o bestie (2 prompts)", "F", accent=C.BLOOD),
+        Line("row", "echipează un cheat (1 prompt)", "G", accent=C.GOLD),
+        Line("row", "rulează un script (1 prompt)", "C", accent=C.ARCANE),
+        Line("row", "aruncă barfele și trage cinci (3 prompts)", "B", accent=C.WARN),
+        Line("row", "np.random() când ți se cere", "R", accent=C.FROST),
+        Line("row", "inspectează barfa de sub cursor", "click", accent=C.ARCANE),
+        Line("row", "sunet", "M", accent=C.INK_DIM),
         Line("row", "fullscreen", "F11", accent=C.INK_DIM),
         Line("gap"),
-        Line("h", "Developer console", accent=C.ARCANE, icon="flask"),
-        Line("row", "open the console", "Ctrl+Shift+D", accent=C.ARCANE),
+        Line("h", "Consola de dezvoltare", accent=C.ARCANE, icon="flask"),
+        Line("row", "deschide consola", "Ctrl+Shift+D", accent=C.ARCANE),
         Line("p", (
-            "Spawn any card, replay any animation, change the seat count, step "
-            "the engine one decision at a time. It never mutates a live game "
-            "\u2014 board changes restart into a fresh one."
+            "Spawnează orice barfă, reia animații, schimbă numărul de scaune. "
+            "Nu mută un joc live \u2014 schimbările de masă repornesc unul nou."
         ), accent=C.INK_DIM),
     ]
 
     return {
-        "Overview": overview,
-        "Turn": turn_page,
-        "Rolls": rolls_page,
-        "Monsters": monsters_page,
-        "Board": board_page,
-        "Keys": keys_page,
+        "Prezentare": overview,
+        "Tura": turn_page,
+        "np.random": rolls_page,
+        "Besties": monsters_page,
+        "Masa": board_page,
+        "Taste": keys_page,
     }
 
 
@@ -1171,12 +1168,13 @@ class ScoreRow:
 
 
 class GameOverOverlay(Overlay):
-    """Winner, why, and the final table. Confetti in the winner's colour."""
+    """Trophy card, win slogan, and the final table."""
 
     escapable = False
     backdrop_closes = False
-    dim = 210
-    icon = "leader"
+    dim = 220
+    icon = None
+    title = ""
 
     def __init__(
         self,
@@ -1188,27 +1186,30 @@ class GameOverOverlay(Overlay):
         winner_colour: tuple[int, int, int] = C.GOLD,
         turns: int = 0,
     ) -> None:
-        width = min(620, int(layout.width * 0.56))
-        height = min(560, 220 + len(rows) * 44)
+        width = min(720, int(layout.width * 0.64))
+        height = min(720, int(layout.height * 0.88))
         super().__init__(pygame.Rect(
             (layout.width - width) // 2, (layout.height - height) // 2, width, height
         ))
-        self.title = L.VICTORY
-        self.subtitle = f"after {turns} turns" if turns else ""
         self.winner = winner
         self.reason = reason
         self.winner_colour = winner_colour
         self.rows = list(rows)
+        self.turns = turns
+        card_w = min(210, int(width * 0.30))
+        card_h = int(card_w * 1.42)
+        self.trophy_size = (card_w, card_h)
+        self.trophy = trophy_card((card_w, card_h))
         self.fx = AnimationManager(cap=60)
-        self.fx.add(ConfettiAnimation((layout.width, layout.height), 5.0, count=160))
+        self.fx.add(ConfettiAnimation((layout.width, layout.height), 5.5, count=180))
 
         body = self.body_rect
         self.buttons = [
             Button(pygame.Rect(body.left, body.bottom - 46, body.width // 2 - 6, 42),
-                   "Play again", lambda: self.finish("restart"), primary=True,
+                   L.PLAY_AGAIN, lambda: self.finish("restart"), primary=True,
                    icon="dice", shortcut="Enter"),
             Button(pygame.Rect(body.centerx + 6, body.bottom - 46, body.width // 2 - 6, 42),
-                   "Quit", lambda: self.finish("quit"), icon="close", shortcut="Esc"),
+                   L.QUIT, lambda: self.finish("quit"), icon="close", shortcut="Esc"),
         ]
 
     def on_event(self, event: pygame.event.Event) -> bool:
@@ -1231,31 +1232,62 @@ class GameOverOverlay(Overlay):
 
     def draw(self, screen: pygame.Surface) -> None:
         super().draw(screen)
-        # Confetti falls in front of the panel, so it reads as being in the room
-        # rather than behind a window.
         self.fx.draw_top(screen)
 
     def draw_body(self, screen: pygame.Surface) -> None:
         body = self.body_rect
         cx = body.centerx
         glow = 0.55 + 0.45 * T.pulse(self.elapsed, period=2.6, low=0.0, high=1.0)
-        T.blit_glow(screen, (cx, body.top + 34), 240, T.alpha(self.winner_colour, int(70 * glow)))
-        T.text(screen, self.winner, (cx, body.top + 12), T.display(34), C.INK,
-               anchor="midtop", shadow=None)
-        if self.reason:
-            T.text(screen, self.reason, (cx, body.top + 54), T.ui(13),
-                   C.INK_DIM, anchor="midtop", shadow=None)
+        T.blit_glow(screen, (cx, body.top + 120), 280, T.alpha(self.winner_colour, int(80 * glow)))
 
-        y = body.top + 86
+        T.text(screen, "Ai câștigat,", (cx, body.top + 4), T.display(26), C.GOLD,
+               anchor="midtop", shadow=None)
+        T.text(screen, "dictatorul îți e subjugat", (cx, body.top + 34), T.display(22), C.INK,
+               anchor="midtop", shadow=None, max_width=body.width - 16)
+
+        pop = min(1.0, self.elapsed / 0.7)
+        scale = 0.42 + 0.58 * T.ease_out_back(pop, 1.4)
+        tw, th = self.trophy_size
+        sw, sh = max(12, int(tw * scale)), max(16, int(th * scale))
+        try:
+            shown = pygame.transform.smoothscale(self.trophy, (sw, sh))
+        except (pygame.error, ValueError):
+            shown = pygame.transform.scale(self.trophy, (sw, sh))
+        trophy_y = body.top + 70
+        dest = shown.get_rect(midtop=(cx, trophy_y))
+        T.round_rect(
+            screen,
+            dest.inflate(10, 10),
+            T.alpha(C.GOLD, int(90 + 80 * glow)),
+            radius=12, width=2,
+        )
+        screen.blit(shown, dest)
+
+        flavor_y = dest.bottom + 10
+        T.text(screen, L.VICTORY_TROPHY, (cx, flavor_y), T.ui(15, bold=True), C.GOLD,
+               anchor="midtop", shadow=None)
+        T.text(screen, self.winner, (cx, flavor_y + 22), T.ui(16, bold=True), C.INK,
+               anchor="midtop", shadow=None, max_width=body.width - 20)
+        if self.reason:
+            T.text(screen, self.reason, (cx, flavor_y + 44), T.ui(12),
+                   C.INK_DIM, anchor="midtop", shadow=None, max_width=body.width - 24)
+        elif self.turns:
+            T.text(screen, f"după {self.turns} ture", (cx, flavor_y + 44), T.ui(12),
+                   C.INK_FAINT, anchor="midtop", shadow=None)
+
+        y = flavor_y + 70
+        row_bottom = body.bottom - 56
         for row in self.rows:
-            rect = pygame.Rect(body.left, y, body.width, 38)
+            if y + 36 > row_bottom:
+                break
+            rect = pygame.Rect(body.left, y, body.width, 34)
             if row.winner:
                 T.round_rect(screen, rect, T.alpha(row.colour, 46), radius=10)
                 T.round_rect(screen, rect, T.alpha(row.colour, 160), radius=10, width=1)
-            T.badge(screen, (rect.left + 20, rect.centery), 13,
-                    row.name[:1].upper(), bg=row.colour, fnt=T.ui(13, bold=True))
+            T.badge(screen, (rect.left + 20, rect.centery), 12,
+                    row.name[:1].upper(), bg=row.colour, fnt=T.ui(12, bold=True))
             T.text(screen, row.name, (rect.left + 42, rect.centery),
-                   T.ui(14, bold=row.winner), C.INK if row.winner else C.INK_DIM,
+                   T.ui(13, bold=row.winner), C.INK if row.winner else C.INK_DIM,
                    anchor="midleft", max_width=rect.width - 210)
             T.text(screen, row.detail, (rect.right - 12, rect.centery), T.ui(11),
                    C.INK_FAINT, anchor="midright", shadow=None)
@@ -1265,7 +1297,7 @@ class GameOverOverlay(Overlay):
                     draw_icon(screen, card_icon_name("hero", cls), (x, rect.centery), 13,
                               T.CLASS_COLOURS.get(cls, C.INK_FAINT))
                     x += 16
-            y += 44
+            y += 38
 
         for button in self.buttons:
             button.draw(screen)

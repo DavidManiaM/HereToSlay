@@ -1300,5 +1300,103 @@
     "source": null,
     "vibe_name": "Șia all in",
     "status": "generated"
+  },
+  {
+    "name": "/0",
+    "slug": "mask_0",
+    "kind": "item",
+    "game_id": "base.item.mask_0",
+    "images": [
+      "images/by_type/items/mask_0.png",
+      "images/cards/Mask_0_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_0.md",
+    "source": null,
+    "vibe_name": "/0",
+    "status": "generated"
+  },
+  {
+    "name": "/6",
+    "slug": "mask_6",
+    "kind": "item",
+    "game_id": "base.item.mask_6",
+    "images": [
+      "images/by_type/items/mask_6.png",
+      "images/cards/Mask_6_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_6.md",
+    "source": null,
+    "vibe_name": "/6",
+    "status": "generated"
+  },
+  {
+    "name": "/12",
+    "slug": "mask_12",
+    "kind": "item",
+    "game_id": "base.item.mask_12",
+    "images": [
+      "images/by_type/items/mask_12.png",
+      "images/cards/Mask_12_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_12.md",
+    "source": null,
+    "vibe_name": "/12",
+    "status": "generated"
+  },
+  {
+    "name": "/18",
+    "slug": "mask_18",
+    "kind": "item",
+    "game_id": "base.item.mask_18",
+    "images": [
+      "images/by_type/items/mask_18.png",
+      "images/cards/Mask_18_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_18.md",
+    "source": null,
+    "vibe_name": "/18",
+    "status": "generated"
+  },
+  {
+    "name": "/24",
+    "slug": "mask_24",
+    "kind": "item",
+    "game_id": "base.item.mask_24",
+    "images": [
+      "images/by_type/items/mask_24.png",
+      "images/cards/Mask_24_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_24.md",
+    "source": null,
+    "vibe_name": "/24",
+    "status": "generated"
+  },
+  {
+    "name": "/30",
+    "slug": "mask_30",
+    "kind": "item",
+    "game_id": "base.item.mask_30",
+    "images": [
+      "images/by_type/items/mask_30.png",
+      "images/cards/Mask_30_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mask_30.md",
+    "source": null,
+    "vibe_name": "/30",
+    "status": "generated"
+  },
+  {
+    "name": "Legitimația lui Andrei",
+    "slug": "legitimatia_andrei",
+    "kind": "misc",
+    "game_id": null,
+    "images": [
+      "images/by_type/misc/legitimatia_andrei.png",
+      "images/cards/Legitimatia_lui_Andrei_Here_to_Vibe.png"
+    ],
+    "text_file": "text/legitimatia_andrei.md",
+    "source": "images/sources/legitimatia_andrei/andrei_badge.jpg",
+    "vibe_name": "Legitimația lui Andrei",
+    "status": "generated"
   }
 ]

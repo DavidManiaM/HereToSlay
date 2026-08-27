@@ -39,6 +39,26 @@ CLASS_BEARING_ZONES: tuple[tuple[str, frozenset[str]], ...] = (
 )
 
 
+def effective_card_class(ctx: EffectContext, card_id: Any) -> str | None:
+    """Printed class, unless a mask item is equipped — then that class instead.
+
+    Masks are ordinary items tagged ``mask`` with their own ``card_class``.
+    The equipped Hero *is considered* that class, not both.
+    """
+    instance = ctx.state.card(card_id)
+    definition = ctx.state.definition(instance)
+    printed = getattr(definition, "card_class", None)
+    if definition.kind != "hero":
+        return printed
+    for att_id in instance.attachments:
+        att_def = ctx.state.definition(ctx.state.card(att_id))
+        tags = {str(tag).lower() for tag in (getattr(att_def, "tags", ()) or ())}
+        masked = getattr(att_def, "card_class", None)
+        if masked and "mask" in tags:
+            return masked
+    return printed
+
+
 def party_classes(ctx: EffectContext, player: PlayerId) -> dict[str, int]:
     """How many cards of each class a player's party represents.
 
@@ -54,7 +74,7 @@ def party_classes(ctx: EffectContext, player: PlayerId) -> dict[str, int]:
             definition = ctx.state.definition(instance)
             if definition.kind not in kinds:
                 continue
-            card_class = getattr(definition, "card_class", None)
+            card_class = effective_card_class(ctx, instance.id)
             if card_class:
                 counts[card_class] = counts.get(card_class, 0) + 1
     return counts

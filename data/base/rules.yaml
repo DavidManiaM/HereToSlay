@@ -53,7 +53,7 @@ zones:
 # --------------------------------------------------------------------------
 actions:
   - id: draw
-    label: "Trage o carte"
+    label: "Trage o barfă"
     cost: { action_points: 1 }
     effect: { op: draw, target: $self, count: 1 }
 
@@ -93,7 +93,7 @@ actions:
     effect: { op: use_ability, card: $intent.card }
 
   - id: attack_monster
-    label: "Împrietenește o Bestie"
+    label: "Împrietenește-te cu o Bestie"
     cost: { action_points: 2 }
     targets:
       - param: target
@@ -152,7 +152,7 @@ actions:
   # The real 3-AP action, per the rulebook: DISCARD every card in your hand
   # (if you have any) and DRAW five new cards.
   - id: discard_and_draw
-    label: "Arde mâna, trage 5"
+    label: "Aruncă barfele, trage 5"
     cost: { action_points: 3 }
     requires: { op: hand_size, player: $self, cmp: ">", value: 0 }
     effect:
@@ -246,11 +246,11 @@ max_reaction_depth: 8
 # --------------------------------------------------------------------------
 victory:
   - id: slay_three
-    text: "Slay 3 Monsters"
+    text: "Împrietenește 3 Besties — primești legitimația lui Andrei"
     condition: { op: slain_count, player: $player, cmp: ">=", value: 3 }
 
   - id: full_party
-    text: "Have a Hero of each class in your party"
+    text: "Ai o Persoană din fiecare clasă în grup — primești legitimația lui Andrei"
     condition: { op: party_covers_all_classes, player: $player }
 
 tiebreak: active_player

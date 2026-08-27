@@ -7,6 +7,7 @@ Official rules: `docs/rules_reference.md` and `data/base/`. Table language:
 `GLOSSARY.md`. Roster: `ROSTER.md`. Locked changes: `QUESTIONS.md`.
 
 **Win:** same two conditions, flavour = **primești legitimația lui Andrei**.
+Trophy art: `images/by_type/misc/legitimatia_andrei.png` (transparent PNG).
 **Monsters:** you **befriend** besties instead of slaying them. Same rolls.
 
 ### Locked mechanical deltas

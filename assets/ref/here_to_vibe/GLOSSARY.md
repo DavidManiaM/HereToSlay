@@ -27,7 +27,7 @@ Mechanics follow Here to Slay except the locked changes in `QUESTIONS.md`
 | Modifier | **download/upload speed** | Played into any roll |
 | Challenge | **Șia all in** | Challenger wins ties |
 | Discard | **înlătură** / **aruncări** | Discard pile = teancul de aruncări |
-| Win | **primești legitimația lui Andrei** | Instant win, same two conditions |
+| Win | **primești legitimația lui Andrei** | Instant win, same two conditions. Trophy: `images/by_type/misc/legitimatia_andrei.png` |
 | Frozen | **înghețat** | New: Aerul condiționat vs Rota-lorifer |
 | Mask | **mască** `/n` | Equipped persoană counts as that class |
 

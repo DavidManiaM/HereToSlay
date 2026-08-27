@@ -61,7 +61,8 @@ class TestConditions:
         slay(play_state, "p2", 3)
         victory = find_winner(play_state)
         assert victory is not None
-        assert victory.player == "p2" and victory.text == "Slay 3 Monsters"
+        assert victory.player == "p2"
+        assert "legitimația lui Andrei" in victory.text
 
 
 class TestTiebreak:

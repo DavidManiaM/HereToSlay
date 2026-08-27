@@ -49,6 +49,7 @@ assets/ref/here_to_vibe/
       modifiers/
       challenges/
       unknown/
+      misc/                 ← UI extras (winning trophy, not a playable card)
     sources/                ← photos the user provides as identity reference
   text/                     ← per-card notes for the vibe version
   meta/                     ← catalog.json and coverage

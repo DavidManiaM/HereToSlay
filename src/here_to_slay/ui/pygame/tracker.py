@@ -322,18 +322,18 @@ class BoardTracker:
 
 #: (from_zone, to_zone) -> (log line template, icon, colour role)
 _MOVE_PHRASES: dict[tuple[str, str], tuple[str, str, str]] = {
-    ("main_deck", "hand"): ("{who} drew a card", "hand", "dim"),
-    ("hand", "party"): ("{who} played {what}", "hero", "good"),
-    ("hand", "discard"): ("{who} discarded {what}", "scroll", "dim"),
-    ("hand", "limbo"): ("{who} is playing {what}", "bolt", "warn"),
-    ("limbo", "party"): ("{what} joined {who}'s party", "hero", "good"),
-    ("limbo", "discard"): ("{what} was cancelled", "challenge", "bad"),
-    ("party", "discard"): ("{what} was destroyed", "skull", "bad"),
-    ("party", "slain"): ("{what} was slain", "skull", "bad"),
-    ("monster_row", "slain"): ("{who} slew {what}", "skull", "good"),
-    ("monster_deck", "monster_row"): ("{what} appeared", "monster", "warn"),
-    ("discard", "hand"): ("{who} recovered {what}", "hand", "good"),
-    ("party", "party"): ("{what} changed hands", "target", "warn"),
+    ("main_deck", "hand"): ("{who} a tras o barfă", "hand", "dim"),
+    ("hand", "party"): ("{who} a jucat {what}", "hero", "good"),
+    ("hand", "discard"): ("{who} a aruncat {what}", "scroll", "dim"),
+    ("hand", "limbo"): ("{who} joacă {what}", "bolt", "warn"),
+    ("limbo", "party"): ("{what} a intrat în grupul lui {who}", "hero", "good"),
+    ("limbo", "discard"): ("{what} a fost anulat", "challenge", "bad"),
+    ("party", "discard"): ("{what} a fost șters", "skull", "bad"),
+    ("party", "slain"): ("{what} a părăsit grupul", "skull", "bad"),
+    ("monster_row", "slain"): ("{who} s-a împrietenit cu {what}", "skull", "good"),
+    ("monster_deck", "monster_row"): ("{what} a apărut", "monster", "warn"),
+    ("discard", "hand"): ("{who} a recuperat {what}", "hand", "good"),
+    ("party", "party"): ("{what} și-a schimbat grupul", "target", "warn"),
 }
 
 

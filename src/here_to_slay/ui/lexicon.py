@@ -19,7 +19,7 @@ KIND_LABEL: dict[str, str] = {
     "item": "Cheat",  # blessing / own-side unelte; cursed → Hack via tags
     "magic": "Script",
     "modifier": "Download/Upload Speed",
-    "challenge": "Șia all in",
+    "challenge": "Confruntare xiaolin",
     "party_leader": "Șeful grupului",
 }
 
@@ -29,7 +29,7 @@ KIND_LABEL_PLURAL: dict[str, str] = {
     "item": "Cheats",
     "magic": "Scripts",
     "modifier": "Download/Upload Speed",
-    "challenge": "Șia all in",
+    "challenge": "Confruntări xiaolin",
     "party_leader": "Șefi de grup",
 }
 
@@ -55,8 +55,8 @@ WAITING_FOR = "Se așteaptă {name}…"
 
 AP = "prompts"
 AP_ONE = "prompt"
-HAND = "răspunsuri AI"
-HAND_ONE = "răspuns AI"
+HAND = "răspunsuri de la AI"
+HAND_ONE = "barfă"
 PARTY = "grupul tău"
 LEADER = "șeful grupului"
 BESTIES = "besties"
@@ -64,12 +64,14 @@ BESTIES_ROW = "besties · împrietenește-te"
 DECK_DRAW = "inbox"
 DECK_DISCARD = "trash"
 DECK_MONSTER = "besties"
+CARD = "barfă"
+CARDS = "răspunsuri de la AI"
 IN_PLAY = "în execuție"
 DICE = "np.random"
 ACTION_POINTS_YOURS = "prompturile tale"
 ACTION_POINTS_THEIRS = "prompturile lui {name}"
 CAN_BEFRIEND = "POȚI ÎMPRIETENI"
-EMPTY_HAND = "niciun răspuns AI"
+EMPTY_HAND = "nicio barfă"
 NO_PARTY = "nicio persoană în grup"
 TABLE = "masa"
 EFFECTS = "efecte active"
@@ -83,7 +85,7 @@ EFFECT_FLAG = "Stare"
 EFFECT_LEADER = "Șef"
 EFFECT_TABLE = "Masă"
 FLAG_UNCONTESTABLE_TITLE = "De necontestat"
-FLAG_UNCONTESTABLE_DETAIL = "Cărțile jucate în această tură nu pot fi provocare"
+FLAG_UNCONTESTABLE_DETAIL = "Barfele jucate în această tură nu pot fi confruntare xiaolin"
 FLAG_EXTRA_TURN_TITLE = "Tură extra"
 FLAG_EXTRA_TURN_DETAIL = "Joacă încă o tură după aceasta"
 FLAG_GENERIC = "stare = {value}"
@@ -95,7 +97,10 @@ FREE = "gratis"
 TURN = "Tura"
 PASS_DEVICE = "Pasează dispozitivul către"
 READY = "Sunt gata"
-VICTORY = "Victorie"
+VICTORY = "Ai câștigat, dictatorul îți e subjugat"
+VICTORY_TROPHY = "Primești legitimația lui Andrei"
+PLAY_AGAIN = "Joacă din nou"
+QUIT = "Ieși"
 PAUSED = "Pauză"
 HOW_TO_PLAY = "Cum se joacă"
 GAME_LOG = "Jurnal"
@@ -180,7 +185,7 @@ def kind_label(
 
     Cursed items (``tags`` containing ``cursed``) are **Hacks** — unelte
     blestemate placed on another player's persoane. Challenges display as
-    **Șia all in**.
+    **Confruntare xiaolin** (Șiaolin / Șia all in).
     """
     tag_set = {str(t).lower() for t in (tags or ())}
     if kind == "item" and "cursed" in tag_set:
@@ -344,8 +349,8 @@ def retheme_prompt(text: str) -> str:
         ("Heroes of any class", "Persoane de orice clasă"),
         ("Hero of any class", "Persoană de orice clasă"),
         ("of any class", "de orice clasă"),
-        ("action points", "prompt-uri"),
-        ("Action points", "Prompt-uri"),
+        ("action points", "prompts"),
+        ("Action points", "Prompts"),
         ("action point", "prompt"),
         ("Action point", "Prompt"),
         ("Action Point", "Prompt"),
@@ -358,14 +363,19 @@ def retheme_prompt(text: str) -> str:
         ("Party Leader", "Șeful grupului"),
         ("party leader", "șeful grupului"),
         (" and ", " și "),
+        ("Heroes", "Persoane"),
         ("Hero", "Persoană"),
         ("hero", "persoană"),
+        ("Monsters", "Besties"),
         ("Monster", "Bestie"),
         ("monster", "bestie"),
         ("Leader", "Șeful grupului"),
         ("leader", "șeful grupului"),
-        ("Challenge", "Șia all in"),
-        ("challenge", "provocare"),
+        ("Challenges", "Confruntări xiaolin"),
+        ("challengeable", "contestabilă"),
+        ("challenged", "confruntat"),
+        ("Challenge", "Confruntare xiaolin"),
+        ("challenge", "confruntare xiaolin"),
         ("Cursed item", "Hack"),
         ("cursed item", "hack"),
         ("Cursed Item", "Hack"),
@@ -379,13 +389,18 @@ def retheme_prompt(text: str) -> str:
         ("Attack", "Împrietenește"),
         ("slay", "împrietenește"),
         ("Slay", "Împrietenește"),
+        ("slew", "s-a împrietenit cu"),
         ("destroy", "șterge"),
         ("Destroy", "Șterge"),
-        ("rolls 2d6", "np.random 2d6"),
-        ("roll", "np.random"),
-        ("Roll", "np.random"),
-        ("hand", "răspunsuri AI"),
-        ("Hand", "Răspunsuri AI"),
+        ("rolls 2d6", "np.random() 2d6"),
+        ("2d6", "np.random()"),
+        ("roll", "np.random()"),
+        ("Roll", "np.random()"),
+        ("a card", "o barfă"),
+        ("cards", "răspunsuri de la AI"),
+        ("Cards", "Răspunsuri de la AI"),
+        ("hand", "răspunsuri de la AI"),
+        ("Hand", "Răspunsuri de la AI"),
         ("Player", "Jucător"),
         ("player", "jucător"),
         ("cancelled", "anulat"),
@@ -413,6 +428,8 @@ __all__ = [
     "BESTIES_ROW",
     "CAM_HINT",
     "CAN_BEFRIEND",
+    "CARD",
+    "CARDS",
     "CHEAT",
     "CHEATS",
     "CHOOSE",
@@ -463,7 +480,9 @@ __all__ = [
     "PAUSED",
     "PICK_TARGET",
     "PLAYER_N",
+    "PLAY_AGAIN",
     "PRESS_ROLL",
+    "QUIT",
     "READY",
     "RECENT",
     "RIGHT_CLICK_PIN",
@@ -475,6 +494,7 @@ __all__ = [
     "THINKING",
     "TURN",
     "VICTORY",
+    "VICTORY_TROPHY",
     "WAIT",
     "WAITING_FOR",
     "YOU",
