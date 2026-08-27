@@ -264,6 +264,27 @@ def test_every_card_renders(registry) -> None:
     assert cache_size() == before, "an identical render must hit the cache"
 
 
+def test_table_faces_are_full_art_and_hover_text_is_romanian(registry) -> None:
+    """Board cards show artwork; names/rules come from the vibe pack in RO."""
+    from here_to_slay.ui import lexicon as L
+
+    hero = registry["base.hero.bad_axe"]
+    assert L.card_name(hero) == "TUDOR-minatorul"
+    assert "DISTRUGE" in L.card_text(hero).upper()
+    assert L.class_label("fighter") == "Luptător"
+
+    challenge = registry["base.challenge.challenge"]
+    assert L.card_name(challenge) == "Șia all in"
+    assert library().has_art(challenge)
+    assert L.kind_label("challenge") == "Șia all in"
+
+    clear_card_cache()
+    surf = render_card(hero, CARD_W, CARD_H)
+    centre = surf.get_at((CARD_W // 2, CARD_H // 2))[:3]
+    # Full-bleed art, not the old paper face with a typeset name plate.
+    assert centre != T.C.CARD_PAPER
+
+
 def test_card_facts_are_read_from_data(registry) -> None:
     """Thresholds are read off tagged roll bands, never hardcoded per card."""
     monster = registry.of_kind("monster")[0]

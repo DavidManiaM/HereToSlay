@@ -93,11 +93,12 @@
 
 - id: base.challenge.challenge
   kind: challenge
-  name: "Challenge"
+  name: "Șia all in"
   copies: 7
+  art: ref/here_to_vibe/images/by_type/challenges/challenge.png
   text: >-
-    Stop another player from playing a Hero, Item or Magic card. Both players
-    roll; if your roll is equal to or higher, that card is discarded.
+    Oprește jucarea unui Erou / Obiect / Script. Ambii aruncă; provocatorul
+    câștigă la egalitate.
   reaction:
     window: card_played
     challengeable: false

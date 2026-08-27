@@ -8,9 +8,10 @@ cards are blank rectangles looks broken rather than incomplete.
 So this module has two halves:
 
 * :class:`ArtLibrary` resolves ``base.hero.bear_claw`` to a file — first from
-  ``meta/catalog.json``'s ``game_id`` field, then by slug against the
-  ``images/by_type/`` folders, then a couple of naming fixups (Leaders are
-  filed as ``the_shadow_claw``). Surfaces are cached per requested size.
+  ``assets/ref/here_to_vibe/`` (Here to Vibe (Code) art), then from
+  ``assets/ref/here_to_slay/``. Within a pack it uses ``meta/catalog.json``'s
+  ``game_id`` field, then slug against the ``images/by_type/`` folders, then a
+  couple of naming fixups (Leaders are filed as ``the_shadow_claw``). Surfaces are cached per requested size.
 * When there is no file, :func:`procedural_art` draws a **sigil**: a coloured
   field plus a geometric emblem seeded from the card id, so every card gets a
   distinct, stable, obviously-intentional image. Nothing on screen ever says
@@ -37,8 +38,11 @@ from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.icons import card_icon_name, draw_icon
 from here_to_slay.ui.pygame.theme import C
 
-#: Where the reference pack lives, relative to the repository root.
+#: Original reference pack (fallback), relative to the repository root.
 REF_ROOT = Path("assets/ref/here_to_slay")
+
+#: Here to Vibe (Code) art. Checked first so new portraits win over scans.
+VIBE_ROOT = Path("assets/ref/here_to_vibe")
 
 #: Extensions to try, in preference order. The reference pack stores WebP data
 #: under ``.png`` names (SDL_image sniffs the header, so this just works).
@@ -191,8 +195,9 @@ def procedural_art(
 class ArtLibrary:
     """Resolves and caches card artwork.
 
-    ``root`` is the repository root; ``ref`` the reference-pack directory.
-    Both are injectable so tests can point at a fixture folder.
+    ``root`` is the repository root. By default the library indexes
+    ``assets/ref/here_to_vibe`` first, then ``assets/ref/here_to_slay``.
+    Pass ``ref`` to use a single pack instead (tests / fixtures).
     """
 
     root: Path = field(default_factory=_repo_root)
@@ -203,28 +208,36 @@ class ArtLibrary:
     _catalog: dict[str, Path] = field(default_factory=dict, repr=False)
     _slugs: dict[str, Path] = field(default_factory=dict, repr=False)
     _scanned: bool = field(default=False, repr=False)
+    _packs: tuple[Path, ...] = field(default_factory=tuple, repr=False)
 
     def __post_init__(self) -> None:
-        if self.ref is None:
-            self.ref = self.root / REF_ROOT
+        if self.ref is not None:
+            self._packs = (self.ref,) if self.ref.is_dir() else ()
+            return
+        packs: list[Path] = []
+        for rel in (VIBE_ROOT, REF_ROOT):
+            path = self.root / rel
+            if path.is_dir():
+                packs.append(path)
+        self._packs = tuple(packs)
+        self.ref = self._packs[0] if self._packs else self.root / REF_ROOT
 
     # -- index ------------------------------------------------------------
 
     @property
     def available(self) -> bool:
-        return bool(self.ref and self.ref.is_dir())
+        return bool(self._packs)
 
     def _scan(self) -> None:
-        """Index the reference pack once, lazily."""
+        """Index the reference packs once, lazily. Earlier packs win."""
         if self._scanned:
             return
         self._scanned = True
-        if not self.available:
-            return
-        assert self.ref is not None
+        for i, pack in enumerate(self._packs):
+            self._index_pack(pack, overwrite=(i == 0))
 
-        # 1. catalog.json is authoritative where it has a game_id.
-        catalog = self.ref / "meta" / "catalog.json"
+    def _index_pack(self, pack: Path, *, overwrite: bool) -> None:
+        catalog = pack / "meta" / "catalog.json"
         if catalog.is_file():
             try:
                 entries = json.loads(catalog.read_text(encoding="utf-8"))
@@ -234,8 +247,13 @@ class ArtLibrary:
                 images = entry.get("images") or []
                 if not images:
                     continue
-                path = self.ref / str(images[0])
-                if not path.is_file():
+                path = None
+                for rel in images:
+                    candidate = pack / str(rel)
+                    if candidate.is_file():
+                        path = candidate
+                        break
+                if path is None:
                     continue
                 game_id = entry.get("game_id")
                 if game_id:
@@ -244,22 +262,21 @@ class ArtLibrary:
                 if slug:
                     self._slugs.setdefault(str(slug), path)
 
-        # 2. Every file under by_type/, keyed by its stem. Cheap and covers
-        #    cards the catalog never matched to a game id.
-        by_type = self.ref / "images" / "by_type"
-        if by_type.is_dir():
-            for folder in sorted(by_type.iterdir()):
-                if not folder.is_dir():
+        by_type = pack / "images" / "by_type"
+        if not by_type.is_dir():
+            return
+        for folder in sorted(by_type.iterdir()):
+            if not folder.is_dir():
+                continue
+            # "unknown" holds pre-reorganisation duplicates; typed folders win.
+            for path in sorted(folder.iterdir()):
+                if path.suffix.lower() not in EXTENSIONS:
                     continue
-                # "unknown" holds pre-reorganisation duplicates; let the typed
-                # folders win by visiting it last.
-                for path in sorted(folder.iterdir()):
-                    if path.suffix.lower() in EXTENSIONS:
-                        key = path.stem.lower()
-                        if folder.name == "unknown":
-                            self._slugs.setdefault(key, path)
-                        else:
-                            self._slugs[key] = path
+                key = path.stem.lower()
+                if folder.name == "unknown" or not overwrite:
+                    self._slugs.setdefault(key, path)
+                else:
+                    self._slugs[key] = path
 
     # -- resolution -------------------------------------------------------
 
@@ -283,10 +300,8 @@ class ArtLibrary:
         # of the field, and it is how a mod ships its own images.
         declared = getattr(card_def, "art", None)
         if declared:
-            for base in (self.root / "assets", self.ref, self.root):
-                if base is None:
-                    continue
-                candidate = base / str(declared)
+            for base in (self.root / "assets", *self._packs, self.root):
+                candidate = Path(base) / str(declared)
                 if candidate.is_file():
                     return candidate
 
@@ -307,9 +322,9 @@ class ArtLibrary:
                 return hit
 
         # Last resort: the by_type folders for this kind, by filename.
-        if self.ref is not None:
+        for pack in self._packs:
             for folder in KIND_FOLDERS.get(kind, ()):
-                directory = self.ref / "images" / "by_type" / folder
+                directory = pack / "images" / "by_type" / folder
                 if not directory.is_dir():
                     continue
                 for key in candidates:
@@ -421,6 +436,7 @@ __all__ = [
     "EXTENSIONS",
     "KIND_FOLDERS",
     "REF_ROOT",
+    "VIBE_ROOT",
     "ArtLibrary",
     "clear_art_cache",
     "library",

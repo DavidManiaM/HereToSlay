@@ -1,0 +1,1304 @@
+[
+  {
+    "name": "Mihai „RNG-esus”",
+    "slug": "titan_wyvern",
+    "kind": "monster",
+    "game_id": "base.monster.titan_wyvern",
+    "images": [
+      "images/by_type/monsters/titan_wyvern.png",
+      "images/cards/Mihai_RNG-esus_Here_to_Vibe.png"
+    ],
+    "text_file": "text/titan_wyvern.md",
+    "source": "images/sources/titan_wyvern/mihai_photo.jpg",
+    "vibe_name": "Mihai „RNG-esus”",
+    "status": "generated"
+  },
+  {
+    "name": "Cupi-Dan",
+    "slug": "crowned_serpent",
+    "kind": "monster",
+    "game_id": "base.monster.crowned_serpent",
+    "images": [
+      "images/by_type/monsters/crowned_serpent.png",
+      "images/cards/Cupi-Dan_Here_to_Vibe.png"
+    ],
+    "text_file": "text/crowned_serpent.md",
+    "source": "images/sources/crowned_serpent/dan_photo.jpg",
+    "vibe_name": "Cupi-Dan",
+    "status": "generated"
+  },
+  {
+    "name": "E-DIE",
+    "slug": "bloodwing",
+    "kind": "monster",
+    "game_id": "base.monster.bloodwing",
+    "images": [
+      "images/by_type/monsters/bloodwing.png",
+      "images/cards/E-DIE_Here_to_Vibe.png"
+    ],
+    "text_file": "text/bloodwing.md",
+    "source": "images/sources/bloodwing/edi_photo.jpg",
+    "vibe_name": "E-DIE",
+    "status": "needs-redo"
+  },
+  {
+    "name": "Vl-ADD",
+    "slug": "dark_dragon_king",
+    "kind": "monster",
+    "game_id": "base.monster.dark_dragon_king",
+    "images": [
+      "images/by_type/monsters/dark_dragon_king.png",
+      "images/cards/Vl-ADD_Here_to_Vibe.png"
+    ],
+    "text_file": "text/dark_dragon_king.md",
+    "source": "images/sources/dark_dragon_king/vlad_photo.jpg",
+    "vibe_name": "Vl-ADD",
+    "status": "generated"
+  },
+  {
+    "name": "Cristina „Insta-Cast”",
+    "slug": "orthus",
+    "kind": "monster",
+    "game_id": "base.monster.orthus",
+    "images": [
+      "images/by_type/monsters/orthus.png",
+      "images/cards/Cristina_Insta-Cast_Here_to_Vibe.png"
+    ],
+    "text_file": "text/orthus.md",
+    "source": "images/sources/orthus/cristina_photo.jpg",
+    "vibe_name": "Cristina „Insta-Cast”",
+    "status": "generated"
+  },
+  {
+    "name": "Silviu „Gamemode 1”",
+    "slug": "malamammoth",
+    "kind": "monster",
+    "game_id": "base.monster.malamammoth",
+    "images": [
+      "images/by_type/monsters/malamammoth.png",
+      "images/cards/Silviu_Gamemode_1_Here_to_Vibe.png"
+    ],
+    "text_file": "text/malamammoth.md",
+    "source": "images/sources/malamammoth/silviu_photo.jpg",
+    "vibe_name": "Silviu „Gamemode 1”",
+    "status": "generated"
+  },
+  {
+    "name": "TUDOR-minatorul",
+    "slug": "bad_axe",
+    "kind": "hero",
+    "game_id": "base.hero.bad_axe",
+    "images": [
+      "images/by_type/heroes/bad_axe.png",
+      "images/cards/TUDOR-minatorul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/bad_axe.md",
+    "source": "images/sources/bad_axe/tudor_photo.jpg",
+    "vibe_name": "TUDOR-minatorul",
+    "status": "generated"
+  },
+  {
+    "name": "Roberta Turnu Severin",
+    "slug": "quick_draw",
+    "kind": "hero",
+    "game_id": "base.hero.quick_draw",
+    "images": [
+      "images/by_type/heroes/quick_draw.png",
+      "images/cards/Roberta_Turnu_Severin_Here_to_Vibe.png"
+    ],
+    "text_file": "text/quick_draw.md",
+    "source": "images/sources/quick_draw/roberta_photo.jpg",
+    "vibe_name": "Roberta Turnu Severin",
+    "status": "generated"
+  },
+  {
+    "name": "Rob-erta",
+    "slug": "kit_napper",
+    "kind": "hero",
+    "game_id": "base.hero.kit_napper",
+    "images": [
+      "images/by_type/heroes/kit_napper.png",
+      "images/cards/Rob-erta_Here_to_Vibe.png"
+    ],
+    "text_file": "text/kit_napper.md",
+    "source": "images/sources/kit_napper/roberta_photo.jpg",
+    "vibe_name": "Rob-erta",
+    "status": "generated"
+  },
+  {
+    "name": "Cătă-LINK",
+    "slug": "dodgy_dealer",
+    "kind": "hero",
+    "game_id": "base.hero.dodgy_dealer",
+    "images": [
+      "images/by_type/heroes/dodgy_dealer.png",
+      "images/cards/Cata-LINK_Here_to_Vibe.png"
+    ],
+    "text_file": "text/dodgy_dealer.md",
+    "source": "images/sources/dodgy_dealer/catalin_cafe.jpg",
+    "vibe_name": "Cătă-LINK",
+    "status": "generated"
+  },
+  {
+    "name": "Ciord-Zisu",
+    "slug": "buttons",
+    "kind": "hero",
+    "game_id": "base.hero.buttons",
+    "images": [
+      "images/by_type/heroes/buttons.png",
+      "images/cards/Ciord-Zisu_Here_to_Vibe.png"
+    ],
+    "text_file": "text/buttons.md",
+    "source": "images/sources/buttons/zisu_kitten.jpg",
+    "vibe_name": "Ciord-Zisu",
+    "status": "generated"
+  },
+  {
+    "name": "S-a ZIS-u cu tine",
+    "slug": "sharp_fox",
+    "kind": "hero",
+    "game_id": "base.hero.sharp_fox",
+    "images": [
+      "images/by_type/heroes/sharp_fox.png",
+      "images/cards/Sa_ZIS-u_cu_tine_Here_to_Vibe.png"
+    ],
+    "text_file": "text/sharp_fox.md",
+    "source": "images/sources/sharp_fox/zisu_mountain.jpg",
+    "vibe_name": "S-a ZIS-u cu tine",
+    "status": "generated"
+  },
+  {
+    "name": "Ius-Tazer",
+    "slug": "holy_curselifter",
+    "kind": "hero",
+    "game_id": "base.hero.holy_curselifter",
+    "images": [
+      "images/by_type/heroes/holy_curselifter.png",
+      "images/cards/Ius-Tazer_Here_to_Vibe.png"
+    ],
+    "text_file": "text/holy_curselifter.md",
+    "source": "images/sources/holy_curselifter/iustin_tazer.jpg",
+    "vibe_name": "Ius-Tazer",
+    "status": "generated"
+  },
+  {
+    "name": "Iust-INspectorul",
+    "slug": "bullseye",
+    "kind": "hero",
+    "game_id": "base.hero.bullseye",
+    "images": [
+      "images/by_type/heroes/bullseye.png",
+      "images/cards/Iust-INspectorul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/bullseye.md",
+    "source": "images/sources/bullseye/iustin_street.jpg",
+    "vibe_name": "Iust-INspectorul",
+    "status": "generated"
+  },
+  {
+    "name": "David „Sub-Zero”",
+    "slug": "greedy_cheeks",
+    "kind": "hero",
+    "game_id": "base.hero.greedy_cheeks",
+    "images": [
+      "images/by_type/heroes/greedy_cheeks.png",
+      "images/cards/David_Sub-Zero_Here_to_Vibe.png"
+    ],
+    "text_file": "text/greedy_cheeks.md",
+    "source": "images/sources/greedy_cheeks/david_fountain.jpg",
+    "vibe_name": "David „Sub-Zero”",
+    "status": "generated"
+  },
+  {
+    "name": "MaestrulMania",
+    "slug": "peanut",
+    "kind": "hero",
+    "game_id": "base.hero.peanut",
+    "images": [
+      "images/by_type/heroes/peanut.png",
+      "images/cards/MaestrulMania_Here_to_Vibe.png"
+    ],
+    "text_file": "text/peanut.md",
+    "source": "images/sources/peanut/david_blazer.jpg",
+    "vibe_name": "MaestrulMania",
+    "status": "generated"
+  },
+  {
+    "name": "David the Maniac",
+    "slug": "mighty_blade",
+    "kind": "hero",
+    "game_id": "base.hero.mighty_blade",
+    "images": [
+      "images/by_type/heroes/mighty_blade.png",
+      "images/cards/David_the_Maniac_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mighty_blade.md",
+    "source": "images/sources/mighty_blade/david_hoodie.jpg",
+    "vibe_name": "David the Maniac",
+    "status": "generated"
+  },
+  {
+    "name": "Răzvan Hood",
+    "slug": "hook",
+    "kind": "hero",
+    "game_id": "base.hero.hook",
+    "images": [
+      "images/by_type/heroes/hook.png",
+      "images/cards/Razvan_Hood_Here_to_Vibe.png"
+    ],
+    "text_file": "text/hook.md",
+    "source": "images/sources/hook/razvan_blazer.jpg",
+    "vibe_name": "Răzvan Hood",
+    "status": "generated"
+  },
+  {
+    "name": "Răzvanish from the Board",
+    "slug": "serious_grey",
+    "kind": "hero",
+    "game_id": "base.hero.serious_grey",
+    "images": [
+      "images/by_type/heroes/serious_grey.png",
+      "images/cards/Razvanish_from_the_Board_Here_to_Vibe.png"
+    ],
+    "text_file": "text/serious_grey.md",
+    "source": "images/sources/serious_grey/razvan_studio.jpg",
+    "vibe_name": "Răzvanish from the Board",
+    "status": "generated"
+  },
+  {
+    "name": "Răzvandalf the Wizard",
+    "slug": "whiskers",
+    "kind": "hero",
+    "game_id": "base.hero.whiskers",
+    "images": [
+      "images/by_type/heroes/whiskers.png",
+      "images/cards/Razvandalf_the_Wizard_Here_to_Vibe.png"
+    ],
+    "text_file": "text/whiskers.md",
+    "source": "images/sources/whiskers/razvan_blazer.jpg",
+    "vibe_name": "Răzvandalf the Wizard",
+    "status": "generated"
+  },
+  {
+    "name": "Cezarinho Hotomanul",
+    "slug": "tipsy_tootie",
+    "kind": "hero",
+    "game_id": "base.hero.tipsy_tootie",
+    "images": [
+      "images/by_type/heroes/tipsy_tootie.png",
+      "images/cards/Cezarinho_Hotomanul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/tipsy_tootie.md",
+    "source": "images/sources/tipsy_tootie/cezar_standing.jpg",
+    "vibe_name": "Cezarinho Hotomanul",
+    "status": "generated"
+  },
+  {
+    "name": "Cezarinho",
+    "slug": "wily_red",
+    "kind": "hero",
+    "game_id": "base.hero.wily_red",
+    "images": [
+      "images/by_type/heroes/wily_red.png",
+      "images/cards/Cezarinho_Here_to_Vibe.png"
+    ],
+    "text_file": "text/wily_red.md",
+    "source": "images/sources/wily_red/cezar_selfie.jpg",
+    "vibe_name": "Cezarinho",
+    "status": "generated"
+  },
+  {
+    "name": "Ce-Zar",
+    "slug": "spooky",
+    "kind": "hero",
+    "game_id": "base.hero.spooky",
+    "images": [
+      "images/by_type/heroes/spooky.png",
+      "images/cards/Ce-Zar_Here_to_Vibe.png"
+    ],
+    "text_file": "text/spooky.md",
+    "source": "images/sources/spooky/cezar_lanyard.jpg",
+    "vibe_name": "Ce-Zar",
+    "status": "generated"
+  },
+  {
+    "name": "Mari-A-rrow",
+    "slug": "wildshot",
+    "kind": "hero",
+    "game_id": "base.hero.wildshot",
+    "images": [
+      "images/by_type/heroes/wildshot.png",
+      "images/cards/Mari-A-rrow_Here_to_Vibe.png"
+    ],
+    "text_file": "text/wildshot.md",
+    "source": "images/sources/wildshot/maria_tropical.jpg",
+    "vibe_name": "Mari-A-rrow",
+    "status": "generated"
+  },
+  {
+    "name": "MaRIZZZ",
+    "slug": "slippery_paws",
+    "kind": "hero",
+    "game_id": "base.hero.slippery_paws",
+    "images": [
+      "images/by_type/heroes/slippery_paws.png",
+      "images/cards/MaRIZZZ_Here_to_Vibe.png"
+    ],
+    "text_file": "text/slippery_paws.md",
+    "source": "images/sources/slippery_paws/maria_black.jpg",
+    "vibe_name": "MaRIZZZ",
+    "status": "generated"
+  },
+  {
+    "name": "MariaDB",
+    "slug": "bun_bun",
+    "kind": "hero",
+    "game_id": "base.hero.bun_bun",
+    "images": [
+      "images/by_type/heroes/bun_bun.png",
+      "images/cards/MariaDB_Here_to_Vibe.png"
+    ],
+    "text_file": "text/bun_bun.md",
+    "source": "images/sources/bun_bun/maria_tropical.jpg",
+    "vibe_name": "MariaDB",
+    "status": "generated"
+  },
+  {
+    "name": "Sebi Șoimul",
+    "slug": "bear_claw",
+    "kind": "hero",
+    "game_id": "base.hero.bear_claw",
+    "images": [
+      "images/by_type/heroes/bear_claw.png",
+      "images/cards/Sebi_Soimul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/bear_claw.md",
+    "source": "images/sources/bear_claw/sebi_night.jpg",
+    "vibe_name": "Sebi Șoimul",
+    "status": "generated"
+  },
+  {
+    "name": "Sebi și Omul",
+    "slug": "calming_voice",
+    "kind": "hero",
+    "game_id": "base.hero.calming_voice",
+    "images": [
+      "images/by_type/heroes/calming_voice.png",
+      "images/cards/Sebi_si_Omul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/calming_voice.md",
+    "source": "images/sources/calming_voice/sebi_studio.jpg",
+    "vibe_name": "Sebi și Omul",
+    "status": "generated"
+  },
+  {
+    "name": "Sebi-Servire",
+    "slug": "silent_shadow",
+    "kind": "hero",
+    "game_id": "base.hero.silent_shadow",
+    "images": [
+      "images/by_type/heroes/silent_shadow.png",
+      "images/cards/Sebi-Servire_Here_to_Vibe.png"
+    ],
+    "text_file": "text/silent_shadow.md",
+    "source": "images/sources/silent_shadow/sebi_night.jpg",
+    "vibe_name": "Sebi-Servire",
+    "status": "generated"
+  },
+  {
+    "name": "Florin „Drop-in”",
+    "slug": "fuzzy_cheeks",
+    "kind": "hero",
+    "game_id": "base.hero.fuzzy_cheeks",
+    "images": [
+      "images/by_type/heroes/fuzzy_cheeks.png",
+      "images/cards/Florin_Drop-in_Here_to_Vibe.png"
+    ],
+    "text_file": "text/fuzzy_cheeks.md",
+    "source": "images/sources/fuzzy_cheeks/florin_blazer.jpg",
+    "vibe_name": "Florin „Drop-in”",
+    "status": "generated"
+  },
+  {
+    "name": "Dino Adorabilul",
+    "slug": "iron_resolve",
+    "kind": "hero",
+    "game_id": "base.hero.iron_resolve",
+    "images": [
+      "images/by_type/heroes/iron_resolve.png",
+      "images/cards/Dino_Adorabilul_Here_to_Vibe.png"
+    ],
+    "text_file": "text/iron_resolve.md",
+    "source": "images/sources/iron_resolve/dino_photo.jpg",
+    "vibe_name": "Dino Adorabilul",
+    "status": "generated"
+  },
+  {
+    "name": "Mincu-cid",
+    "slug": "fluffy",
+    "kind": "hero",
+    "game_id": "base.hero.fluffy",
+    "images": [
+      "images/by_type/heroes/fluffy.png",
+      "images/cards/Mincu-cid_Here_to_Vibe.png"
+    ],
+    "text_file": "text/fluffy.md",
+    "source": "images/sources/fluffy/florin_magenta.jpg",
+    "vibe_name": "Mincu-cid",
+    "status": "generated"
+  },
+  {
+    "name": "Lăutarul Matei „Ciordales”",
+    "slug": "lucky_bucky",
+    "kind": "hero",
+    "game_id": "base.hero.lucky_bucky",
+    "images": [
+      "images/by_type/heroes/lucky_bucky.png",
+      "images/cards/Lautarul_Matei_Ciordales_Here_to_Vibe.png"
+    ],
+    "text_file": "text/lucky_bucky.md",
+    "source": "images/sources/lucky_bucky/matei_white.jpg",
+    "vibe_name": "Lăutarul Matei „Ciordales”",
+    "status": "generated"
+  },
+  {
+    "name": "Provoca-Rota",
+    "slug": "fury_knuckle",
+    "kind": "hero",
+    "game_id": "base.hero.fury_knuckle",
+    "images": [
+      "images/by_type/heroes/fury_knuckle.png",
+      "images/cards/Provoca-Rota_Here_to_Vibe.png"
+    ],
+    "text_file": "text/fury_knuckle.md",
+    "source": "images/sources/fury_knuckle/matei_jacket.jpg",
+    "vibe_name": "Provoca-Rota",
+    "status": "generated"
+  },
+  {
+    "name": "Matrei",
+    "slug": "wise_shield",
+    "kind": "hero",
+    "game_id": "base.hero.wise_shield",
+    "images": [
+      "images/by_type/heroes/wise_shield.png",
+      "images/cards/Matrei_Here_to_Vibe.png"
+    ],
+    "text_file": "text/wise_shield.md",
+    "source": "images/sources/wise_shield/matei_selfie.jpg",
+    "vibe_name": "Matrei",
+    "status": "generated"
+  },
+  {
+    "name": "Răzvan The Disarmer",
+    "slug": "beary_wise",
+    "kind": "hero",
+    "game_id": "base.hero.beary_wise",
+    "images": [
+      "images/by_type/heroes/beary_wise.png",
+      "images/cards/Razvan_The_Disarmer_Here_to_Vibe.png"
+    ],
+    "text_file": "text/beary_wise.md",
+    "source": "images/sources/beary_wise/razvan_studio.jpg",
+    "vibe_name": "Răzvan The Disarmer",
+    "status": "generated"
+  },
+  {
+    "name": "Răz-One Man Army",
+    "slug": "vibrant_glow",
+    "kind": "hero",
+    "game_id": "base.hero.vibrant_glow",
+    "images": [
+      "images/by_type/heroes/vibrant_glow.png",
+      "images/cards/Raz-One_Man_Army_Here_to_Vibe.png"
+    ],
+    "text_file": "text/vibrant_glow.md",
+    "source": "images/sources/vibrant_glow/razvan_studio.jpg",
+    "vibe_name": "Răz-One Man Army",
+    "status": "generated"
+  },
+  {
+    "name": "Răz-VAN-illa",
+    "slug": "sly_pickings",
+    "kind": "hero",
+    "game_id": "base.hero.sly_pickings",
+    "images": [
+      "images/by_type/heroes/sly_pickings.png",
+      "images/cards/Raz-VAN-illa_Here_to_Vibe.png"
+    ],
+    "text_file": "text/sly_pickings.md",
+    "source": "images/sources/sly_pickings/razvan_studio.jpg",
+    "vibe_name": "Răz-VAN-illa",
+    "status": "generated"
+  },
+  {
+    "name": "Larisa „Wipeout”",
+    "slug": "qi_bear",
+    "kind": "hero",
+    "game_id": "base.hero.qi_bear",
+    "images": [
+      "images/by_type/heroes/qi_bear.png",
+      "images/cards/Larisa_Wipeout_Here_to_Vibe.png"
+    ],
+    "text_file": "text/qi_bear.md",
+    "source": "images/sources/qi_bear/larisa_car.jpg",
+    "vibe_name": "Larisa „Wipeout”",
+    "status": "generated"
+  },
+  {
+    "name": "Te-ai La-RISC-at",
+    "slug": "smooth_mimimeow",
+    "kind": "hero",
+    "game_id": "base.hero.smooth_mimimeow",
+    "images": [
+      "images/by_type/heroes/smooth_mimimeow.png",
+      "images/cards/Te-ai_La-RISC-at_Here_to_Vibe.png"
+    ],
+    "text_file": "text/smooth_mimimeow.md",
+    "source": "images/sources/smooth_mimimeow/larisa_office.jpg",
+    "vibe_name": "Te-ai La-RISC-at",
+    "status": "generated"
+  },
+  {
+    "name": "La-RISK-a tot",
+    "slug": "hopper",
+    "kind": "hero",
+    "game_id": "base.hero.hopper",
+    "images": [
+      "images/by_type/heroes/hopper.png",
+      "images/cards/La-RISK-a_tot_Here_to_Vibe.png"
+    ],
+    "text_file": "text/hopper.md",
+    "source": "images/sources/hopper/larisa_bouquet.jpg",
+    "vibe_name": "La-RISK-a tot",
+    "status": "generated"
+  },
+  {
+    "name": "Rebek-atac",
+    "slug": "heavy_bear",
+    "kind": "hero",
+    "game_id": "base.hero.heavy_bear",
+    "images": [
+      "images/by_type/heroes/heavy_bear.png",
+      "images/cards/Rebek-atac_Here_to_Vibe.png"
+    ],
+    "text_file": "text/heavy_bear.md",
+    "source": "images/sources/heavy_bear/rebeka_selfie.jpg",
+    "vibe_name": "Rebek-atac",
+    "status": "generated"
+  },
+  {
+    "name": "Rebek-ability",
+    "slug": "wiggles",
+    "kind": "hero",
+    "game_id": "base.hero.wiggles",
+    "images": [
+      "images/by_type/heroes/wiggles.png",
+      "images/cards/Rebek-ability_Here_to_Vibe.png"
+    ],
+    "text_file": "text/wiggles.md",
+    "source": "images/sources/wiggles/rebeka_selfie.jpg",
+    "vibe_name": "Rebek-ability",
+    "status": "generated"
+  },
+  {
+    "name": "Raul-ambo",
+    "slug": "tough_teddy",
+    "kind": "hero",
+    "game_id": "base.hero.tough_teddy",
+    "images": [
+      "images/by_type/heroes/tough_teddy.png",
+      "images/cards/Raul-ambo_Here_to_Vibe.png"
+    ],
+    "text_file": "text/tough_teddy.md",
+    "source": "images/sources/tough_teddy/raul_hike.jpg",
+    "vibe_name": "Raul-ambo",
+    "status": "generated"
+  },
+  {
+    "name": "Raul-ing in the Deep",
+    "slug": "shurikitty",
+    "kind": "hero",
+    "game_id": "base.hero.shurikitty",
+    "images": [
+      "images/by_type/heroes/shurikitty.png",
+      "images/cards/Raul-ing_in_the_Deep_Here_to_Vibe.png"
+    ],
+    "text_file": "text/shurikitty.md",
+    "source": "images/sources/shurikitty/raul_indoor.jpg",
+    "vibe_name": "Raul-ing in the Deep",
+    "status": "generated"
+  },
+  {
+    "name": "Ab-Raul-cadabra",
+    "slug": "snowball",
+    "kind": "hero",
+    "game_id": "base.hero.snowball",
+    "images": [
+      "images/by_type/heroes/snowball.png",
+      "images/cards/Ab-Raul-cadabra_Here_to_Vibe.png"
+    ],
+    "text_file": "text/snowball.md",
+    "source": "images/sources/snowball/raul_polo.jpg",
+    "vibe_name": "Ab-Raul-cadabra",
+    "status": "generated"
+  },
+  {
+    "name": "AlEXTRACT",
+    "slug": "pan_chucks",
+    "kind": "hero",
+    "game_id": "base.hero.pan_chucks",
+    "images": [
+      "images/by_type/heroes/pan_chucks.png",
+      "images/cards/AlEXTRACT_Here_to_Vibe.png"
+    ],
+    "text_file": "text/pan_chucks.md",
+    "source": "images/sources/pan_chucks/alexandra_sweater.jpg",
+    "vibe_name": "AlEXTRACT",
+    "status": "generated"
+  },
+  {
+    "name": "Ale-X-tra",
+    "slug": "radiant_horn",
+    "kind": "hero",
+    "game_id": "base.hero.radiant_horn",
+    "images": [
+      "images/by_type/heroes/radiant_horn.png",
+      "images/cards/Ale-X-tra_Here_to_Vibe.png"
+    ],
+    "text_file": "text/radiant_horn.md",
+    "source": "images/sources/radiant_horn/alexandra_beach.jpg",
+    "vibe_name": "Ale-X-tra",
+    "status": "generated"
+  },
+  {
+    "name": "AleX-TREME",
+    "slug": "meowzio",
+    "kind": "hero",
+    "game_id": "base.hero.meowzio",
+    "images": [
+      "images/by_type/heroes/meowzio.png",
+      "images/cards/AleX-TREME_Here_to_Vibe.png"
+    ],
+    "text_file": "text/meowzio.md",
+    "source": "images/sources/meowzio/alexandra_teal.jpg",
+    "vibe_name": "AleX-TREME",
+    "status": "generated"
+  },
+  {
+    "name": "Cezar „Topdeck”",
+    "slug": "mellow_dee",
+    "kind": "hero",
+    "game_id": "base.hero.mellow_dee",
+    "images": [
+      "images/by_type/heroes/mellow_dee.png",
+      "images/cards/Cezar_Topdeck_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mellow_dee.md",
+    "source": "images/sources/mellow_dee/cezar_studio.jpg",
+    "vibe_name": "Cezar „Topdeck”",
+    "status": "generated"
+  },
+  {
+    "name": "Cartela de la ușă",
+    "slug": "napping_nibbles",
+    "kind": "hero",
+    "game_id": "base.hero.napping_nibbles",
+    "images": [
+      "images/by_type/heroes/napping_nibbles.png",
+      "images/cards/Cartela_de_la_usa_Here_to_Vibe.png"
+    ],
+    "text_file": "text/napping_nibbles.md",
+    "source": "images/sources/napping_nibbles/door_fobs.jpg",
+    "vibe_name": "Cartela de la ușă",
+    "status": "generated"
+  },
+  {
+    "name": "Ralu-CAUTĂ",
+    "slug": "guiding_light",
+    "kind": "hero",
+    "game_id": "base.hero.guiding_light",
+    "images": [
+      "images/by_type/heroes/guiding_light.png",
+      "images/cards/Ralu-CAUTA_Here_to_Vibe.png"
+    ],
+    "text_file": "text/guiding_light.md",
+    "source": "images/sources/guiding_light/raluca_poster.jpg",
+    "vibe_name": "Ralu-CAUTĂ",
+    "status": "generated"
+  },
+  {
+    "name": "TRAGOȘ",
+    "slug": "plundering_puma",
+    "kind": "hero",
+    "game_id": "base.hero.plundering_puma",
+    "images": [
+      "images/by_type/heroes/plundering_puma.png",
+      "images/cards/TRAGOS_Here_to_Vibe.png"
+    ],
+    "text_file": "text/plundering_puma.md",
+    "source": "images/sources/plundering_puma/dragos_outdoor.jpg",
+    "vibe_name": "TRAGOȘ",
+    "status": "generated"
+  },
+  {
+    "name": "Andrei „1+1 Gratis”",
+    "slug": "rex_major",
+    "kind": "monster",
+    "game_id": "base.monster.rex_major",
+    "images": [
+      "images/by_type/monsters/rex_major.png",
+      "images/cards/Andrei_1+1_Gratis_Here_to_Vibe.png"
+    ],
+    "text_file": "text/rex_major.md",
+    "source": "images/sources/rex_major/andrei_fountain.jpg",
+    "vibe_name": "Andrei „1+1 Gratis”",
+    "status": "generated"
+  },
+  {
+    "name": "Adren-Alina",
+    "slug": "warworn_owlbear",
+    "kind": "monster",
+    "game_id": "base.monster.warworn_owlbear",
+    "images": [
+      "images/by_type/monsters/warworn_owlbear.png",
+      "images/cards/Adren-Alina_Here_to_Vibe.png"
+    ],
+    "text_file": "text/warworn_owlbear.md",
+    "source": "images/sources/warworn_owlbear/alina_circle.jpg",
+    "vibe_name": "Adren-Alina",
+    "status": "generated"
+  },
+  {
+    "name": "SiemensGPT",
+    "slug": "mega_slime",
+    "kind": "monster",
+    "game_id": "base.monster.mega_slime",
+    "images": [
+      "images/by_type/monsters/mega_slime.png",
+      "images/cards/SiemensGPT_Here_to_Vibe.png"
+    ],
+    "text_file": "text/mega_slime.md",
+    "source": null,
+    "vibe_name": "SiemensGPT",
+    "status": "generated"
+  },
+  {
+    "name": "Paul-tergeist",
+    "slug": "abyss_queen",
+    "kind": "monster",
+    "game_id": "base.monster.abyss_queen",
+    "images": [
+      "images/by_type/monsters/abyss_queen.png",
+      "images/cards/Paul-tergeist_Here_to_Vibe.png"
+    ],
+    "text_file": "text/abyss_queen.md",
+    "source": "images/sources/abyss_queen/paul_photo.jpg",
+    "vibe_name": "Paul-tergeist",
+    "status": "generated"
+  },
+  {
+    "name": "Evelina „Perma-Buff”",
+    "slug": "anuran_cauldron",
+    "kind": "monster",
+    "game_id": "base.monster.anuran_cauldron",
+    "images": [
+      "images/by_type/monsters/anuran_cauldron.png",
+      "images/cards/Evelina_Perma-Buff_Here_to_Vibe.png"
+    ],
+    "text_file": "text/anuran_cauldron.md",
+    "source": "images/sources/anuran_cauldron/evelina_photo.png",
+    "vibe_name": "Evelina „Perma-Buff”",
+    "status": "generated"
+  },
+  {
+    "name": "Cristi Iri-MAI-ia",
+    "slug": "corrupted_sabretooth",
+    "kind": "monster",
+    "game_id": "base.monster.corrupted_sabretooth",
+    "images": [
+      "images/by_type/monsters/corrupted_sabretooth.png",
+      "images/cards/Cristi_Iri-MAI-ia_Here_to_Vibe.png"
+    ],
+    "text_file": "text/corrupted_sabretooth.md",
+    "source": "images/sources/corrupted_sabretooth/cristi_color.jpg",
+    "vibe_name": "Cristi Iri-MAI-ia",
+    "status": "generated"
+  },
+  {
+    "name": "Alexan-DRAW",
+    "slug": "arctic_aries",
+    "kind": "monster",
+    "game_id": "base.monster.arctic_aries",
+    "images": [
+      "images/by_type/monsters/arctic_aries.png",
+      "images/cards/Alexan-DRAW_Here_to_Vibe.png"
+    ],
+    "text_file": "text/arctic_aries.md",
+    "source": "images/sources/arctic_aries/alexandra_stage.jpg",
+    "vibe_name": "Alexan-DRAW",
+    "status": "generated"
+  },
+  {
+    "name": "Andrei Dictator",
+    "slug": "terratuga",
+    "kind": "monster",
+    "game_id": "base.monster.terratuga",
+    "images": [
+      "images/by_type/monsters/terratuga.png",
+      "images/cards/Andrei_Dictator_Here_to_Vibe.png"
+    ],
+    "text_file": "text/terratuga.md",
+    "source": "images/sources/terratuga/andrei_uniform.jpg",
+    "vibe_name": "Andrei Dictator",
+    "status": "generated"
+  },
+  {
+    "name": "Re-VIO",
+    "slug": "dracos",
+    "kind": "monster",
+    "game_id": "base.monster.dracos",
+    "images": [
+      "images/by_type/monsters/dracos.png",
+      "images/cards/Re-VIO_Here_to_Vibe.png"
+    ],
+    "text_file": "text/dracos.md",
+    "source": "images/sources/dracos/viorica_indoor.jpg",
+    "vibe_name": "Re-VIO",
+    "status": "generated"
+  },
+  {
+    "name": "Claude Max",
+    "slug": "cloaked_sage",
+    "kind": "leader",
+    "game_id": "base.leader.cloaked_sage",
+    "images": [
+      "images/by_type/leaders/cloaked_sage.png",
+      "images/cards/Claude_Max_Here_to_Vibe.png"
+    ],
+    "text_file": "text/cloaked_sage.md",
+    "source": null,
+    "vibe_name": "Claude Max",
+    "status": "generated"
+  },
+  {
+    "name": "Enemy_key.pem",
+    "slug": "shadow_claw",
+    "kind": "leader",
+    "game_id": "base.leader.shadow_claw",
+    "images": [
+      "images/by_type/leaders/shadow_claw.png",
+      "images/cards/Enemy_key.pem_Here_to_Vibe.png"
+    ],
+    "text_file": "text/shadow_claw.md",
+    "source": null,
+    "vibe_name": "Enemy_key.pem",
+    "status": "generated"
+  },
+  {
+    "name": "Digi",
+    "slug": "protecting_horn",
+    "kind": "leader",
+    "game_id": "base.leader.protecting_horn",
+    "images": [
+      "images/by_type/leaders/protecting_horn.png",
+      "images/cards/Digi_Here_to_Vibe.png"
+    ],
+    "text_file": "text/protecting_horn.md",
+    "source": null,
+    "vibe_name": "Digi",
+    "status": "generated"
+  },
+  {
+    "name": "Random.org",
+    "slug": "fist_of_reason",
+    "kind": "leader",
+    "game_id": "base.leader.fist_of_reason",
+    "images": [
+      "images/by_type/leaders/fist_of_reason.png",
+      "images/cards/Random.org_Here_to_Vibe.png"
+    ],
+    "text_file": "text/fist_of_reason.md",
+    "source": null,
+    "vibe_name": "Random.org",
+    "status": "generated"
+  },
+  {
+    "name": "Puterea prieteniei",
+    "slug": "divine_arrow",
+    "kind": "leader",
+    "game_id": "base.leader.divine_arrow",
+    "images": [
+      "images/by_type/leaders/divine_arrow.png",
+      "images/cards/Puterea_prieteniei_Here_to_Vibe.png"
+    ],
+    "text_file": "text/divine_arrow.md",
+    "source": null,
+    "vibe_name": "Puterea prieteniei",
+    "status": "generated"
+  },
+  {
+    "name": "Suc de portocale",
+    "slug": "charismatic_song",
+    "kind": "leader",
+    "game_id": "base.leader.charismatic_song",
+    "images": [
+      "images/by_type/leaders/charismatic_song.png",
+      "images/cards/Suc_de_portocale_Here_to_Vibe.png"
+    ],
+    "text_file": "text/charismatic_song.md",
+    "source": null,
+    "vibe_name": "Suc de portocale",
+    "status": "generated"
+  },
+  {
+    "name": "~ClassDestructor",
+    "slug": "destructive_spell",
+    "kind": "magic",
+    "game_id": "base.magic.destructive_spell",
+    "images": [
+      "images/by_type/magic/destructive_spell.png",
+      "images/cards/ClassDestructor_Here_to_Vibe.png"
+    ],
+    "text_file": "text/destructive_spell.md",
+    "source": null,
+    "vibe_name": "~ClassDestructor",
+    "status": "generated"
+  },
+  {
+    "name": "SearchHistory",
+    "slug": "call_to_the_fallen",
+    "kind": "magic",
+    "game_id": "base.magic.call_to_the_fallen",
+    "images": [
+      "images/by_type/magic/call_to_the_fallen.png",
+      "images/cards/SearchHistory_Here_to_Vibe.png"
+    ],
+    "text_file": "text/call_to_the_fallen.md",
+    "source": null,
+    "vibe_name": "SearchHistory",
+    "status": "generated"
+  },
+  {
+    "name": "Swap",
+    "slug": "forced_exchange",
+    "kind": "magic",
+    "game_id": "base.magic.forced_exchange",
+    "images": [
+      "images/by_type/magic/forced_exchange.png",
+      "images/cards/Swap_Here_to_Vibe.png"
+    ],
+    "text_file": "text/forced_exchange.md",
+    "source": null,
+    "vibe_name": "Swap",
+    "status": "generated"
+  },
+  {
+    "name": "NotSoRandom.org",
+    "slug": "enchanted_spell",
+    "kind": "magic",
+    "game_id": "base.magic.enchanted_spell",
+    "images": [
+      "images/by_type/magic/enchanted_spell.png",
+      "images/cards/NotSoRandom.org_Here_to_Vibe.png"
+    ],
+    "text_file": "text/enchanted_spell.md",
+    "source": null,
+    "vibe_name": "NotSoRandom.org",
+    "status": "generated"
+  },
+  {
+    "name": "Microsoft Defender",
+    "slug": "winds_of_change",
+    "kind": "magic",
+    "game_id": "base.magic.winds_of_change",
+    "images": [
+      "images/by_type/magic/winds_of_change.png",
+      "images/cards/Microsoft_Defender_Here_to_Vibe.png"
+    ],
+    "text_file": "text/winds_of_change.md",
+    "source": null,
+    "vibe_name": "Microsoft Defender",
+    "status": "generated"
+  },
+  {
+    "name": "BitDefender",
+    "slug": "forceful_winds",
+    "kind": "magic",
+    "game_id": "base.magic.forceful_winds",
+    "images": [
+      "images/by_type/magic/forceful_winds.png",
+      "images/cards/BitDefender_Here_to_Vibe.png"
+    ],
+    "text_file": "text/forceful_winds.md",
+    "source": null,
+    "vibe_name": "BitDefender",
+    "status": "generated"
+  },
+  {
+    "name": "GiveMeBabyOneMoreCard",
+    "slug": "critical_boost",
+    "kind": "magic",
+    "game_id": "base.magic.critical_boost",
+    "images": [
+      "images/by_type/magic/critical_boost.png",
+      "images/cards/GiveMeBabyOneMoreCard_Here_to_Vibe.png"
+    ],
+    "text_file": "text/critical_boost.md",
+    "source": null,
+    "vibe_name": "GiveMeBabyOneMoreCard",
+    "status": "generated"
+  },
+  {
+    "name": "SegmentationFault",
+    "slug": "entangling_trap",
+    "kind": "magic",
+    "game_id": "base.magic.entangling_trap",
+    "images": [
+      "images/by_type/magic/entangling_trap.png",
+      "images/cards/SegmentationFault_Here_to_Vibe.png"
+    ],
+    "text_file": "text/entangling_trap.md",
+    "source": null,
+    "vibe_name": "SegmentationFault",
+    "status": "generated"
+  },
+  {
+    "name": "+2 Noroc Buff",
+    "slug": "really_big_ring",
+    "kind": "item",
+    "game_id": "base.item.really_big_ring",
+    "images": [
+      "images/by_type/items/really_big_ring.png",
+      "images/cards/+2_Noroc_Buff_Here_to_Vibe.png"
+    ],
+    "text_file": "text/really_big_ring.md",
+    "source": null,
+    "vibe_name": "+2 Noroc Buff",
+    "status": "generated"
+  },
+  {
+    "name": "Am mai dat, dar am și luat",
+    "slug": "particularly_rusty_coin",
+    "kind": "item",
+    "game_id": "base.item.particularly_rusty_coin",
+    "images": [
+      "images/by_type/items/particularly_rusty_coin.png",
+      "images/cards/Am_mai_dat_dar_am_si_luat_Here_to_Vibe.png"
+    ],
+    "text_file": "text/particularly_rusty_coin.md",
+    "source": null,
+    "vibe_name": "Am mai dat, dar am și luat",
+    "status": "generated"
+  },
+  {
+    "name": "EC2 image",
+    "slug": "decoy_doll",
+    "kind": "item",
+    "game_id": "base.item.decoy_doll",
+    "images": [
+      "images/by_type/items/decoy_doll.png",
+      "images/cards/EC2_image_Here_to_Vibe.png"
+    ],
+    "text_file": "text/decoy_doll.md",
+    "source": null,
+    "vibe_name": "EC2 image",
+    "status": "generated"
+  },
+  {
+    "name": "Tortul de la Siemens",
+    "slug": "tortul_de_la_siemens",
+    "kind": "item",
+    "game_id": "tortul_de_la_siemens",
+    "images": [
+      "images/by_type/items/tortul_de_la_siemens.png",
+      "images/cards/Tortul_de_la_Siemens_Here_to_Vibe.png"
+    ],
+    "text_file": "text/tortul_de_la_siemens.md",
+    "source": "images/sources/tortul_de_la_siemens/siemens_cake.jpg",
+    "vibe_name": "Tortul de la Siemens",
+    "status": "generated"
+  },
+  {
+    "name": "Rota-lorifer",
+    "slug": "rota_lorifer",
+    "kind": "item",
+    "game_id": "rota_lorifer",
+    "images": [
+      "images/by_type/items/rota_lorifer.png",
+      "images/cards/Rota-lorifer_Here_to_Vibe.png"
+    ],
+    "text_file": "text/rota_lorifer.md",
+    "source": null,
+    "vibe_name": "Rota-lorifer",
+    "status": "generated"
+  },
+  {
+    "name": "Cafelutza puternicoasă",
+    "slug": "cafelutza_puternicoasa",
+    "kind": "item",
+    "game_id": "cafelutza_puternicoasa",
+    "images": [
+      "images/by_type/items/cafelutza_puternicoasa.png",
+      "images/cards/Cafelutza_puternicoasa_Here_to_Vibe.png"
+    ],
+    "text_file": "text/cafelutza_puternicoasa.md",
+    "source": "images/sources/cafelutza_puternicoasa/coffee.jpg",
+    "vibe_name": "Cafelutza puternicoasă",
+    "status": "generated"
+  },
+  {
+    "name": "Nu ai voie să ai cărți!",
+    "slug": "suspiciously_shiny_coin",
+    "kind": "item",
+    "game_id": "base.item.suspiciously_shiny_coin",
+    "images": [
+      "images/by_type/items/suspiciously_shiny_coin.png",
+      "images/cards/Nu_ai_voie_sa_ai_carti_Here_to_Vibe.png"
+    ],
+    "text_file": "text/suspiciously_shiny_coin.md",
+    "source": null,
+    "vibe_name": "Nu ai voie să ai cărți!",
+    "status": "generated"
+  },
+  {
+    "name": "GHINION! (Gina Felea)",
+    "slug": "curse_of_the_snakes_eyes",
+    "kind": "item",
+    "game_id": "base.item.curse_of_the_snakes_eyes",
+    "images": [
+      "images/by_type/items/curse_of_the_snakes_eyes.png",
+      "images/cards/GHINION_Here_to_Vibe.png"
+    ],
+    "text_file": "text/curse_of_the_snakes_eyes.md",
+    "source": null,
+    "vibe_name": "GHINION! (Gina Felea)",
+    "status": "generated"
+  },
+  {
+    "name": "Error 404",
+    "slug": "sealing_key",
+    "kind": "item",
+    "game_id": "base.item.sealing_key",
+    "images": [
+      "images/by_type/items/sealing_key.png",
+      "images/cards/Error_404_Here_to_Vibe.png"
+    ],
+    "text_file": "text/sealing_key.md",
+    "source": null,
+    "vibe_name": "Error 404",
+    "status": "generated"
+  },
+  {
+    "name": "Yawn",
+    "slug": "yawn",
+    "kind": "item",
+    "game_id": "yawn",
+    "images": [
+      "images/by_type/items/yawn.png",
+      "images/cards/Yawn_Here_to_Vibe.png"
+    ],
+    "text_file": "text/yawn.md",
+    "source": null,
+    "vibe_name": "Yawn",
+    "status": "generated"
+  },
+  {
+    "name": "Aerul condiționat",
+    "slug": "aerul_conditionat",
+    "kind": "item",
+    "game_id": "aerul_conditionat",
+    "images": [
+      "images/by_type/items/aerul_conditionat.png",
+      "images/cards/Aerul_conditionat_Here_to_Vibe.png"
+    ],
+    "text_file": "text/aerul_conditionat.md",
+    "source": null,
+    "vibe_name": "Aerul condiționat",
+    "status": "generated"
+  },
+  {
+    "name": "Ciorba de salată",
+    "slug": "ciorba_de_salata",
+    "kind": "item",
+    "game_id": "ciorba_de_salata",
+    "images": [
+      "images/by_type/items/ciorba_de_salata.png",
+      "images/cards/Ciorba_de_salata_Here_to_Vibe.png"
+    ],
+    "text_file": "text/ciorba_de_salata.md",
+    "source": null,
+    "vibe_name": "Ciorba de salată",
+    "status": "generated"
+  },
+  {
+    "name": "Plus unu / minus trei",
+    "slug": "plus_one_minus_three",
+    "kind": "modifier",
+    "game_id": "base.modifier.plus_one_minus_three",
+    "images": [
+      "images/by_type/modifiers/plus_one_minus_three.png",
+      "images/cards/Plus_unu_minus_trei_Here_to_Vibe.png"
+    ],
+    "text_file": "text/plus_one_minus_three.md",
+    "source": null,
+    "vibe_name": "Plus unu / minus trei",
+    "status": "generated"
+  },
+  {
+    "name": "Plus doi / minus doi",
+    "slug": "plus_two_minus_two",
+    "kind": "modifier",
+    "game_id": "base.modifier.plus_two_minus_two",
+    "images": [
+      "images/by_type/modifiers/plus_two_minus_two.png",
+      "images/cards/Plus_doi_minus_doi_Here_to_Vibe.png"
+    ],
+    "text_file": "text/plus_two_minus_two.md",
+    "source": null,
+    "vibe_name": "Plus doi / minus doi",
+    "status": "generated"
+  },
+  {
+    "name": "Plus trei / minus unu",
+    "slug": "plus_three_minus_one",
+    "kind": "modifier",
+    "game_id": "base.modifier.plus_three_minus_one",
+    "images": [
+      "images/by_type/modifiers/plus_three_minus_one.png",
+      "images/cards/Plus_trei_minus_unu_Here_to_Vibe.png"
+    ],
+    "text_file": "text/plus_three_minus_one.md",
+    "source": null,
+    "vibe_name": "Plus trei / minus unu",
+    "status": "generated"
+  },
+  {
+    "name": "Plus patru / minus patru",
+    "slug": "plus_four_minus_four",
+    "kind": "modifier",
+    "game_id": "base.modifier.plus_four_minus_four",
+    "images": [
+      "images/by_type/modifiers/plus_four_minus_four.png",
+      "images/cards/Plus_patru_minus_patru_Here_to_Vibe.png"
+    ],
+    "text_file": "text/plus_four_minus_four.md",
+    "source": null,
+    "vibe_name": "Plus patru / minus patru",
+    "status": "generated"
+  },
+  {
+    "name": "Șia all in",
+    "slug": "challenge",
+    "kind": "challenge",
+    "game_id": "base.challenge.challenge",
+    "images": [
+      "images/by_type/challenges/challenge.png",
+      "images/cards/Sia_all_in_Here_to_Vibe.png"
+    ],
+    "text_file": "text/challenge.md",
+    "source": null,
+    "vibe_name": "Șia all in",
+    "status": "generated"
+  }
+]

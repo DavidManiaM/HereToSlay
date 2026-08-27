@@ -6,6 +6,9 @@ Everything a player reads — kind labels, chrome, verbs — goes through here.
 
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 # -- kind labels -------------------------------------------------------------
@@ -16,7 +19,7 @@ KIND_LABEL: dict[str, str] = {
     "item": "Cheat",  # blessing / own-side unelte; cursed → Hack via tags
     "magic": "Script",
     "modifier": "Download/Upload Speed",
-    "challenge": "Provocare",
+    "challenge": "Șia all in",
     "party_leader": "Șeful grupului",
 }
 
@@ -26,7 +29,7 @@ KIND_LABEL_PLURAL: dict[str, str] = {
     "item": "Cheats",
     "magic": "Scripts",
     "modifier": "Download/Upload Speed",
-    "challenge": "Provocări",
+    "challenge": "Șia all in",
     "party_leader": "Șefi de grup",
 }
 
@@ -37,12 +40,12 @@ CHEAT = "Cheat"
 CHEATS = "Cheats"
 
 CLASS_LABEL: dict[str, str] = {
-    "bard": "Bard",
-    "fighter": "Fighter",
-    "guardian": "Guardian",
-    "ranger": "Ranger",
-    "thief": "Thief",
-    "wizard": "Wizard",
+    "bard": "Cântăreț",
+    "fighter": "Luptător",
+    "guardian": "Gardian",
+    "ranger": "Arcaș",
+    "thief": "Hoț",
+    "wizard": "Magician",
 }
 
 #: shown while this machine waits for a networked seat to answer
@@ -176,8 +179,8 @@ def kind_label(
     """Display label for a card kind.
 
     Cursed items (``tags`` containing ``cursed``) are **Hacks** — unelte
-    blestemate placed on another player's persoane. Challenges stay
-    **Provocare**.
+    blestemate placed on another player's persoane. Challenges display as
+    **Șia all in**.
     """
     tag_set = {str(t).lower() for t in (tags or ())}
     if kind == "item" and "cursed" in tag_set:
@@ -223,19 +226,102 @@ def np_random_label(total: int | None = None) -> str:
     return f'np.random("{int(total)}")'
 
 
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "assets").is_dir() or (parent / "pyproject.toml").is_file():
+            return parent
+    return Path.cwd()
+
+
+@lru_cache(maxsize=1)
+def _vibe_catalog() -> dict[str, dict[str, str]]:
+    """Index Here to Vibe names/ability text by game_id and slug."""
+    pack = _repo_root() / "assets" / "ref" / "here_to_vibe"
+    catalog_path = pack / "meta" / "catalog.json"
+    by_key: dict[str, dict[str, str]] = {}
+    if not catalog_path.is_file():
+        return by_key
+    try:
+        entries = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return by_key
+    if not isinstance(entries, list):
+        return by_key
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        info = {
+            "name": str(entry.get("vibe_name") or entry.get("name") or ""),
+            "text_file": str(entry.get("text_file") or ""),
+        }
+        game_id = str(entry.get("game_id") or "")
+        slug = str(entry.get("slug") or "")
+        if game_id:
+            by_key[game_id] = info
+        if slug:
+            by_key.setdefault(slug, info)
+    return by_key
+
+
+def _vibe_entry(card_def: Any) -> dict[str, str] | None:
+    def_id = str(getattr(card_def, "id", "") or "")
+    if not def_id:
+        return None
+    catalog = _vibe_catalog()
+    hit = catalog.get(def_id)
+    if hit is not None:
+        return hit
+    return catalog.get(def_id.rsplit(".", 1)[-1].lower())
+
+
+@lru_cache(maxsize=256)
+def _vibe_ability_from_file(text_file: str) -> str:
+    """Ability paragraph from ``assets/ref/here_to_vibe/text/*.md``."""
+    if not text_file:
+        return ""
+    path = _repo_root() / "assets" / "ref" / "here_to_vibe" / text_file
+    if not path.is_file():
+        return ""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    chunk = ""
+    in_ability = False
+    for line in raw.splitlines():
+        if line.startswith("## "):
+            if in_ability:
+                break
+            in_ability = line.strip().lower() == "## ability"
+            continue
+        if in_ability:
+            chunk += line + "\n"
+    return chunk.strip()
+
+
 def card_name(card_def: Any) -> str:
-    """Display name; optional ``display_name`` attr, else definition name."""
+    """Display name: YAML override, then Here to Vibe name, then definition name."""
     override = getattr(card_def, "display_name", None)
     if override:
         return str(override)
+    vibe = _vibe_entry(card_def)
+    if vibe and vibe.get("name"):
+        return vibe["name"]
     return str(getattr(card_def, "name", None) or getattr(card_def, "id", "card"))
 
 
 def card_text(card_def: Any) -> str:
+    """Rules text in Romanian when the vibe pack has it, else rethemed YAML."""
     override = getattr(card_def, "display_text", None)
     if override:
         return str(override)
-    return str(getattr(card_def, "text", None) or "")
+    vibe = _vibe_entry(card_def)
+    if vibe:
+        ability = _vibe_ability_from_file(vibe.get("text_file", ""))
+        if ability:
+            return ability
+    return retheme_prompt(str(getattr(card_def, "text", None) or ""))
 
 
 def retheme_prompt(text: str) -> str:
@@ -278,7 +364,7 @@ def retheme_prompt(text: str) -> str:
         ("monster", "bestie"),
         ("Leader", "Șeful grupului"),
         ("leader", "șeful grupului"),
-        ("Challenge", "Provocare"),
+        ("Challenge", "Șia all in"),
         ("challenge", "provocare"),
         ("Cursed item", "Hack"),
         ("cursed item", "hack"),

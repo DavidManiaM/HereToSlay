@@ -684,7 +684,7 @@ class CardOverlay(Overlay):
         self.card_h = card_h
         self.where = where
         self.owner = owner
-        self.title = str(getattr(card_def, "name", "") or "Card")
+        self.title = L.card_name(card_def)
         facts = card_facts(card_def)
         self.facts = facts
         self.subtitle = facts.type_line
@@ -705,25 +705,25 @@ class CardOverlay(Overlay):
 
         rows: list[tuple[str, str, tuple[int, int, int]]] = []
         if self.facts.threshold is not None:
-            label = self.facts.threshold_label or "threshold"
+            label = self.facts.threshold_label or "prag"
             rows.append((f"{self.facts.threshold}+", label, C.GOLD))
         if self.facts.requirement:
-            rows.append((self.facts.requirement, "requirement", C.WARN))
+            rows.append((L.requirement_label(self.facts.requirement), "necesită", C.WARN))
         if self.facts.slot:
-            rows.append((self.facts.slot, "plays as", C.FROST))
+            rows.append((self.facts.slot, "se joacă ca", C.FROST))
         if self.facts.passive:
-            rows.append(("Passive", "always on", C.ARCANE))
+            rows.append((L.EFFECT_PASSIVE, L.PASSIVE_ABILITY, C.ARCANE))
         if self.facts.reaction_window:
-            rows.append((self.facts.reaction_window.replace("_", " "), "reacts on", C.POISON))
+            rows.append((self.facts.reaction_window.replace("_", " "), "reacționează la", C.POISON))
         if self.facts.triggers:
-            rows.append((str(self.facts.triggers), "triggers", C.INFO))
+            rows.append((str(self.facts.triggers), "declanșări", C.INFO))
         copies = int(getattr(self.card_def, "copies", 0) or 0)
         if copies > 1:
-            rows.append((f"\u00d7{copies}", "in the deck", C.INK_DIM))
+            rows.append((f"\u00d7{copies}", "în pachet", C.INK_DIM))
         if self.where:
-            rows.append((self.where, "location", C.INK_DIM))
+            rows.append((self.where, "locație", C.INK_DIM))
         if self.owner:
-            rows.append((self.owner, "controlled by", C.INK_DIM))
+            rows.append((self.owner, "controlat de", C.INK_DIM))
 
         for value, label, colour in rows:
             fnt = T.ui(15, bold=True)
@@ -732,7 +732,7 @@ class CardOverlay(Overlay):
                    C.INK_FAINT)
             y += fnt.get_linesize() + 16
 
-        text = str(getattr(self.card_def, "text", "") or "")
+        text = L.card_text(self.card_def)
         if text:
             T.hairline(screen, (x, y + 2), (body.right, y + 2), (255, 255, 255, 26))
             y += 12

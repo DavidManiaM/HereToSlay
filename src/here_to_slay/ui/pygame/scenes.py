@@ -1695,12 +1695,18 @@ class GameScene:
                bg=T.alpha(facts.accent, 70), fg=C.INK_BRIGHT,
                border=T.alpha(facts.accent, 180), fnt=T.ui(10, bold=True))
         if facts.card_class:
-            class_label = str(facts.card_class).replace("_", " ")
+            class_label = L.class_label(facts.card_class)
             cw = min(col_w - chip_w - 6, T.ui(10, bold=True).size(class_label)[0] + T.s(16))
             T.pill(screen, pygame.Rect(col_x + chip_w + 6, chip_y, cw, T.s(20)), class_label,
                    bg=T.alpha(C.INK_FAINT, 40), fg=C.INK,
                    border=T.alpha(C.INK_FAINT, 100), fnt=T.ui(10, bold=True))
         y = chip_y + T.s(28)
+
+        if facts.threshold is not None:
+            roll_line = f"{facts.threshold}+ · {facts.threshold_label}".strip(" ·")
+            T.text(screen, roll_line, (col_x, y), T.ui(11, bold=True),
+                   C.GOLD, max_width=col_w, shadow=None)
+            y += T.ui(11).get_linesize() + 4
 
         if facts.requirement:
             T.text(screen, f"Necesită: {L.requirement_label(facts.requirement)}",
@@ -1708,14 +1714,12 @@ class GameScene:
                    C.WARN, max_width=col_w, shadow=None)
             y += T.ui(11).get_linesize() + 6
 
-        text_value = L.card_text(self.detail_card) or L.retheme_prompt(
-            str(getattr(self.detail_card, "text", "") or "")
-        )
+        text_value = L.card_text(self.detail_card)
         if text_value:
             # Unscaled serif so rules stay readable regardless of chrome UI scale.
             rules_font = T.font(14, family=T.FONT_SERIF)
             text_box = pygame.Rect(col_x, y, col_w, panel.bottom - y - T.s(26))
-            T.draw_wrapped(screen, L.retheme_prompt(text_value), text_box,
+            T.draw_wrapped(screen, text_value, text_box,
                            rules_font, C.INK, line_gap=3)
 
         T.text(screen, L.RIGHT_CLICK_PIN, (panel.centerx, panel.bottom - T.s(12)),

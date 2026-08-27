@@ -1,17 +1,15 @@
 """Draws a card from its ``CardDef``. Any card, at any size, no per-card code.
 
-A face is composed rather than authored: an art window (a real scan when the
-reference pack has one, a generated sigil when it does not), a class-coloured
-frame, a name plate, the rules text, and a footer of *facts* pulled out of the
-data — a Hero's roll threshold, a Monster's requirement, an Item's slot.
-Because every part is derived from the definition, a card added to YAML this
-afternoon renders correctly this afternoon.
+A table face is the card's artwork, full-bleed, with a thin class-coloured rim.
+Rules, names and facts are *not* typeset onto the face — they live on the hover
+/ inspect panel so the illustration stays visible at every size. When the
+reference pack has no file, a generated sigil fills the same rectangle.
 
 Three things make it fast enough to call from a draw loop:
 
-* **Level of detail.** A 44px mini in the opponent rail draws art and a rim; a
-  132px board card draws the full face; the detail overlay draws everything
-  plus flavour. Nobody wraps text nobody can read.
+* **One composition for every size.** Tiny rail minis and board cards are the
+  same full-bleed art with a rim; hover/inspect draws the same face plus a
+  Romanian rules column beside it.
 * **Everything is cached** by ``(def_id, size, flags)``, in *bounded* LRUs, and
   the plain face is cached separately from the flagged variants — so a card that
   is on screen both dimmed and highlighted composes once. A board of forty cards
@@ -117,13 +115,13 @@ def card_facts(card_def: Any) -> CardFacts:
         passive = str(getattr(ability, "activation", "action")) == "passive"
         threshold, _tag = _band_threshold(getattr(ability, "roll", None), ("success", "effect"))
         if threshold is not None:
-            label = "to use"
+            label = "pentru abilitate"
 
     roll = getattr(card_def, "roll", None)
     if roll is not None and threshold is None:
         threshold, _tag = _band_threshold(roll, ("slay", "success"))
         if threshold is not None:
-            label = "to slay"
+            label = "pentru împrietenire"
 
     slot = ""
     equip = getattr(card_def, "equip", None)
@@ -356,170 +354,22 @@ def _radius(width: int) -> int:
 
 
 def _face(card_def: Any, w: int, h: int, *, detail: bool = False) -> pygame.Surface:
+    """Artwork as the whole card. ``detail`` is unused: hover text is a panel."""
+    del detail
     facts = card_facts(card_def)
     accent = facts.accent
     radius = _radius(w)
     surf = T.surface((w, h))
 
-    # Clean white body, thin class-coloured rim (readable, not cluttered).
-    T.round_rect(surf, pygame.Rect(0, 0, w, h), accent, radius=radius)
-    paper = pygame.Rect(3, 3, w - 6, h - 6)
-    body = T.surface(paper.size)
-    body.fill((*C.CARD_PAPER, 255))
-    body.blit(
-        T.vgradient(paper.width, paper.height, C.CARD_PAPER,
-                    T.mix(C.CARD_PAPER, accent, 0.08)),
-        (0, 0),
-    )
-    _apply_round_mask(body, max(2, radius - 2))
-    surf.blit(body, paper.topleft)
-    # Outer card edge + inner paper bevel — reads as solid paper on dark felt.
-    T.round_rect(surf, pygame.Rect(0, 0, w, h), C.CARD_EDGE, radius=radius, width=1)
-    T.round_rect(surf, pygame.Rect(2, 2, w - 4, h - 4), T.alpha(C.CARD_PAPER, 180),
-                 radius=max(2, radius - 2), width=1)
-    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.alpha(accent, 220), radius=radius, width=2)
-
-    if w < LOD_TINY:
-        _mini_face(surf, card_def, facts, w, h, radius)
-        return surf
-
-    # Static foil strip under the rim (baked into the face — no per-frame wash).
-    if w >= LOD_SMALL:
-        foil = pygame.Rect(6, max(4, h // 14), w - 12, max(5, h // 18))
-        strip = T.surface(foil.size)
-        for x in range(foil.width):
-            t = x / max(1, foil.width - 1)
-            col = T.lerp_colour(T.shade(accent, 0.5), (255, 255, 255),
-                                0.35 + 0.4 * abs(math.sin(t * math.pi)))
-            pygame.draw.line(strip, (*col[:3], 140), (x, 0), (x, foil.height))
-        surf.blit(strip, foil.topleft)
-
-    # -- art window -------------------------------------------------------
-    pad = max(3, w // 24)
-    art_h = int(h * (0.34 if detail else (0.44 if w >= LOD_FULL else 0.58)))
-    art_top = pad + (max(5, h // 18) if w >= LOD_SMALL else 0)
-    art_rect = pygame.Rect(pad, art_top, w - pad * 2, art_h)
-    art = library().art(card_def, art_rect.size)
+    art = library().art(card_def, (w, h))
     framed = art.copy()
-    _apply_round_mask(framed, max(2, radius - 3))
-    surf.blit(framed, art_rect.topleft)
-    T.round_rect(surf, art_rect, T.alpha(accent, 120),
-                 radius=max(2, radius - 3), width=1)
+    _apply_round_mask(framed, radius)
+    surf.blit(framed, (0, 0))
 
-    # -- class pip --------------------------------------------------------
-    if w >= LOD_SMALL:
-        pip_r = max(8, w // 11)
-        pip_c = (art_rect.left + pip_r + 2, art_rect.top + pip_r + 2)
-        pygame.draw.circle(surf, T.shade(accent, 0.35), pip_c, pip_r + 2)
-        pygame.draw.circle(surf, accent, pip_c, pip_r)
-        pygame.draw.circle(surf, T.alpha(C.INK_BRIGHT, 120), pip_c, pip_r, 1)
-        draw_icon(
-            surf, card_icon_name(facts.kind, facts.card_class), pip_c,
-            int(pip_r * 1.25), T.readable_ink(accent),
-        )
-
-    # -- name plate -------------------------------------------------------
-    name = L.card_name(card_def)
-    plate_h = max(14, int(h * 0.095))
-    plate = pygame.Rect(pad, art_rect.bottom + max(1, pad // 2), w - pad * 2, plate_h)
-    T.round_rect(surf, plate, T.alpha(accent, 230), radius=max(2, radius - 4))
-    name_font = T.fit_line(name.upper(), max(9, int(plate_h * 0.68)), 7, plate.width - 10,
-                           family=T.FONT_DISPLAY, bold=True)
-    T.text(surf, name.upper(), plate.center, name_font, C.INK_BRIGHT, anchor="center",
-           max_width=plate.width - 6, shadow=(0, 0, 0, 140))
-
-    if w < LOD_FULL:
-        _footer_strip(surf, facts, w, h, pad, compact=True)
-        return surf
-
-    # -- rules text -------------------------------------------------------
-    footer_h = max(16, int(h * 0.115))
-    text_rect = pygame.Rect(
-        pad + 2, plate.bottom + max(2, pad // 2),
-        w - pad * 2 - 4, h - plate.bottom - footer_h - pad * 2,
-    )
-    blocks: list[tuple[str, tuple[int, int, int], bool]] = []
-    if facts.requirement:
-        blocks.append(
-            (f"Necesită: {L.requirement_label(facts.requirement)}",
-             T.shade(accent, 0.7), True)
-        )
-    text_value = L.card_text(card_def) or L.retheme_prompt(str(getattr(card_def, "text", "") or ""))
-    if text_value:
-        blocks.append((L.retheme_prompt(text_value), C.CARD_INK, False))
-
-    size = max(8, min(17, int(w * (0.085 if detail else 0.079))))
-    y = text_rect.top
-    for value, colour, is_bold in blocks:
-        if y >= text_rect.bottom - 4:
-            break
-        # Card faces are already sized in pixels — do not apply chrome UI scale.
-        fnt = T.font(size, bold=is_bold)
-        used = T.draw_wrapped(
-            surf, value,
-            pygame.Rect(text_rect.left, y, text_rect.width, text_rect.bottom - y),
-            fnt, colour, line_gap=1,
-        )
-        y += used + 3
-
-    if detail and facts.passive:
-        T.text(surf, "Passive", (text_rect.left, text_rect.bottom - 12),
-               T.font(max(8, w // 14), italic=True), C.CARD_INK_DIM, shadow=None)
-
-    _footer_strip(surf, facts, w, h, pad, compact=False)
+    rim = max(2, min(5, w // 36))
+    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.alpha(accent, 235), radius=radius, width=rim)
+    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.alpha(C.INK_DARK, 110), radius=radius, width=1)
     return surf
-
-
-def _mini_face(
-    surf: pygame.Surface, card_def: Any, facts: CardFacts, w: int, h: int, radius: int
-) -> None:
-    """Below ~58px there is no room for words: art, rim, one letter."""
-    art = library().art(card_def, (w - 2, h - 2))
-    framed = art.copy()
-    _apply_round_mask(framed, max(2, radius - 1))
-    surf.blit(framed, (1, 1))
-    surf.blit(
-        T.vgradient(w - 2, max(4, h // 3), (0, 0, 0, 0), (0, 0, 0, 190)),
-        (1, h - 1 - max(4, h // 3)),
-    )
-    initial = str(getattr(card_def, "name", "?"))[:1].upper()
-    T.text(surf, initial, (w // 2, h - 3), T.display(max(8, int(h * 0.26))),
-           C.INK_BRIGHT, anchor="midbottom")
-    T.round_rect(surf, pygame.Rect(0, 0, w, h), T.alpha(facts.accent, 220), radius=radius, width=2)
-
-
-def _footer_strip(
-    surf: pygame.Surface, facts: CardFacts, w: int, h: int, pad: int, *, compact: bool
-) -> None:
-    """Roll threshold on the left, type line on the right."""
-    strip_h = max(13, int(h * 0.105))
-    strip = pygame.Rect(pad, h - strip_h - pad, w - pad * 2, strip_h)
-    T.round_rect(surf, strip, T.alpha(T.shade(facts.accent, 0.5), 225),
-                 radius=max(2, strip_h // 2))
-
-    left = strip.left + 6
-    if facts.threshold is not None:
-        label = f"{facts.threshold}+"
-        pill_font = T.ui(max(8, strip_h - 5), bold=True)
-        pill_w = min(strip.width // 2, pill_font.size(label)[0] + 12)
-        pill_rect = pygame.Rect(strip.left + 2, strip.top + 2, pill_w, strip_h - 4)
-        T.pill(surf, pill_rect, label, bg=C.GOLD, fg=C.INK_DARK, fnt=pill_font)
-        left = pill_rect.right + 4
-
-    # The type line is the first thing to give up room, so it shrinks rather
-    # than truncating a word the player needs ("Fighter Hero", not "Fighter H...").
-    right_label = T.CLASS_SHORT.get(facts.card_class or "", "") if compact else facts.type_line
-    if not right_label:
-        right_label = facts.kind[:3].upper() if compact else facts.type_line
-    room = max(10, strip.right - left - 8)
-    top_size = max(7, strip_h - 6)
-    label_font = T.ui(top_size, bold=True)
-    for size in range(top_size, 6, -1):
-        label_font = T.ui(size, bold=True)
-        if label_font.size(right_label)[0] <= room:
-            break
-    T.text(surf, right_label, (strip.right - 6, strip.centery), label_font,
-           C.INK_BRIGHT, anchor="midright", max_width=room, shadow=None)
 
 
 # ---------------------------------------------------------------------------
