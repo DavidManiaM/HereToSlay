@@ -368,3 +368,192 @@ def _settle(predicate: Any, timeout: float = 5.0) -> None:
             return
         time.sleep(0.02)
     raise AssertionError("condition never became true")
+
+
+class TestTheLobbyIsHonestAboutWhoIsInIt:
+    """Three bugs the first version shipped with, each found by probing rather
+    than by reading: a lobby is a place people wander into and out of, and the
+    seating had been written as though nobody ever changed their mind."""
+
+    def test_somebody_who_leaves_the_lobby_frees_their_seat(
+        self, host: GameHost
+    ) -> None:
+        """Without this the table can never fill, and the roster lies."""
+        host.config.players = 3
+        port = host.open()
+        assert host.waiting_for == 2
+
+        bob = GameClient(f"127.0.0.1:{port}", "Bob")
+        bob.connect()
+        _settle(lambda: host.waiting_for == 1)
+        bob.close()
+
+        _settle(lambda: host.waiting_for == 2, timeout=10.0)
+        assert [seat.name for seat in host.roster() if seat.connection] == []
+
+    def test_the_freed_seat_is_handed_to_the_next_arrival(
+        self, host: GameHost
+    ) -> None:
+        host.config.players = 3
+        port = host.open()
+        bob = GameClient(f"127.0.0.1:{port}", "Bob")
+        bob.connect()
+        _settle(lambda: host.waiting_for == 1)
+        bob.close()
+        _settle(lambda: host.waiting_for == 2, timeout=10.0)
+
+        with GameClient(f"127.0.0.1:{port}", "Cid") as cid:
+            assert cid.connect().seat == "p2"
+            with GameClient(f"127.0.0.1:{port}", "Dee") as dee:
+                assert dee.connect().seat == "p3"
+                _settle(lambda: host.ready, timeout=10.0)
+
+    def test_a_seat_that_moves_is_told_it_moved(self, host: GameHost) -> None:
+        """Cid joins third, Bob leaves, Cid is second now — and has to know, or
+        two machines deal the same game and disagree about whose hand is whose."""
+        host.config.players = 4
+        port = host.open()
+        bob = GameClient(f"127.0.0.1:{port}", "Bob")
+        bob.connect()
+        with GameClient(f"127.0.0.1:{port}", "Cid") as cid:
+            assert cid.connect().seat == "p3"
+            bob.close()
+            _settle(
+                lambda: cid.invitation is not None and cid.invitation.seat == "p2",
+                timeout=10.0,
+            )
+
+    def test_two_players_called_ana_can_both_sit_down(self, host: GameHost) -> None:
+        """``core/setup.py`` refuses to deal a game whose names collide, so a
+        table of friends who share a name used to sail through the lobby and
+        then fail to deal on every machine at once."""
+        host.config.players = 3
+        port = host.open()
+        host.seats[0].name = "Ana"
+        with (
+            GameClient(f"127.0.0.1:{port}", "Ana") as second,
+            GameClient(f"127.0.0.1:{port}", "Ana") as third,
+        ):
+            second.connect()
+            third.connect()
+            _settle(lambda: host.ready, timeout=10.0)
+            names = [seat.name for seat in host.roster()]
+            assert len(names) == len(set(names)), names
+            assert names[0] == "Ana"
+
+    def test_the_deal_actually_works_for_a_table_of_anas(
+        self, content: ContentRegistry, host: GameHost
+    ) -> None:
+        """The assertion that matters: unique-ing the names is only worth doing
+        if `Engine.new` then accepts them."""
+        host.config.players = 3
+        port = host.open()
+        host.seats[0].name = "Ana"
+        with (
+            GameClient(f"127.0.0.1:{port}", "Ana") as second,
+            GameClient(f"127.0.0.1:{port}", "Ana") as third,
+        ):
+            second.connect()
+            third.connect()
+            _settle(lambda: host.ready, timeout=10.0)
+            names = [seat.name for seat in host.start()]
+        Engine.new(content, names, seed="anas")  # must not raise
+
+
+class TestATableOfPeopleAndBots:
+    """The seat-ownership rule, exercised in a real game rather than asserted.
+
+    A host with AI seats is the case that breaks silently: if the client also
+    ran an agent for `p3`, both would publish an answer to the same question and
+    every engine would consume a decision meant for somebody else. Nothing about
+    that looks like an error — the game just becomes wrong.
+    """
+
+    def test_a_host_two_bots_and_a_guest_play_one_identical_game(
+        self, content: ContentRegistry, host: GameHost
+    ) -> None:
+        host.config.players = 4
+        host.config.ai_seats = 2
+        host.config.seed = "mixed"
+        port = host.open()
+        assert host.config.remote_slots == 1
+
+        client = GameClient(f"127.0.0.1:{port}", "Bob")
+        invitation = client.connect()
+        _settle(lambda: host.ready)
+        names = [seat.name for seat in host.start()]
+        assert client.wait_for_start(timeout=5.0)
+        assert invitation.seat == "p2"
+
+        engines: dict[str, Engine] = {}
+
+        def play(tag: str, relay: Any, seats: tuple[str, ...], publish: Any, seed: int) -> None:
+            engine = Engine.new(content, names, seed="mixed", max_turns=18)
+            source = NetworkSource(relay, seats, RandomAgent(seed=seed), publish=publish)
+            with contextlib.suppress(SessionClosed):
+                engine.run(source)
+            engines[tag] = engine
+
+        threads = [
+            threading.Thread(
+                target=play,
+                args=("host", host.relay, ("p1", "p3", "p4"), host.settle, 1),
+            ),
+            threading.Thread(
+                target=play,
+                args=(
+                    "guest",
+                    client.relay,
+                    ("p2",),
+                    lambda _s, d: client.send_decision(d),
+                    2,
+                ),
+            ),
+        ]
+        try:
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=180)
+                assert not thread.is_alive(), "an engine thread hung"
+
+            left, right = engines["host"].state, engines["guest"].state
+            assert left.turn_number == right.turn_number > 0
+            assert left.winner == right.winner
+            assert {k: list(v.cards) for k, v in left.zones.items()} == {
+                k: list(v.cards) for k, v in right.zones.items()
+            }
+        finally:
+            client.close()
+
+
+class TestLosingTheHost:
+    def test_a_host_that_vanishes_mid_game_does_not_hang_the_guest(
+        self, host: GameHost
+    ) -> None:
+        port = host.open()
+        client = GameClient(f"127.0.0.1:{port}", "Bob")
+        client.connect()
+        _settle(lambda: host.ready)
+        host.start()
+        assert client.wait_for_start(timeout=5.0)
+
+        host.close()
+        _settle(lambda: client.relay.closed, timeout=10.0)
+        assert client.relay.reason
+        client.close()
+
+    def test_a_host_that_closes_the_lobby_unblocks_anyone_waiting_in_it(
+        self, host: GameHost
+    ) -> None:
+        """A guest sitting in a lobby has no other way to learn it is over."""
+        host.config.players = 3
+        port = host.open()
+        client = GameClient(f"127.0.0.1:{port}", "Bob")
+        client.connect()
+        _settle(lambda: host.waiting_for == 1)
+
+        host.close("the host closed the table")
+        _settle(lambda: client.relay.closed, timeout=10.0)
+        assert not client.started or client.relay.closed
+        client.close()

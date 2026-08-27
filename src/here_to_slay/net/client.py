@@ -186,6 +186,13 @@ class GameClient:
                     self.relay.accept(Applied.from_message(msg))
                 except SessionClosed as exc:
                     self._report(str(exc))
+            case _ if msg.kind == WELCOME:
+                # Not only the first message: the host re-sends this if our seat
+                # moves because somebody ahead of us left the lobby.
+                if self.invitation is not None:
+                    self.invitation.seat = str(msg["seat"])
+                    self.invitation.names = tuple(msg.get("names") or ())
+                    self.lobby_names = list(self.invitation.names)
             case _ if msg.kind == LOBBY:
                 self.lobby_names = [str(n) for n in (msg.get("names") or ())]
                 self.waiting_for = int(msg.get("waiting") or 0)

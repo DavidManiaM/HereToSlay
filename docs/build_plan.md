@@ -889,14 +889,14 @@ Two items on this list were pulled forward because Phase 10 needed them:
 - [x] `ui/pygame/netplay.py` — the one module that knows both a socket and a surface
 - [x] `hts gui` opens on the start screen; `--no-menu` deals straight away
 - [x] `docs/multiplayer.md`, and a layering rule for `net/`
-- [x] `tests/test_net.py` (30) and `tests/test_menu_and_netplay.py` (29)
+- [x] `tests/test_net.py` (38) and `tests/test_menu_and_netplay.py` (29)
 
 **Acceptance:** ✅
 * **Two real windows, a real socket, and every answer submitted through the same call a mouse
   click makes** — both engines finish on the same turn, with the same winner, and every card in
   every zone in the same place. That is `TestTwoWindowsPlayOneGame`, and it is the only test
   that would have caught the seat-ownership bug class.
-* `uv run pytest` → **1096 tests**, all green.
+* `uv run pytest` → **1104 tests**, all green.
 * `ruff check .` clean.
 
 ### Decisions taken during Phase 12
@@ -933,7 +933,17 @@ Two items on this list were pulled forward because Phase 10 needed them:
    stated in `net/session.py`, in `docs/multiplayer.md` and on this page, because the alternative
    — letting somebody discover it — is the dishonest option.
 
-7. **Found by the acceptance test, not by reasoning.** `message(kind, **data)` collided with its
+7. **The lobby is a place people change their minds in.** Three bugs shipped in the first
+   version of the seating, and all three were found by probing rather than by reading — because
+   the code had been written as though a lobby were a queue that only ever grows.
+   *A leaver kept their seat forever*, so the table could never fill and the roster lied about
+   who was in it. *A seat that moved was not told*, so a guest who joined third and became second
+   would have dealt the same game as everybody else while disagreeing about whose hand was whose.
+   And *two players called Ana sailed through the lobby and then failed to deal on every machine
+   at once*, because `core/setup.py` refuses a game whose names collide — so the host makes them
+   unique as people sit down. Five regression tests, each verified to fail on the old code.
+
+8. **Found by the acceptance test, not by reasoning.** `message(kind, **data)` collided with its
    own payload the moment a decision message carried `kind="confirmed"`; `kind` is positional-only
    now. And a `pygame.quit()` in a module fixture tore the display out from under every later test
    module — passing alone, failing in the suite, which is the shape of bug that only a full run
@@ -943,7 +953,7 @@ Two items on this list were pulled forward because Phase 10 needed them:
 
 ## Current Status
 
-**Phases 0–12 complete.** `uv run pytest` runs **1096 tests**, all green;
+**Phases 0–12 complete.** `uv run pytest` runs **1104 tests**, all green;
 `uv run hts validate data/base --strict` is green on 88 card definitions and 136 physical cards,
 and `data/variants/overclock` on 95 and 146 across 2 packs. `ruff check .` is clean across the
 whole repository.

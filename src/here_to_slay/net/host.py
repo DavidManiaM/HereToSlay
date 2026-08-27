@@ -197,19 +197,7 @@ class GameHost:
             if seat is None:
                 self._refuse(connection, "the table is full")
                 return
-            connection.send(
-                message(
-                    WELCOME,
-                    seat=seat.seat_id,
-                    version=PROTOCOL_VERSION,
-                    players=self.config.players,
-                    seed=self.config.seed,
-                    max_turns=self.config.max_turns,
-                    content_hash=self.config.content_hash,
-                    packs=list(self.config.packs),
-                    names=[s.name for s in self.roster()],
-                )
-            )
+            self._send_welcome(seat)
             self._threads.append(
                 pump(
                     connection,
@@ -249,9 +237,55 @@ class GameHost:
             index = len(self.seats)
             if index >= self.config.players - self.config.ai_seats:
                 return None
-            seat = Seat(ids[index], name or f"Player {index + 1}", connection=connection)
+            seat = Seat(
+                ids[index],
+                self._unique(name or f"Player {index + 1}"),
+                connection=connection,
+            )
             self.seats.append(seat)
             return seat
+
+    def _unique(self, name: str) -> str:
+        """A name nobody else at this table already has.
+
+        Not cosmetic: ``core/setup.py`` refuses to deal a game whose player
+        names collide, so two friends both called Ana would sail through the
+        lobby and then fail to deal on every machine at once. Caller holds the
+        lock.
+        """
+        taken = {seat.name for seat in self.seats}
+        if name not in taken:
+            return name
+        for suffix in range(2, self.config.players + 2):
+            candidate = f"{name} ({suffix})"
+            if candidate not in taken:
+                return candidate
+        return f"{name} ({len(self.seats) + 1})"  # pragma: no cover - unreachable
+
+    def _send_welcome(self, seat: Seat) -> None:
+        """Tell one seat who it is. Sent on arrival, and again if it moves.
+
+        A seat *can* move: somebody who joins the lobby and leaves again frees
+        their place, and everyone after them shifts up one. Leaving them to
+        find out at deal time would mean two machines dealing the same game and
+        disagreeing about which hand belongs to whom.
+        """
+        if seat.connection is None:
+            return
+        with contextlib.suppress(Disconnected):
+            seat.connection.send(
+                message(
+                    WELCOME,
+                    seat=seat.seat_id,
+                    version=PROTOCOL_VERSION,
+                    players=self.config.players,
+                    seed=self.config.seed,
+                    max_turns=self.config.max_turns,
+                    content_hash=self.config.content_hash,
+                    packs=list(self.config.packs),
+                    names=[s.name for s in self.roster()],
+                )
+            )
 
     def _refuse(self, connection: Connection, why: str) -> None:
         with contextlib.suppress(NetError):
@@ -330,8 +364,29 @@ class GameHost:
         # question that will never be answered.
         if self._started:
             self.relay.close(f"{seat.name} left the game")
-        self._report(f"{seat.name} disconnected: {exc}")
+            self._report(f"{seat.name} disconnected: {exc}")
+            return
+        # In the lobby it is not a disaster, it is somebody changing their mind.
+        # Give the place back, or the table can never fill and the roster lies
+        # about who is in it.
+        self._release(seat)
+        self._report(f"{seat.name} left the lobby")
         self._announce_lobby()
+
+    def _release(self, seat: Seat) -> None:
+        """Take a seat back and shuffle everyone after it up one."""
+        ids = seat_ids(self.config.players)
+        with self._lock:
+            if seat not in self.seats:
+                return
+            self.seats.remove(seat)
+            moved = []
+            for index, occupant in enumerate(self.seats):
+                if occupant.seat_id != ids[index]:
+                    occupant.seat_id = ids[index]
+                    moved.append(occupant)
+        for occupant in moved:
+            self._send_welcome(occupant)
 
     def _broadcast(self, msg: Message, *, skip: Connection | None = None) -> None:
         with self._lock:

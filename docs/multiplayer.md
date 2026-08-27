@@ -73,6 +73,19 @@ publish an answer to the same question and every engine at the table would consu
 meant for somebody else. `NetSession.local_seats()` enforces it, and
 `tests/test_menu_and_netplay.py` asserts the table is covered exactly once, as a partition.
 
+### In the lobby, people change their minds
+
+Somebody who joins and then leaves **frees their seat**, and everyone after them shifts up one —
+and is told so, because a guest who thought it was `p3` and is now `p2` would otherwise deal the
+same game as everybody else while disagreeing about whose hand is whose.
+
+Two players who type the same name both get to sit down: the host makes the second one unique
+(`Ana`, `Ana (2)`). That is not cosmetic — `core/setup.py` refuses to deal a game whose player
+names collide, so without it a table of friends who share a name would pass the lobby and then
+fail to deal on every machine at once.
+
+Once the game has started, a disconnect is final. See §5.
+
 ---
 
 ## 4. The handshake
