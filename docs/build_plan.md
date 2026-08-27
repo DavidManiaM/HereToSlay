@@ -889,14 +889,14 @@ Two items on this list were pulled forward because Phase 10 needed them:
 - [x] `ui/pygame/netplay.py` — the one module that knows both a socket and a surface
 - [x] `hts gui` opens on the start screen; `--no-menu` deals straight away
 - [x] `docs/multiplayer.md`, and a layering rule for `net/`
-- [x] `tests/test_net.py` (38) and `tests/test_menu_and_netplay.py` (29)
+- [x] `tests/test_net.py` (38) and `tests/test_menu_and_netplay.py` (35)
 
 **Acceptance:** ✅
 * **Two real windows, a real socket, and every answer submitted through the same call a mouse
   click makes** — both engines finish on the same turn, with the same winner, and every card in
   every zone in the same place. That is `TestTwoWindowsPlayOneGame`, and it is the only test
   that would have caught the seat-ownership bug class.
-* `uv run pytest` → **1104 tests**, all green.
+* `uv run pytest` → **1110 tests**, all green.
 * `ruff check .` clean.
 
 ### Decisions taken during Phase 12
@@ -943,7 +943,17 @@ Two items on this list were pulled forward because Phase 10 needed them:
    at once*, because `core/setup.py` refuses a game whose names collide — so the host makes them
    unique as people sit down. Five regression tests, each verified to fail on the old code.
 
-8. **Found by the acceptance test, not by reasoning.** `message(kind, **data)` collided with its
+8. **Three layout bugs a screenshot caught that no assertion had.** Rendering the screen and
+   *looking at it* found what 29 passing tests had not: the lobby's address box overlapped the
+   buttons by 14 pixels (both were measured from the card's bottom edge, so they moved together
+   and met in the middle); the panel was a fixed height, leaving a third of itself empty on the
+   setup screens while squeezing the lobby; and typed text was invisible, because `TextField`
+   paints a deliberately light well and then drew near-white `C.INK` into it. That last one is
+   not mine — the widget has been in the dev console since Phase 9 with the same bug. All three
+   now have assertions, including one that walks every mode and checks no widget escapes its
+   panel.
+
+9. **Found by the acceptance test, not by reasoning.** `message(kind, **data)` collided with its
    own payload the moment a decision message carried `kind="confirmed"`; `kind` is positional-only
    now. And a `pygame.quit()` in a module fixture tore the display out from under every later test
    module — passing alone, failing in the suite, which is the shape of bug that only a full run
@@ -953,7 +963,7 @@ Two items on this list were pulled forward because Phase 10 needed them:
 
 ## Current Status
 
-**Phases 0–12 complete.** `uv run pytest` runs **1104 tests**, all green;
+**Phases 0–12 complete.** `uv run pytest` runs **1110 tests**, all green;
 `uv run hts validate data/base --strict` is green on 88 card definitions and 136 physical cards,
 and `data/variants/overclock` on 95 and 146 across 2 packs. `ruff check .` is clean across the
 whole repository.

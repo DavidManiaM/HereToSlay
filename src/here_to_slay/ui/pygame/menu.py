@@ -135,12 +135,31 @@ class MenuScene:
 
     @property
     def card_rect(self) -> pygame.Rect:
-        """The glass panel everything sits on."""
+        """The glass panel everything sits on.
+
+        Its height follows what is actually in it. A fixed panel left a third of
+        itself empty on the setup screens and still had to squeeze the lobby, so
+        the two arrangements each get the room they need.
+        """
         w = min(T.s(560), int(self.width * 0.62))
-        h = min(T.s(430), int(self.height * 0.62))
+        h = self._content_height()
+        h = min(h, int(self.height * 0.66))
         return pygame.Rect(0, 0, w, h).move(
-            (self.width - w) // 2, int(self.height * 0.34)
+            (self.width - w) // 2, int(self.height * 0.30)
         )
+
+    def _content_height(self) -> int:
+        """Header + body + button row, measured rather than guessed."""
+        chrome = T.s(58) + T.s(50) + T.s(48) + T.s(38) + T.s(30) + T.s(20)
+        if not self.lobby.active:
+            return chrome + T.s(56)
+        rows = max(1, len(self.lobby.names or [self.choice.name])) + max(
+            0, self.lobby.waiting
+        )
+        body = T.s(26) + rows * T.s(32) + T.s(12)
+        if self.lobby.hosting and self.lobby.addresses:
+            body += T.s(62)
+        return T.s(46) + body + T.s(38) + T.s(30) + T.s(20)
 
     def _rebuild(self) -> None:
         card = self.card_rect
@@ -275,8 +294,13 @@ class MenuScene:
         self._rebuild()
 
     def update_lobby(self, names: Sequence[str], waiting: int) -> None:
+        changed = len(names) != len(self.lobby.names) or waiting != self.lobby.waiting
         self.lobby.names = list(names)
         self.lobby.waiting = waiting
+        if changed:
+            # The panel is sized from its contents, so a new arrival moves the
+            # buttons; the widgets have to be told where they live now.
+            self._rebuild()
         if waiting <= 0:
             self.lobby.status = (
                 "Masa e plină." if self.lobby.hosting else "Masa e plină. Gazda dă cărțile…"
@@ -465,8 +489,11 @@ class MenuScene:
 
     def _draw_addresses(self, screen: pygame.Surface, card: pygame.Rect) -> None:
         """The number somebody else has to type. Big enough to read out loud."""
+        # Anchored to the button row rather than to the card, because the two
+        # used to be computed from the same edge and overlapped by 14 pixels.
+        buttons_top = self.buttons[0].rect.top if self.buttons else card.bottom - T.s(68)
         box = pygame.Rect(
-            card.left + T.s(26), card.bottom - T.s(104),
+            card.left + T.s(26), buttons_top - T.s(62),
             card.width - T.s(52), T.s(50),
         )
         T.round_rect(screen, box, T.alpha(C.GOLD, 26), radius=T.s(10))

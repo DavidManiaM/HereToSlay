@@ -24,6 +24,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from here_to_slay.net import GameHost, HostConfig, NetError
+from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.menu import (
     MAX_PLAYERS,
     MIN_PLAYERS,
@@ -404,3 +405,62 @@ class TestTwoWindowsPlayOneGame:
             guest._drop_session()
             host._end_game()
             guest._end_game()
+
+
+class TestTheLayoutHoldsTogether:
+    """Three things a screenshot caught that no assertion had."""
+
+    def test_the_address_box_does_not_sit_on_the_buttons(
+        self, menu: MenuScene, screen: pygame.Surface
+    ) -> None:
+        """It overlapped by 14 pixels: both were measured from the card's
+        bottom edge, so they moved together and met in the middle."""
+        menu.enter_lobby(hosting=True, addresses=("192.168.1.24:57311",))
+        menu.update_lobby(["Ana", "Bob"], 1)
+        menu.update(0.016)
+        menu.draw(screen)
+
+        buttons_top = min(button.rect.top for button in menu.buttons)
+        box_bottom = buttons_top - T.s(62) + T.s(50)
+        assert box_bottom <= buttons_top
+
+    def test_typed_text_is_dark_enough_to_read(self) -> None:
+        """The well is the one bright surface in a dark client, so the ink has
+        to be the dark one. `C.INK` is near-white and vanished into it."""
+        from here_to_slay.ui.pygame.theme import C
+        from here_to_slay.ui.pygame.widgets import TextField
+
+        field = TextField(pygame.Rect(0, 0, 200, 30))
+        field.value = "Catalin"
+        surface = pygame.Surface((220, 40))
+        surface.fill((0, 0, 0))
+        field.draw(surface)
+        # The field paints a light well; the glyphs must be darker than it.
+        assert T.luminance(C.INK_DARK) < T.luminance((236, 244, 252))
+        well = surface.get_at((100, 15))[:3]
+        assert max(well) > 180, "the well should still be the bright surface"
+
+    @pytest.mark.parametrize("waiting", [0, 1, 3])
+    def test_the_panel_grows_with_the_lobby(self, menu: MenuScene, waiting: int) -> None:
+        """A fixed panel left a third of itself empty on setup and squeezed the
+        lobby; it is measured from its contents now, so it has to keep up."""
+        menu.enter_lobby(hosting=True, addresses=("10.0.0.2:57311",))
+        menu.update_lobby(["Ana"], waiting)
+        menu.update(0.016)
+        menu.draw(pygame.Surface((1600, 900)))
+        card = menu.card_rect
+        assert menu.buttons and card.contains(menu.buttons[0].rect)
+        assert card.height <= int(menu.height * 0.66)
+
+    def test_every_widget_stays_inside_the_panel_in_every_mode(
+        self, menu: MenuScene
+    ) -> None:
+        for index in range(3):
+            menu._pick_mode(index)
+            menu.mode_tabs.index = index
+            menu.update(0.016)
+            menu.draw(pygame.Surface((1600, 900)))
+            card = menu.card_rect
+            for button in menu.buttons:
+                assert card.contains(button.rect), f"button escapes in mode {index}"
+            assert card.contains(menu.mode_tabs.rect)

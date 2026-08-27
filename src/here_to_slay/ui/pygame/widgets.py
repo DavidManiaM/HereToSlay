@@ -1001,12 +1001,15 @@ class TextField:
         T.round_rect(screen, self.rect, rim, radius=8, width=1)
         fnt = T.ui(13)
         shown = self.value or self.placeholder
-        colour = C.INK if self.value else C.INK_FAINT
+        # The well is deliberately light (it is the one bright surface in a dark
+        # client), so the ink has to be the dark one. `C.INK` is near-white and
+        # was invisible here — typed text simply did not appear.
+        colour = C.INK_DARK if self.value else C.CARD_INK_DIM
         T.text(screen, shown, (self.rect.left + 10, self.rect.centery), fnt, colour,
                anchor="midleft", max_width=self.rect.width - 20, shadow=None)
         if self.focused and self._caret < 0.5:
             x = self.rect.left + 10 + min(fnt.size(self.value)[0], self.rect.width - 22)
-            pygame.draw.line(screen, C.GOLD, (x + 1, self.rect.top + 7),
+            pygame.draw.line(screen, C.GOLD_DEEP, (x + 1, self.rect.top + 7),
                              (x + 1, self.rect.bottom - 7), 2)
 
 
