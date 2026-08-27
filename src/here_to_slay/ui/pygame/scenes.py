@@ -79,6 +79,7 @@ from here_to_slay.ui.pygame.card_renderer import (
     clear_card_cache,
     render_card,
 )
+from here_to_slay.ui.pygame.cues import CueTable
 from here_to_slay.ui.pygame.devconsole import DevConsole, draw_fps, draw_layout_debug
 from here_to_slay.ui.pygame.icons import card_icon_name, draw_icon
 from here_to_slay.ui.pygame.keybinds import ACTION_KEYS, DISPLAY_COSTS, hotkey_for, key_to_action
@@ -91,7 +92,9 @@ from here_to_slay.ui.pygame.overlays import (
     MenuOverlay,
     OverlayStack,
     RulesOverlay,
+    SaveListOverlay,
     ScoreRow,
+    SettingsOverlay,
 )
 from here_to_slay.ui.pygame.panels import (
     DEFAULT_SLAY_TARGET,
@@ -110,6 +113,7 @@ from here_to_slay.ui.pygame.panels import (
     TurnChip,
     _play_order,
 )
+from here_to_slay.ui.pygame.replay import ReplayBar, ReplayTransport
 from here_to_slay.ui.pygame.sound import NULL_BOARD, SoundBoard
 from here_to_slay.ui.pygame.theme import C, M
 from here_to_slay.ui.pygame.tracker import (
@@ -164,6 +168,19 @@ class SceneHooks:
     new_game: Callable[..., None] | None = None
     quit: Callable[[], None] | None = None
     toggle_fullscreen: Callable[[], None] | None = None
+    #: Capture the game and write it. Returns the line to show; raises
+    #: ``SaveError`` when the engine is mid-action and a save would be a lie.
+    save_game: Callable[[], str] | None = None
+    #: Every readable save, newest first — the rows of the load screen.
+    list_saves: Callable[[], Sequence[Any]] | None = None
+    #: Restore one. Like ``new_game``, it replaces the engine, so it is the
+    #: window's job rather than the board's.
+    load_game: Callable[[Any], None] | None = None
+    #: Current preferences, and where an edited copy goes. ``apply`` fires on
+    #: every click so the volume slider is audible; ``save`` fires once, when
+    #: the screen closes, because a disk write per nudge is absurd.
+    settings: Callable[[], Any] | None = None
+    save_settings: Callable[[Any], None] | None = None
 
 
 @dataclass
@@ -387,8 +404,10 @@ class GameScene:
         layout: Any,
         *,
         sound: SoundBoard | None = None,
+        cues: CueTable | None = None,
         hooks: SceneHooks | None = None,
         reveal_all: bool = False,
+        replay: ReplayTransport | None = None,
     ) -> None:
         self.engine = engine
         self.presenter = presenter
@@ -396,6 +415,19 @@ class GameScene:
         self.layout = layout
         self.sound = sound or NULL_BOARD
         self.hooks = hooks or SceneHooks()
+        # Which cue a moment plays is data, and a loaded pack may re-point any
+        # of it or add voices of its own (`cues.py`). Installing here rather
+        # than in `app.py` keeps a scene built directly by a test audible too.
+        self.cues = cues if cues is not None else CueTable.for_registry(registry)
+        self.cues.install(self.sound)
+        #: Set when this board is watching a recorded game rather than playing
+        #: one. The scene does not otherwise branch on it: a replay is a
+        #: `DecisionSource` reading a file, so everything else is unchanged.
+        self.replay = replay
+        self.replay_bar: ReplayBar | None = None
+        if replay is not None:
+            self.replay_bar = ReplayBar(replay)
+            self.replay_bar.resize(layout)
 
         # -- panels --------------------------------------------------------
         self.corner = CornerButtons(layout)
@@ -433,6 +465,10 @@ class GameScene:
         self.flags: dict[str, bool] = {
             "reveal_all": reveal_all,
             "animations": True,
+            # Separate from `animations` because it is the effect people turn
+            # off first, and turning off *every* animation to stop the table
+            # lurching is a poor trade.
+            "shake": True,
             "sound": self.sound.enabled,
             "autoplay": False,
             "layout_debug": False,
@@ -470,6 +506,24 @@ class GameScene:
     # ------------------------------------------------------------------
     # Seats and view
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Sound
+    # ------------------------------------------------------------------
+
+    def cue(self, key: str, *, volume: float = 1.0) -> bool:
+        """Play whatever this pack says ``key`` sounds like.
+
+        The one place the board asks for sound. Every call names a *moment*
+        (``zone.party``, ``band.success``, ``ui.close``) rather than a cue, so
+        the mapping stays in `cues.py` where a pack can change it — and a moment
+        this client has never seen still gets its family's fallback instead of
+        silence.
+        """
+        resolved = self.cues.get(key)
+        if not resolved:
+            return False
+        return self.sound.play(resolved.name, volume=resolved.volume * volume)
 
     def _initial_seat(self) -> str:
         humans = self.presenter.human_seats
@@ -527,6 +581,8 @@ class GameScene:
         self.corner.resize()
         self.toast.rect = pygame.Rect(self.layout.toast_rect)
         self.menu.rect = pygame.Rect(self.layout.action_menu_rect)
+        if self.replay_bar is not None:
+            self.replay_bar.resize(self.layout)
         self._request_id = None
         self._reaction_deadline = None
 
@@ -590,7 +646,11 @@ class GameScene:
         if self.view is None:
             screen.fill(C.VOID)
             return
-        shake = self.fx.shake_offset if self.flags["animations"] else (0, 0)
+        shake = (
+            self.fx.shake_offset
+            if self.flags["animations"] and self.flags["shake"]
+            else (0, 0)
+        )
         if shake == (0, 0):
             self._draw_board(screen)
         else:
@@ -649,6 +709,8 @@ class GameScene:
         self.tooltip.draw(screen)
         if self.flags["reveal_all"]:
             self._draw_spectator_badge(screen)
+        if self.replay_bar is not None:
+            self.replay_bar.draw(screen)
 
     def _draw_camera_strip(self, screen: pygame.Surface) -> None:
         strip = getattr(self.layout, "camera_strip_rect", None)
@@ -858,7 +920,7 @@ class GameScene:
             self._reaction_deadline = None
         if request is not None and self.presenter.is_human(request.requester):
             self._build_menu()
-            self.sound.play("open", volume=0.35)
+            self.cue("ui.open", volume=0.35)
 
     @staticmethod
     def _identify(request: Request | None) -> tuple[Any, ...] | None:
@@ -1110,7 +1172,7 @@ class GameScene:
         fraction = remaining / REACTION_SECONDS
         # Tick only in the final 3 seconds so a 10s window stays quiet.
         if remaining <= 3.0 and int(remaining * 4) != int((remaining + dt) * 4):
-            self.sound.play("click", volume=0.25)
+            self.cue("ui.click", volume=0.25)
         anchor = self.layout.left_rail_rect
         rect = pygame.Rect(anchor.left, anchor.top, max(220, anchor.width), T.s(80))
         options = [
@@ -1220,7 +1282,7 @@ class GameScene:
         """
         if not self.presenter.submit_decision(decision, answering=self.prompt.request):
             return False
-        self.sound.play("click")
+        self.cue("ui.click")
         self.selected.clear()
         self.focus_card = None
         self._armed_roll = None
@@ -1286,9 +1348,9 @@ class GameScene:
             self.fx.add(DiceRollAnimation(
                 values, area, 0.65, total=getattr(roll, "total", None), accent=accent,
             ))
-        self.sound.play("dice_roll")
+        self.cue("game.roll")
         if not replay:
-            self.sound.play("dice_land", volume=0.8)
+            self.cue("game.roll_land")
 
     # ------------------------------------------------------------------
     # Reacting to board changes
@@ -1336,30 +1398,29 @@ class GameScene:
                 face_down=False, flip=change.frm.zone in ("main_deck", "monster_deck"),
             ))
 
+        # The *sound* of an arrival is a table lookup, so a zone this client has
+        # never heard of is audible rather than silent (see `cues.py`). Only the
+        # extra flourishes stay per-zone, because they are pictures rather than
+        # rules and there is nothing sensible to invent for an unknown zone.
         if change.to.zone == "slain":
             self._celebrate_slay(change, end)
-        elif change.to.zone == "discard" and change.frm.zone == "limbo":
-            self.sound.play("card_discard")
+        else:
+            self.cue(f"zone.{change.to.zone}")
             if self.flags["animations"]:
-                self.fx.add(RingBurstAnimation(end, C.BLOOD, 0.5, radius=70))
-        elif change.to.zone == "party":
-            self.sound.play("card_play")
-        elif change.to.zone == "hand":
-            self.sound.play("card_deal", volume=0.7)
-        elif change.to.zone == "limbo":
-            self.sound.play("card_play", volume=0.8)
-            if self.flags["animations"]:
-                self.fx.add(RunePulseAnimation(end, C.ARCANE, 0.9, radius=80))
+                if change.to.zone == "discard" and change.frm.zone == "limbo":
+                    self.fx.add(RingBurstAnimation(end, C.BLOOD, 0.5, radius=70))
+                elif change.to.zone == "limbo":
+                    self.fx.add(RunePulseAnimation(end, C.ARCANE, 0.9, radius=80))
         if change.frm.owner and change.to.owner and change.frm.owner != change.to.owner:
             # A card changing hands is the one move that needs its own gesture.
             if self.flags["animations"]:
                 self.fx.add(TrailAnimation(start, end, C.ROSE, 0.6))
-            self.sound.play("challenge", volume=0.6)
+            self.cue("game.steal")
 
     def _celebrate_slay(self, change: CardMoved, at: tuple[int, int]) -> None:
         name = self._card_name(change.def_id)
         who = self._owner_name(change.to.owner)
-        self.sound.play("slay")
+        self.cue("zone.slain")
         self.toast.show(f"{who} slew {name}!", colour=C.GOLD, duration=2.6, icon="skull")
         if not self.flags["animations"]:
             return
@@ -1390,7 +1451,7 @@ class GameScene:
                     self._corner(start, width), self._corner(end, width),
                     self.layout.card_box(width), 0.5, face_down=True, flip=True,
                 ))
-            self.sound.play("card_deal")
+            self.cue("zone.monster_row")
         elif change.to.zone == "hand" and self.flags["animations"]:
             self._deal_flight(change.to, change.def_id)
 
@@ -1406,7 +1467,7 @@ class GameScene:
         if change.zone == "hand" and change.delta > 0 and change.owner != self.seat:
             for i in range(min(change.delta, 5)):
                 self._deal_flight_to_owner(change.owner, delay=i * 0.09)
-            self.sound.play("card_deal", volume=0.5)
+            self.cue("game.deal")
 
     def _deal_flight(self, place: Any, def_id: str) -> None:
         start = self._place_centre_of("main_deck", None)
@@ -1431,7 +1492,7 @@ class GameScene:
         name = player.name if player else str(change.active_player)
         colour = T.seat_colour(player.seat) if player else C.GOLD
         self.log.add(f"Turn {change.turn_number} \u2014 {name}", colour=colour, icon="bolt")
-        self.sound.play("turn")
+        self.cue("game.turn")
         if self.flags["animations"]:
             self.fx.add(TableLightSweep(pygame.Rect(self.layout.table_rect), 1.4))
             self.fx.add(BannerAnimation(
@@ -1456,7 +1517,7 @@ class GameScene:
         area = pygame.Rect(self.dice.dice_area)
         self.log.add(f"{label}: {sign}{amount}",
                      colour=C.GOOD if amount > 0 else C.BAD, icon="modifier")
-        self.sound.play("modifier")
+        self.cue("game.modifier")
         if self.flags["animations"]:
             self.fx.add(ModifierPopAnimation(
                 f"{sign}{amount}", area.center, C.GOOD if amount > 0 else C.BAD, 1.1,
@@ -1467,16 +1528,16 @@ class GameScene:
         tag = getattr(roll, "band_tag", "") or ""
         colour = C.GOOD if tag in ("success", "slay") else (C.BAD if tag == "failure" else C.INK)
         self.log.add(f"{who} rolled {roll.describe()}", colour=colour, icon="dice")
-        if tag in ("success", "slay"):
-            self.sound.play("success", volume=0.7)
-        elif tag == "failure":
-            self.sound.play("failure", volume=0.7)
+        # A band's tag is base-pack convention, not an engine concept
+        # (`rules_engine.md`, Phase 7 decision 4), so which of them cheer is a
+        # table a variant can extend rather than a comparison in this file.
+        self.cue(f"band.{tag}")
 
     def _on_game_won(self, change: GameWon) -> None:
         player = self.view.players.get(change.winner)
         name = player.name if player else str(change.winner)
         self.log.add(f"{name} wins!", colour=C.GOLD, icon="leader")
-        self.sound.play("victory")
+        self.cue("game.victory")
         if self.flags["animations"]:
             self.fx.add(ConfettiAnimation((self.layout.width, self.layout.height), 5.0))
 
@@ -1725,6 +1786,8 @@ class GameScene:
 
         if event.type == pygame.KEYDOWN and self._hotkey(event):
             return True
+        if self.replay_bar is not None and self.replay_bar.handle_event(event):
+            return True
         if event.type == pygame.MOUSEMOTION:
             self._on_motion(event.pos)
         if self.corner.handle_event(event):
@@ -1756,6 +1819,8 @@ class GameScene:
                     intents = [i for i in request.intents if i.action == action_id]
                     return self._handle_action_key(action_id, intents)
 
+        if self.replay is not None and self._replay_key(key):
+            return True
         if key == pygame.K_q or key == pygame.K_LEFT:
             self._switch_camera(self.cameras.prev)
             return True
@@ -1783,6 +1848,15 @@ class GameScene:
             return True
         if key == pygame.K_m:
             self.dev_toggle("sound")
+            return True
+        if key == pygame.K_o:
+            self.open_settings()
+            return True
+        if key == pygame.K_F2 and self.hooks.save_game is not None:
+            self.save_game()
+            return True
+        if key == pygame.K_F9 and self.hooks.load_game is not None:
+            self.open_saves()
             return True
         if key == pygame.K_F3:
             self.dev_toggle("fps")
@@ -1815,6 +1889,33 @@ class GameScene:
                 return True
         if key == pygame.K_TAB and self.prompt.candidates:
             self._cycle_candidate()
+            return True
+        return False
+
+    def _replay_key(self, key: int) -> bool:
+        """Transport keys, live only while watching a recorded game.
+
+        Checked before the camera keys, because Space would otherwise fall to
+        ``_decline_key`` — which does nothing in a replay (no seat is human) and
+        would therefore swallow the most obvious "pause" key in the client.
+        """
+        transport = self.replay
+        if transport is None:
+            return False
+        if key == pygame.K_SPACE:
+            self.toast.show(
+                "playing" if transport.toggle() else "paused",
+                colour=C.GOLD, duration=1.0, icon="play" if transport.playing else "pause",
+            )
+            return True
+        if key in (pygame.K_PERIOD, pygame.K_RIGHTBRACKET):
+            transport.step()
+            return True
+        if key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
+            self.toast.show(f"{transport.faster():g}x", colour=C.GOLD, duration=1.0, icon="bolt")
+            return True
+        if key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+            self.toast.show(f"{transport.slower():g}x", colour=C.GOLD, duration=1.0, icon="bolt")
             return True
         return False
 
@@ -2020,7 +2121,7 @@ class GameScene:
                 # rather than opening a second popup.
                 self.focus_card = sprite.card_id
                 self._build_menu()
-                self.sound.play("hover")
+                self.cue("ui.hover")
                 return True
         return False
 
@@ -2041,7 +2142,7 @@ class GameScene:
                                     icon="target")
                     return
             self.selected.append(card_id)
-        self.sound.play("click", volume=0.6)
+        self.cue("ui.click", volume=0.6)
         self._build_confirm_row()
         if request.minimum == request.maximum == len(self.selected):
             self._confirm_cards()
@@ -2066,11 +2167,11 @@ class GameScene:
     # ------------------------------------------------------------------
 
     def open_rules(self) -> None:
-        self.sound.play("open")
+        self.cue("ui.open")
         self.overlays.toggle(lambda: RulesOverlay(self.layout, self.registry), RulesOverlay)
 
     def open_log(self) -> None:
-        self.sound.play("open")
+        self.cue("ui.open")
         self.overlays.toggle(
             lambda: LogOverlay(self.layout, list(self.log.entries)), LogOverlay
         )
@@ -2078,35 +2179,106 @@ class GameScene:
     def open_card(self, card_def: Any) -> None:
         if card_def is None:
             return
-        self.sound.play("hover")
+        self.cue("ui.hover")
         self.overlays.push(CardOverlay(self.layout, card_def))
 
     def open_menu(self) -> None:
         if self.overlays.items:
             self.overlays.pop()
             return
-        self.sound.play("open")
+        self.cue("ui.open")
         items = [
-            MenuItem("resume", "Resume", icon="play"),
-            MenuItem("rules", "How to play", icon="info", subtitle="I or F1"),
-            MenuItem("log", "Game log", icon="scroll", subtitle="L"),
-            MenuItem("sound", "Sound", icon="bard",
-                     state=lambda: "on" if self.flags["sound"] else "off"),
-            MenuItem("animations", "Animations", icon="bolt",
-                     state=lambda: "on" if self.flags["animations"] else "off"),
-            MenuItem("fullscreen", "Fullscreen", icon="eye", subtitle="F11"),
-            MenuItem("console", "Developer console", icon="flask", subtitle="Ctrl+Shift+D"),
-            MenuItem("restart", "New game", icon="dice", subtitle="same players"),
-            MenuItem("quit", "Quit", icon="close", danger=True),
+            MenuItem("resume", L.MENU_RESUME, icon="play"),
+            MenuItem("rules", L.MENU_RULES, icon="info", subtitle="I or F1"),
+            MenuItem("log", L.MENU_LOG, icon="scroll", subtitle="L"),
+            MenuItem("settings", L.MENU_SETTINGS, icon="gear", subtitle="O"),
         ]
-        self.overlays.push(MenuOverlay(self.layout, items, subtitle="Esc to resume"))
+        # Save and load appear only when the window offers them. A replay
+        # viewer has no game to save and a headless test scene has no disk, and
+        # a menu row that cannot do anything is worse than a missing one.
+        if self.hooks.save_game is not None:
+            items.append(MenuItem("save", L.MENU_SAVE, icon="deck", subtitle="F2"))
+        if self.hooks.load_game is not None:
+            items.append(MenuItem("load", L.MENU_LOAD, icon="scroll", subtitle="F9"))
+        items += [
+            MenuItem("fullscreen", L.MENU_FULLSCREEN, icon="eye", subtitle="F11"),
+            MenuItem("console", L.MENU_CONSOLE, icon="flask", subtitle="Ctrl+Shift+D"),
+            MenuItem("restart", L.MENU_RESTART, icon="dice", subtitle=L.MENU_SAME_PLAYERS),
+            MenuItem("quit", L.MENU_QUIT, icon="close", danger=True),
+        ]
+        self.overlays.push(MenuOverlay(self.layout, items, subtitle=L.MENU_RESUME_HINT))
+
+    def open_settings(self) -> None:
+        """The settings screen, seeded from whatever the window has loaded."""
+        if self.hooks.settings is None:
+            self.toast.show("no settings in this session", colour=C.WARN, icon="close")
+            return
+        self.cue("ui.open")
+        self.overlays.toggle(
+            lambda: SettingsOverlay(
+                self.layout, self.hooks.settings(), on_change=self.apply_settings,
+            ),
+            SettingsOverlay,
+        )
+
+    def apply_settings(self, settings: Any) -> None:
+        """Make preferences true on this board, right now.
+
+        Called on every click in the settings screen and once at startup, so
+        there is exactly one place that knows which preference means what to a
+        scene. Anything that belongs to the *window* — fullscreen, HUD scale,
+        AI pace — is the app's half and is not touched here.
+        """
+        self.flags["sound"] = bool(settings.sound)
+        self.flags["animations"] = bool(settings.animations)
+        self.flags["shake"] = bool(settings.shake)
+        self.flags["reaction_timer"] = bool(settings.reaction_timer)
+        self.sound.enabled = bool(settings.sound)
+        self.sound.set_volume(float(settings.volume))
+        self.fx.enabled = bool(settings.animations)
+        if not settings.animations:
+            self.fx.clear()
+
+    def save_game(self) -> None:
+        """Save through the window, and say what happened either way.
+
+        A refusal is normal rather than exceptional: an AI seat deliberating is
+        the engine mid-step, and `Engine.savepoint` says no. Telling the player
+        to try again in a moment is the honest answer; writing a save that
+        describes a position nobody was in is not.
+        """
+        if self.hooks.save_game is None:
+            return
+        try:
+            message = self.hooks.save_game()
+        except Exception as exc:
+            from here_to_slay.core.savegame import SaveError
+
+            refused = isinstance(exc, SaveError) and not self.engine.savepoint
+            self.toast.show(
+                L.SAVE_REFUSED if refused else L.SAVE_FAILED.format(why=exc),
+                colour=C.WARN if refused else C.BAD, icon="close", duration=3.0,
+            )
+            self.cue("ui.error")
+            return
+        self.toast.show(message, colour=C.GOOD, icon="check", duration=2.6)
+        self.cue("ui.save")
+
+    def open_saves(self) -> None:
+        """The load screen. Reads headers only — no game is replayed to list it."""
+        if self.hooks.list_saves is None:
+            return
+        self.cue("ui.open")
+        self.overlays.toggle(
+            lambda: SaveListOverlay(self.layout, self.hooks.list_saves()), SaveListOverlay
+        )
 
     def open_dev_console(self) -> None:
-        self.sound.play("open")
+        self.cue("ui.open")
         self.overlays.toggle(lambda: DevConsole(self.layout, self), DevConsole)
 
     def _overlay_finished(self, overlay: Any) -> None:
-        self.sound.play("close", volume=0.5)
+        self.cue("ui.close")
         result = overlay.result
         if isinstance(overlay, HandoverOverlay):
             self.presenter.acknowledge_transition()
@@ -2119,6 +2291,15 @@ class GameScene:
             elif self.hooks.quit:
                 self.hooks.quit()
             return
+        if isinstance(overlay, SaveListOverlay):
+            chosen = overlay.chosen()
+            if chosen is not None and self.hooks.load_game is not None:
+                self.hooks.load_game(chosen)
+            return
+        if isinstance(overlay, SettingsOverlay):
+            if self.hooks.save_settings is not None:
+                self.hooks.save_settings(overlay.result)
+            return
         if isinstance(overlay, MenuOverlay):
             self._menu_action(str(result or "resume"))
 
@@ -2127,6 +2308,12 @@ class GameScene:
             self.open_rules()
         elif key == "log":
             self.open_log()
+        elif key == "settings":
+            self.open_settings()
+        elif key == "save":
+            self.save_game()
+        elif key == "load":
+            self.open_saves()
         elif key in ("sound", "animations"):
             self.dev_toggle(key)
             self.open_menu()
@@ -2232,7 +2419,7 @@ class GameScene:
                 (width, height), 0.5, spin=180.0,
             ))
             self.fx.add(ParticleBurstAnimation(rect.center, (C.ARCANE, C.GOLD), 0.6, count=10))
-        self.sound.play("card_play")
+        self.cue("zone.party")
 
     def dev_inspect_card(self, card_def: Any) -> None:
         self.overlays.push(CardOverlay(self.layout, card_def))
@@ -2267,7 +2454,7 @@ class GameScene:
         if flag == "sound":
             self.sound.enabled = state
             if state:
-                self.sound.play("click")
+                self.cue("ui.click")
         elif flag == "animations":
             self.fx.enabled = state
             if not state:

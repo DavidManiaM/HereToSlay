@@ -2,10 +2,29 @@
 
 Everything is deterministic and cached so a resize never rebuilds grain
 pixel-by-pixel, and a dropped frame cannot hide a rules bug.
+
+Two things the Phase 11 performance pass changed, both measured rather than
+guessed (``docs/ui_guide.md`` records the numbers):
+
+* **The backdrop art is rebuilt only when the geometry stops moving.** Every
+  size-keyed cache below misses on every frame of a *dragged window resize*,
+  because the table oval is a fraction of the window and therefore a new size
+  each frame — and :func:`_table` costs about 58 ms to paint, being a
+  2x-supersampled ellipse stack with a tiled grain layer. Dragging a window edge
+  ran at **139 ms a frame**. :class:`_Layer` stretches the art it already has
+  while the geometry is in motion and builds the real thing once, on the first
+  frame that asks for the same size twice: 43 ms, and the felt is repainted once
+  instead of once per frame.
+* **The room and the vignette are one opaque surface.** They were two
+  full-screen *alpha* blits per frame over a board that then covered them; an
+  opaque composite is a straight copy. With the removal of a table-sized
+  ``.copy()`` per frame for the active seat's arc, that took a steady frame from
+  15.2 ms to 5.8 ms — a 66 fps ceiling to a 171 fps one.
 """
 
 from __future__ import annotations
 
+import contextlib
 import math
 from functools import lru_cache
 from typing import Any
@@ -17,6 +36,8 @@ from here_to_slay.ui.pygame.theme import C
 
 _MOTE_COUNT = 8
 _SS = 2  # supersample factor for table / placemat layers
+#: Alpha quantisation for motes, so a breathing one is a cache hit.
+_MOTE_STEPS = 2
 
 
 def _hash01(n: int) -> float:
@@ -143,6 +164,20 @@ def _placemats(width: int, height: int, angles: tuple[float, ...]) -> pygame.Sur
     return pygame.transform.smoothscale(hi, (width, height))
 
 
+@lru_cache(maxsize=8)
+def _felt(width: int, height: int, angles: tuple[float, ...]) -> pygame.Surface:
+    """The table and its seat arcs, as one surface.
+
+    Composited rather than blitted separately because they always change
+    together: one cache, one blit, and — the reason it matters — one thing for
+    :class:`_Layer` to stretch while a camera blend is in flight.
+    """
+    surf = _table(width, height).copy()
+    if angles:
+        surf.blit(_placemats(width, height, angles), (0, 0))
+    return surf
+
+
 @lru_cache(maxsize=48)
 def _active_arc(
     width: int, height: int, angle: float, seat_i: int,
@@ -162,13 +197,78 @@ def _active_arc(
     return pygame.transform.smoothscale(hi, (width, height))
 
 
-@lru_cache(maxsize=48)
-def _mote_sprite(radius: int, colour: tuple[int, int, int]) -> pygame.Surface:
-    """Soft radial disc — no hard circle edges at HD."""
+@lru_cache(maxsize=8)
+def _ground(width: int, height: int) -> pygame.Surface:
+    """Room and vignette, composited once, **opaque**.
+
+    Opaque matters: the board is drawn on top of every pixel of this, so its
+    alpha channel was never used for anything, and blitting a surface with one
+    costs roughly twice as much as blitting one without.
+    """
+    width, height = max(8, width), max(8, height)
+    surf = pygame.Surface((width, height))
+    surf.blit(_room(width, height), (0, 0))
+    surf.blit(T.vignette((width, height), 110), (0, 0))
+    with contextlib.suppress(pygame.error):
+        # Matching the display format makes the per-frame blit a copy. Raises
+        # when there is no display (headless tests), where it does not matter.
+        surf = surf.convert()
+    return surf
+
+
+@lru_cache(maxsize=256)
+def _mote_sprite(
+    radius: int, colour: tuple[int, int, int], alpha: int = 255
+) -> pygame.Surface:
+    """Soft radial disc — no hard circle edges at HD.
+
+    ``alpha`` is part of the key so a breathing mote is a lookup rather than a
+    surface copy per mote per frame. Callers quantise it (:data:`_MOTE_STEPS`),
+    which is why 256 entries is plenty for a handful of motes.
+    """
     r = max(1, radius)
     # Build a soft glow a bit larger than the mote radius.
     glow_r = max(4, r * 3)
-    return T.radial_glow(glow_r, (*colour, 180), power=2.4)
+    sprite = T.radial_glow(glow_r, (*colour, 180), power=2.4)
+    if alpha < 255:
+        sprite = sprite.copy()
+        sprite.set_alpha(alpha)
+    return sprite
+
+
+class _Layer:
+    """Backdrop art that must not be rebuilt while its geometry is moving.
+
+    The rule is one line: **build only when asked for the same geometry twice in
+    a row.** A window being dragged never asks twice, so it never triggers a
+    build; the frame after the drag stops does, exactly once. In between,
+    whatever art is already in hand is stretched to fit — a couple of
+    milliseconds instead of sixty, and nobody studies the felt's grain while
+    they are dragging a window edge.
+    """
+
+    __slots__ = ("_art", "_build", "_key", "_wanted")
+
+    def __init__(self, build: Any) -> None:
+        self._build = build
+        self._art: pygame.Surface | None = None
+        self._key: tuple[Any, ...] | None = None
+        self._wanted: tuple[Any, ...] | None = None
+
+    def get(self, key: tuple[Any, ...], size: tuple[int, int]) -> pygame.Surface:
+        if key == self._key and self._art is not None:
+            return self._art
+        if self._art is None or key == self._wanted:
+            self._art = self._build(*key)
+            self._key = key
+            self._wanted = key
+            return self._art
+        self._wanted = key
+        if self._art.get_size() == size:
+            return self._art
+        # `scale` rather than `smoothscale`: half the cost, and the result is on
+        # screen for a fraction of a second while everything else is moving too.
+        return pygame.transform.scale(self._art, size)
 
 
 class Atmosphere:
@@ -178,6 +278,10 @@ class Atmosphere:
         self.time = 0.0
         self._size = (1600, 900)
         self._motes: list[tuple[float, float, float, float, int, tuple[int, int, int], float]] = []
+        # One per piece of geometry-dependent art. See `_Layer`: these are what
+        # stop a camera blend from repainting the felt sixty times a second.
+        self._felt = _Layer(_felt)
+        self._arc = _Layer(_active_arc)
         self._rebuild(self._size)
 
     def _rebuild(self, size: tuple[int, int]) -> None:
@@ -228,41 +332,39 @@ class Atmosphere:
     ) -> None:
         del camera_key, active_seat  # active_index is the resolved seat slot
         w, h = screen.get_size()
-        screen.blit(_room(w, h), (0, 0))
+        screen.blit(_ground(w, h), (0, 0))
 
         table = getattr(layout, "table_rect", None)
         if table is not None and table.width > 40:
-            screen.blit(_table(table.width, table.height), table.topleft)
-
+            size = (table.width, table.height)
             seats = getattr(layout, "seats", ())
-            if seats:
-                angles = tuple(float(s.angle) for s in seats)
-                mats = _placemats(table.width, table.height, angles)
-                screen.blit(mats, table.topleft)
-                if active_index is not None and 0 <= active_index < len(angles):
-                    breath = 0.5 + 0.5 * math.sin(self.time * 1.4)
-                    glow = _active_arc(
-                        table.width, table.height, angles[active_index], active_index,
-                    ).copy()
-                    glow.set_alpha(int(90 + 70 * breath))
-                    screen.blit(glow, table.topleft, special_flags=pygame.BLEND_RGBA_ADD)
+            angles = tuple(float(s.angle) for s in seats)
+            screen.blit(self._felt.get((*size, angles), size), table.topleft)
+
+            if active_index is not None and 0 <= active_index < len(angles):
+                glow = self._arc.get(
+                    (*size, angles[active_index], active_index), size
+                )
+                # No copy: this surface is drawn nowhere else, so setting its
+                # alpha in place is safe — and copying a table-sized surface was
+                # costing more than every other layer put together.
+                glow.set_alpha(int(90 + 70 * (0.5 + 0.5 * math.sin(self.time * 1.4))))
+                screen.blit(glow, table.topleft, special_flags=pygame.BLEND_RGBA_ADD)
 
         self._draw_motes(screen)
-        screen.blit(T.vignette((w, h), 110), (0, 0))
 
     def _draw_motes(self, screen: pygame.Surface) -> None:
         for x, y, _vx, _vy, radius, colour, phase in self._motes:
             fade = 0.25 + 0.4 * (0.5 + 0.5 * math.sin(self.time * 0.8 + phase))
-            a = int(40 * fade)
+            # Quantised so a breathing mote hits the sprite cache instead of
+            # copying a surface every frame. Forty steps of alpha over a range
+            # of forty is one step per level: nothing is lost.
+            a = int(40 * fade) // _MOTE_STEPS * _MOTE_STEPS
             if a < 4:
                 continue
-            sprite = _mote_sprite(radius, colour)
-            # Alpha via a cheap copy of the cached glow (no per-frame allocation
-            # of the glow itself — only a thin set_alpha wrapper surface).
-            tinted = sprite.copy()
-            tinted.set_alpha(a)
-            hr = tinted.get_width() // 2
-            screen.blit(tinted, (int(x - hr), int(y - hr)))
+            sprite = _mote_sprite(radius, colour, a)
+            hr = sprite.get_width() // 2
+            screen.blit(sprite, (int(x - hr), int(y - hr)))
 
 
 def blit_card_sheen(dest: pygame.Surface, rect: pygame.Rect, amount: float) -> None:

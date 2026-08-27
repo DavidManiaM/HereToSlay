@@ -19,6 +19,11 @@ Design points
 * **Replay mode.** ``CliPresenter`` accepts an optional ``silent=True`` flag.
   In silent mode it does not clear the screen and does not prompt; it just
   renders after each decision. Used by ``hts replay``.
+* **Saving.** Typing ``s`` at any numbered prompt calls ``on_save`` and then
+  asks the same question again. The prompt is exactly the point the engine is
+  blocked at, which makes it the one place a terminal client is *allowed* to
+  save (``Engine.savepoint``) — so the save command lives on the prompt rather
+  than on a menu that would have to interrupt something.
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ from __future__ import annotations
 import contextlib
 import os
 import sys
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
@@ -67,12 +73,15 @@ class CliPresenter(DecisionSource):
         console: Console | None = None,
         clear_screen: bool = True,
         silent: bool = False,
+        on_save: Callable[[], str] | None = None,
     ) -> None:
         self.engine = engine
         self.registry = registry
         self.console = console if console is not None else Console()
         self.clear_screen = clear_screen
         self.silent = silent
+        #: Called when the player types ``s`` at a prompt; returns what to print.
+        self.on_save = on_save
         self._last_seat: str | None = None
         # How many rolls from `engine.recent_rolls` we have already shown.
         # Tracked here (not on the state) because "how much of the board the UI
@@ -338,13 +347,16 @@ class CliPresenter(DecisionSource):
         an infinite loop rather than a retry. A human pressing Enter by mistake
         still just gets asked again, because ``_stdin_open`` is still true.
         """
+        suffix = ", s=save" if self.on_save is not None else ""
         while True:
-            self.console.print(f"  [dim]Enter {lo}-{hi}:[/dim] ", end="")
+            self.console.print(f"  [dim]Enter {lo}-{hi}{suffix}:[/dim] ", end="")
             raw = self._read_raw()
             if raw is None:
                 raise EOFError(
                     f"stdin closed while waiting for a number between {lo} and {hi}"
                 )
+            if self._maybe_save(raw):
+                continue
             try:
                 value = int(raw.strip())
                 if lo <= value <= hi:
@@ -354,6 +366,22 @@ class CliPresenter(DecisionSource):
                 )
             except ValueError:
                 self.console.print("  [red]Please enter a number.[/red]")
+
+    def _maybe_save(self, raw: str) -> bool:
+        """Handle ``s``/``save`` typed at a prompt. Returns whether it was one.
+
+        Failures are reported and swallowed: a full disk is a reason not to have
+        a save file, never a reason to lose the game in progress.
+        """
+        if self.on_save is None or raw.strip().lower() not in ("s", "save"):
+            return False
+        try:
+            message = self.on_save()
+        except Exception as exc:
+            self.console.print(f"  [red]Could not save: {exc}[/red]")
+        else:
+            self.console.print(f"  [green]{message}[/green]")
+        return True
 
     def _read_raw(self) -> str | None:
         """A line of input, or None once the stream is exhausted."""

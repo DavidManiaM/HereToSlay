@@ -10,6 +10,12 @@ Every entry point degrades to silence. If the mixer will not open (a headless
 CI box, a machine with no audio device, ``--mute``) :class:`SoundBoard` becomes
 a no-op rather than an exception, because a card game that refuses to start
 because it cannot beep is a worse card game.
+
+A pack may add cues of its own without shipping audio or Python:
+:meth:`SoundBoard.define` builds one from a declarative spec — layers of
+waveform, envelope and pitch glide, the same parameters the built-in cues use.
+:mod:`~here_to_slay.ui.pygame.cues` is what reads those out of a pack and
+decides which cue a given moment plays.
 """
 
 from __future__ import annotations
@@ -17,7 +23,8 @@ from __future__ import annotations
 import array
 import contextlib
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 import pygame
 
@@ -183,6 +190,76 @@ def _recipes() -> dict[str, Callable[[], bytes]]:
 
 
 # ---------------------------------------------------------------------------
+# Cues declared as data
+# ---------------------------------------------------------------------------
+
+#: Waveform names a pack may use. Anything else falls back to a sine, because a
+#: typo in a sound file must not be able to stop a game.
+WAVES: dict[str, Callable[[float], float]] = {
+    "sine": _sine,
+    "triangle": _triangle,
+    "square": _square,
+    "saw": _saw,
+}
+
+#: Bounds on what a declared cue may ask for. A pack is content, not code: it
+#: should not be able to allocate a minute of audio or blow out the mix.
+MAX_DURATION = 3.0
+MAX_LAYERS = 6
+
+
+def _number(value: Any, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _frequency(value: Any) -> Callable[[float], float] | float:
+    """``440``, ``[220, 880]`` (a glide), or ``[220, 880, 0.5]`` (curved)."""
+    if isinstance(value, (list, tuple)) and value:
+        start = _number(value[0], 440.0)
+        end = _number(value[1], start) if len(value) > 1 else start
+        curve = _number(value[2], 1.0) if len(value) > 2 else 1.0
+        return _glide(start, end, max(0.05, curve))
+    return max(20.0, _number(value, 440.0))
+
+
+def _layer_bytes(spec: Mapping[str, Any]) -> bytes:
+    wave_name = str(spec.get("wave", "sine")).lower()
+    if wave_name == "noise":
+        wave: Callable[[float], float] = _Noise(int(_number(spec.get("seed"), 7)))
+    else:
+        wave = WAVES.get(wave_name, _sine)
+    return _render(
+        max(0.01, min(MAX_DURATION, _number(spec.get("duration"), 0.2))),
+        _frequency(spec.get("frequency", spec.get("freq", 440))),
+        wave=wave,
+        attack=max(0.0, min(0.5, _number(spec.get("attack"), 0.005))),
+        decay=max(0.01, min(2.0, _number(spec.get("decay"), 0.12))),
+        gain=max(0.0, min(1.0, _number(spec.get("gain"), 0.25))),
+        pan=max(-1.0, min(1.0, _number(spec.get("pan"), 0.0))),
+    )
+
+
+def recipe_from_spec(spec: Mapping[str, Any]) -> Callable[[], bytes]:
+    """Turn a declared cue into a builder, without rendering anything yet.
+
+    Lazily, like every built-in cue: a pack that declares eight sounds and plays
+    two should synthesise two.
+    """
+    layers = spec.get("layers")
+    parts: list[Mapping[str, Any]]
+    if isinstance(layers, (list, tuple)) and layers:
+        parts = [layer for layer in layers if isinstance(layer, Mapping)][:MAX_LAYERS]
+    else:
+        parts = [spec]
+    if not parts:
+        parts = [{}]
+    return lambda: _mix(*[_layer_bytes(part) for part in parts])
+
+
+# ---------------------------------------------------------------------------
 # Board
 # ---------------------------------------------------------------------------
 
@@ -244,6 +321,20 @@ class SoundBoard:
             return None
         self._sounds[name] = sound
         return sound
+
+    def define(self, name: str, spec: Mapping[str, Any]) -> bool:
+        """Add a cue declared as data. Returns whether the spec was usable.
+
+        Overwriting a built-in is allowed on purpose — that is how a variant
+        re-voices ``slay`` without renaming every reference to it. The cue is
+        only *described* here; nothing is synthesised until it first plays.
+        """
+        if not name or not isinstance(spec, Mapping):
+            return False
+        self._recipes[str(name)] = recipe_from_spec(spec)
+        self._sounds.pop(str(name), None)
+        self._failed.discard(str(name))
+        return True
 
     def preload(self, names: Sequence[str] | None = None) -> int:
         """Build cues ahead of time so the first play does not hitch."""

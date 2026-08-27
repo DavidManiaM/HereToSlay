@@ -120,6 +120,49 @@ RIGHT_CLICK_PIN = "click-dreapta ca să fixezi"
 CAM_HINT = "Q / E camere  ·  click pe un grup inamic"
 SPECTATOR = "SPECTATOR · TOATE MÂINILE VIZIBILE"
 
+# -- pause menu, settings, saves ---------------------------------------------
+#
+# The rows of the pause menu were literals in ``scenes.py`` until Phase 11 added
+# three more. They are strings a player reads, so they belong here with the rest
+# of the surface language - which is also what makes translating the menu one
+# file's work instead of a grep through the board scene.
+
+MENU_RESUME = "Resume"
+MENU_RULES = "How to play"
+MENU_LOG = "Game log"
+MENU_SETTINGS = "Settings"
+MENU_SAVE = "Save game"
+MENU_LOAD = "Load game"
+MENU_SOUND = "Sound"
+MENU_ANIMATIONS = "Animations"
+MENU_FULLSCREEN = "Fullscreen"
+MENU_CONSOLE = "Developer console"
+MENU_RESTART = "New game"
+MENU_QUIT = "Quit"
+MENU_RESUME_HINT = "Esc to resume"
+MENU_SAME_PLAYERS = "same players"
+
+SETTINGS_TITLE = "Settings"
+SETTINGS_HINT = "saved to your profile"
+SET_SOUND = "Sound"
+SET_VOLUME = "Volume"
+SET_ANIMATIONS = "Animations"
+SET_SHAKE = "Screen shake"
+SET_REACTION_TIMER = "Reaction countdown"
+SET_AI_SPEED = "AI pace"
+SET_UI_SCALE = "HUD scale"
+SET_FULLSCREEN = "Fullscreen"
+ON = "on"
+OFF = "off"
+
+SAVES_TITLE = "Load game"
+SAVES_EMPTY = "No saved games yet"
+SAVED_TO = "Saved -> {name}"
+SAVE_REFUSED = "Cannot save mid-action - try again in a moment"
+SAVE_FAILED = "Could not save: {why}"
+LOAD_FAILED = "Could not load: {why}"
+LOADED = "Loaded {name}"
+
 
 def kind_label(
     kind: str,

@@ -296,9 +296,30 @@ Rules:
    raises rather than corrupting state. The UI is never trusted.
 3. Every accepted decision is appended to `DecisionLog`. `(content_hash, seed, max_turns, log)` reproduces
    the game exactly → replay, network, tests, bug reports.
-4. **Save/load is only legal at `Quiescent`** (between actions), because a suspended generator
-   stack isn't serialisable. Mid-decision saves are rejected with a clear error. Accepted
-   trade-off — see `architecture_notes.md §4`.
+4. **Save/load is only legal at a *savepoint*** — anywhere the engine is not resolving a step —
+   because a suspended generator stack isn't serialisable. A save mid-step is rejected with a
+   clear error. Accepted trade-off; see `architecture_notes.md §4`.
+
+   Phase 11 had to make that test *true* before building on it. `Engine.quiescent` read
+   `pending is None and not over`, which is also true in the middle of a step: no request is open
+   while an effect resolves. The terminal client could not observe the difference, but the pygame
+   client runs the engine on its own thread and the frame loop asks exactly that question, and
+   would have been told "yes, save now" halfway through an action. The engine counts how many
+   `start`/`submit` calls are on its stack: `running` is the honest answer, `quiescent` now means
+   what it says, and `savepoint` is `not running`.
+
+   The savepoint a *client* actually reaches is an open question, not a gap between actions —
+   `run()` drives straight from one request to the next and never surfaces a quiescent moment.
+   While a `DecisionSource` is being asked, nothing is mutating and the log holds every answer so
+   far, so that is where `s` (terminal) and `F2` (board) save from. An AI seat deliberating is
+   genuinely mid-step, and is the one case that refuses.
+
+6. **A save game is a decision log.** `core/savegame.py` wraps one with a header — when, what it
+   was called, which packs, and a summary a load screen can list without replaying anything — and
+   `restore()` is `Engine.replaying` run until the log is exhausted. Storing a *board* instead
+   would need every flag a mod invents and every subscription the bus holds, and would load a
+   different game the day one of them was forgotten. Loading is therefore O(decisions); at a few
+   hundred decisions of pure Python that is milliseconds, and it buys a file that cannot lie.
 5. **An interrupted game still writes its log.** Ctrl+C and a closed stdin are the two commonest
    ways a hot-seat session ends, and both used to return before the save. The log *is* the undo
    and replay mechanism; discarding it exactly when a player wanted to stop was the wrong trade.

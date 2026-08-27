@@ -1,9 +1,14 @@
 """``hts`` — the command line entry point.
 
 ``validate`` checks a content pack, ``play`` runs the terminal client, ``gui``
-opens the pygame client, ``replay`` re-runs a saved decision log, and ``sim``
-fuzzes headless games. Every command loads content the same way, so a variant
-pack works everywhere the base game does.
+opens the pygame client, ``replay`` re-runs a saved decision log, ``saves``
+lists what you can resume, and ``sim`` fuzzes headless games. Every command
+loads content the same way, so a variant pack works everywhere the base game
+does.
+
+A **save game is a decision log**, so ``play``, ``gui`` and ``saves`` all speak
+the same file and ``replay`` will happily step through one
+(``core/savegame.py``).
 """
 
 from __future__ import annotations
@@ -12,6 +17,8 @@ import argparse
 import contextlib
 import sys
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 from rich.table import Table
@@ -24,6 +31,10 @@ from here_to_slay.content.registry import ContentRegistry
 from here_to_slay.content.validate import validate_registry
 from here_to_slay.content.vocabulary import Vocabulary
 from here_to_slay.modding import load_plugins
+
+#: Where saves live unless told otherwise. Beside ``hts_logs/`` on purpose:
+#: both are decision logs, and a player should be able to find them together.
+DEFAULT_SAVE_DIR = "hts_saves"
 
 EXIT_OK = 0
 EXIT_CONTENT_ERROR = 1
@@ -123,7 +134,25 @@ def build_parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--no-save",
         action="store_true",
-        help="do not save the decision log at the end",
+        help="do not write the decision log, and disable the in-game save key",
+    )
+    play.add_argument(
+        "--load",
+        default=None,
+        metavar="SAVE",
+        help="resume a saved game (a path, or a name in the save directory)",
+    )
+    play.add_argument(
+        "--save-dir",
+        default=DEFAULT_SAVE_DIR,
+        metavar="DIR",
+        help=f"where saves are written and looked for (default: {DEFAULT_SAVE_DIR})",
+    )
+    play.add_argument(
+        "--save-label",
+        default=None,
+        metavar="NAME",
+        help="name saves after this instead of a timestamp (overwrites on re-save)",
     )
     play.set_defaults(func=cmd_play)
 
@@ -183,30 +212,37 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help="let the agent play the last N seats (default: 0 — pass the mouse round)",
     )
+    # These four default to None rather than a number, so "not given" is
+    # distinguishable from "given the same value the settings file holds" —
+    # which is what lets the settings screen remember a window size and a flag
+    # typed today still win over it.
     gui.add_argument(
         "--width",
         type=int,
-        default=1920,
+        default=None,
         metavar="W",
-        help="window width (default: 1920, clamped to the desktop)",
+        help="window width (default: remembered, else 1920; clamped to the desktop)",
     )
     gui.add_argument(
         "--height",
         type=int,
-        default=1080,
+        default=None,
         metavar="H",
-        help="window height (default: 1080, clamped to the desktop)",
+        help="window height (default: remembered, else 1080; clamped to the desktop)",
     )
     gui.add_argument(
         "--ui-scale",
         type=float,
-        default=1.0,
+        default=None,
         metavar="F",
         help="chrome scale — below 1.0 shrinks the HUD so the board grows "
-             "(default: 1.0)",
+             "(default: remembered, else 1.0)",
     )
     gui.add_argument(
-        "--fullscreen", action="store_true", help="start fullscreen (F11 toggles)"
+        "--fullscreen",
+        action="store_true",
+        default=None,
+        help="start fullscreen (F11 toggles; default: remembered)",
     )
     gui.add_argument(
         "--no-sound", action="store_true", help="start with the procedural cues muted"
@@ -215,6 +251,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--reveal-all",
         action="store_true",
         help="spectator mode: show every hand (for demos and debugging)",
+    )
+    gui.add_argument(
+        "--load",
+        default=None,
+        metavar="SAVE",
+        help="resume a saved game (a path, or a name in the save directory)",
+    )
+    gui.add_argument(
+        "--watch",
+        default=None,
+        metavar="LOG",
+        help="replay viewer: step through a saved game or decision log on the board",
+    )
+    gui.add_argument(
+        "--save-dir",
+        default=DEFAULT_SAVE_DIR,
+        metavar="DIR",
+        help=f"where saves are written and looked for (default: {DEFAULT_SAVE_DIR})",
     )
     gui.set_defaults(func=cmd_gui)
 
@@ -328,6 +382,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="suppress progress bar and per-game logs",
     )
     sim.set_defaults(func=cmd_sim)
+
+    # ------------------------------------------------------------------
+    # saves
+    # ------------------------------------------------------------------
+    saves = subparsers.add_parser(
+        "saves",
+        help="list the games you can resume",
+        description=(
+            "List every readable save in the save directory, newest first. "
+            "Resume one with 'hts play --load NAME' or 'hts gui --load NAME'."
+        ),
+    )
+    saves.add_argument(
+        "--save-dir",
+        default=DEFAULT_SAVE_DIR,
+        metavar="DIR",
+        help=f"directory to list (default: {DEFAULT_SAVE_DIR})",
+    )
+    saves.set_defaults(func=cmd_saves)
 
     # ------------------------------------------------------------------
     # new-pack
@@ -499,6 +572,8 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
     import re
     from pathlib import Path
 
+    from here_to_slay.core.savegame import SaveError
+
     # -- load content ------------------------------------------------------
     try:
         registry, _ = load_content(args)
@@ -506,32 +581,29 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
 
-    # -- player names ------------------------------------------------------
-    names: list[str]
-    if args.names:
-        names = list(args.names)
-    else:
-        n = max(2, args.players)
-        names = [f"Jucător {i}" for i in range(1, n + 1)]
+    save_dir = Path(args.save_dir)
 
-    n_players = len(names)
-    max_p = registry.rules.setup.max_players
-    min_p = registry.rules.setup.min_players
-    if not (min_p <= n_players <= max_p):
-        console.print(
-            f"[red]This rule set requires {min_p}-{max_p} players; "
-            f"got {n_players}.[/red]"
-        )
-        return EXIT_USAGE
-
-    # -- seed --------------------------------------------------------------
-    seed: int | str = args.seed if args.seed is not None else _random_seed()
-
-    # -- build engine ------------------------------------------------------
+    # -- build engine, either dealt fresh or restored from a save ----------
     from here_to_slay.core.engine import Engine
 
-    engine = Engine.new(registry, names, seed=seed, max_turns=args.max_turns)
+    engine: Engine
+    if args.load:
+        try:
+            engine, seed = _restore_game(args.load, registry, save_dir, console)
+        except SaveError as exc:
+            console.print(f"[bold red]Could not load:[/bold red] {exc}")
+            return EXIT_USAGE
+        names = [engine.state.player(pid).name for pid in engine.state.turn_order]
+    else:
+        names = _player_names(args)
+        problem = _check_player_count(registry, names)
+        if problem:
+            console.print(problem)
+            return EXIT_USAGE
+        seed = args.seed if args.seed is not None else _random_seed()
+        engine = Engine.new(registry, names, seed=seed, max_turns=args.max_turns)
 
+    n_players = len(names)
     console.print()
     console.print(
         f"[bold bright_green]Here to Slay[/bold bright_green]  "
@@ -546,7 +618,19 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
 
     TROPHY = ICONS["trophy"]
 
-    presenter = CliPresenter(engine, registry, console=console)
+    def _save_now() -> str:
+        """Called when the player types 's' at a prompt.
+
+        The prompt is the only moment a terminal client is at an
+        ``Engine.savepoint``: the engine is blocked waiting for this answer, so
+        nothing is mid-effect and the log holds every decision made so far.
+        """
+        return _write_save(engine, save_dir, label=args.save_label or "")
+
+    presenter = CliPresenter(
+        engine, registry, console=console,
+        on_save=None if args.no_save else _save_now,
+    )
     status: object = None
     # An interrupted game is still a game: the log is this project's undo and
     # replay mechanism, and discarding it on the most common way a hot-seat
@@ -579,9 +663,87 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
         safe_seed = re.sub(r"[^\w\-]", "_", str(seed))
         log_path = log_dir / f"{ts}_{safe_seed}.json"
         engine.log.save(log_path)
-        console.print(f"[dim]Decision log saved → {log_path}[/dim]")
+        console.print(f"[dim]Decision log saved -> {log_path}[/dim]")
 
     return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
+# Shared by play, gui and saves: names, seat counts, and the save directory
+# ---------------------------------------------------------------------------
+
+
+def _player_names(args: argparse.Namespace) -> list[str]:
+    if args.names:
+        return list(args.names)
+    n = max(2, args.players)
+    return [f"Jucător {i}" for i in range(1, n + 1)]
+
+
+def _check_player_count(registry: ContentRegistry, names: Sequence[str]) -> str:
+    """A message if this rule set will not seat this many players, else ''."""
+    max_p = registry.rules.setup.max_players
+    min_p = registry.rules.setup.min_players
+    if min_p <= len(names) <= max_p:
+        return ""
+    return (
+        f"[red]This rule set requires {min_p}-{max_p} players; "
+        f"got {len(names)}.[/red]"
+    )
+
+
+def _resolve_save(target: str, save_dir: Path) -> Path:
+    """A save named on the command line: a path, or a name in the save folder."""
+    from here_to_slay.core.savegame import SAVE_SUFFIX, save_path
+
+    direct = Path(target)
+    if direct.is_file():
+        return direct
+    candidate = save_path(save_dir, target)
+    if candidate.is_file():
+        return candidate
+    plain = Path(save_dir) / target
+    if plain.is_file():
+        return plain
+    raise FileNotFoundError(
+        f"no save called '{target}' - looked for {direct}, {candidate} "
+        f"and {save_dir}/{target}{SAVE_SUFFIX}"
+    )
+
+
+def _restore_game(
+    target: str, registry: ContentRegistry, save_dir: Path, console: Console
+) -> tuple[Any, int | str]:
+    """Load a save and replay it back to the position it was taken at."""
+    from here_to_slay.core.savegame import SaveError, SaveGame
+
+    try:
+        path = _resolve_save(target, save_dir)
+    except FileNotFoundError as exc:
+        raise SaveError(str(exc)) from None
+
+    game = SaveGame.load(path)
+    if game.packs and set(game.packs) - set(registry.pack_ids):
+        console.print(
+            f"[yellow]This save was made with pack(s) {', '.join(game.packs)}; "
+            f"you loaded {', '.join(registry.pack_ids)}.[/yellow]"
+        )
+    engine = game.restore(registry)
+    console.print(
+        f"[bold bright_cyan]Loaded[/bold bright_cyan] [dim]{path.name} - "
+        f"{game.describe()}, {len(game.log)} decision(s) replayed[/dim]"
+    )
+    return engine, engine.state.rng.seed
+
+
+def _write_save(engine: Any, save_dir: Path, *, label: str = "") -> str:
+    """Capture and write a save, returning the line to show the player."""
+    from here_to_slay.core.savegame import SaveGame, autosave_name, save_path
+
+    game = SaveGame.capture(engine, label=label)
+    name = label or autosave_name(game.summary.players, game.summary.turn_number)
+    path = game.save(save_path(save_dir, name))
+    return f"Saved -> {path}"
 
 
 # ---------------------------------------------------------------------------
@@ -590,29 +752,58 @@ def cmd_play(args: argparse.Namespace, console: Console) -> int:
 
 
 def cmd_gui(args: argparse.Namespace, console: Console) -> int:
+    from here_to_slay.core.savegame import SaveError
+
     try:
         registry, _ = load_content(args)
     except ContentError as exc:
         console.print(f"[bold red]Content error:[/bold red] {exc}")
         return EXIT_CONTENT_ERROR
 
-    names: list[str]
-    if args.names:
-        names = list(args.names)
-    else:
-        n = max(2, args.players)
-        names = [f"Jucător {i}" for i in range(1, n + 1)]
-
-    n_players = len(names)
-    max_p = registry.rules.setup.max_players
-    min_p = registry.rules.setup.min_players
-    if not (min_p <= n_players <= max_p):
-        console.print(
-            f"[red]This rule set requires {min_p}-{max_p} players; "
-            f"got {n_players}.[/red]"
-        )
+    if args.load and args.watch:
+        console.print("[red]--load resumes a game and --watch replays one; pick one.[/red]")
         return EXIT_USAGE
 
+    save_dir = Path(args.save_dir)
+    from here_to_slay.ui.pygame import launch
+
+    common = {
+        "width": args.width,
+        "height": args.height,
+        "ui_scale": args.ui_scale,
+        "fullscreen": args.fullscreen,
+        "reveal_all": args.reveal_all,
+        "sound": False if args.no_sound else None,
+        "save_dir": save_dir,
+    }
+
+    # -- replay viewer -----------------------------------------------------
+    if args.watch:
+        try:
+            code = _launch_watch(args.watch, registry, save_dir, console, launch, common)
+        except SaveError as exc:
+            console.print(f"[bold red]Could not open:[/bold red] {exc}")
+            return EXIT_USAGE
+        return EXIT_OK if code == 0 else EXIT_RUNTIME_ERROR
+
+    # -- a resumed game ----------------------------------------------------
+    engine = None
+    if args.load:
+        try:
+            engine, seed = _restore_game(args.load, registry, save_dir, console)
+        except SaveError as exc:
+            console.print(f"[bold red]Could not load:[/bold red] {exc}")
+            return EXIT_USAGE
+        names = [engine.state.player(pid).name for pid in engine.state.turn_order]
+    else:
+        names = _player_names(args)
+        problem = _check_player_count(registry, names)
+        if problem:
+            console.print(problem)
+            return EXIT_USAGE
+        seed = args.seed if args.seed is not None else _random_seed()
+
+    n_players = len(names)
     ai_seats = max(0, min(args.ai, n_players - 1))
     if args.ai > ai_seats:
         console.print(
@@ -620,31 +811,132 @@ def cmd_gui(args: argparse.Namespace, console: Console) -> int:
             f"somebody has to hold the mouse.[/yellow]"
         )
 
-    seed: int | str = args.seed if args.seed is not None else _random_seed()
-
-    from here_to_slay.ui.pygame import launch
-
     console.print(
         f"[bold bright_green]Here to Slay[/bold bright_green]  "
         f"[dim]seed={seed!r}  {n_players} players"
         f"{f', {ai_seats} AI' if ai_seats else ''}[/dim]"
     )
-    console.print("[dim]I = rules  ·  L = log  ·  Esc = menu  ·  Ctrl+Shift+D = dev console[/dim]")
+    console.print(
+        "[dim]I = rules  ·  L = log  ·  O = settings  ·  F2 = save  ·  F9 = load  ·  "
+        "Esc = menu  ·  Ctrl+Shift+D = dev console[/dim]"
+    )
 
     code = launch(
-        registry,
-        names,
-        seed=seed,
-        max_turns=args.max_turns,
-        ai_seats=ai_seats,
-        width=args.width,
-        height=args.height,
-        ui_scale=args.ui_scale,
-        fullscreen=args.fullscreen,
-        reveal_all=args.reveal_all,
-        sound=not args.no_sound,
+        registry, names,
+        seed=seed, max_turns=args.max_turns, ai_seats=ai_seats,
+        engine=engine, **common,
     )
     return EXIT_OK if code == 0 else EXIT_RUNTIME_ERROR
+
+
+def _launch_watch(
+    target: str,
+    registry: ContentRegistry,
+    save_dir: Path,
+    console: Console,
+    launch: Any,
+    common: dict[str, Any],
+) -> int:
+    """Open the board as a replay viewer over a save or a plain decision log.
+
+    Both are the same file with a different wrapper, so this accepts either:
+    a save game is a log plus a header, and a log written by ``hts play`` is
+    the header-less version of the same thing.
+    """
+    from here_to_slay.core.engine import Engine
+    from here_to_slay.core.log import DecisionLog
+    from here_to_slay.core.savegame import SaveError, SaveGame
+    from here_to_slay.ui.pygame.replay import ReplayTransport
+
+    try:
+        path = _resolve_save(target, save_dir)
+    except FileNotFoundError:
+        path = Path(target)
+        if not path.is_file():
+            raise SaveError(f"no such log or save: {target}") from None
+
+    try:
+        log = SaveGame.load(path).log
+    except SaveError:
+        try:
+            log = DecisionLog.load(path)
+        except Exception as exc:
+            raise SaveError(f"{path.name} is neither a save nor a decision log: {exc}") from None
+
+    # Every field of a `DecisionLog` has a default, so *any* JSON object loads as
+    # an empty one. Without this check, opening the wrong .json got as far as
+    # dealing a game and failed with "'base' needs at least 2 players, got 0" —
+    # a true message about the wrong thing.
+    if not log.players:
+        raise SaveError(
+            f"{path.name} is neither a save nor a decision log: it names no players"
+        )
+
+    engine, source = Engine.replaying(registry, log)
+    names = [engine.state.player(pid).name for pid in engine.state.turn_order]
+    console.print(
+        f"[bold bright_cyan]Replaying[/bold bright_cyan]  "
+        f"[dim]{path.name}  ·  {len(log.entries)} decision(s)  ·  {len(names)} players[/dim]"
+    )
+    console.print(
+        "[dim]Space = play/pause  ·  . = step  ·  +/- = speed  ·  Q/E = cameras[/dim]"
+    )
+    # The transport is the only seat at this table: it answers every request
+    # from the log, at whatever pace the viewer asks for.
+    common.pop("save_dir", None)
+    return int(launch(
+        registry, names,
+        seed=log.seed, max_turns=log.max_turns,
+        engine=engine, replay=ReplayTransport(source), **common,
+    ))
+
+
+# ---------------------------------------------------------------------------
+# saves
+# ---------------------------------------------------------------------------
+
+
+def cmd_saves(args: argparse.Namespace, console: Console) -> int:
+    """List what can be resumed. Reads the header only — no game is replayed.
+
+    That is the whole reason :class:`SaveSummary` is written at save time: a
+    listing that had to restore each game to describe it would replay twenty
+    games to print twenty lines.
+    """
+    from here_to_slay.core.savegame import SAVE_SUFFIX, list_saves
+
+    folder = Path(args.save_dir)
+    games = list_saves(folder)
+    if not games:
+        console.print(f"[dim]No saves in {folder}/[/dim]")
+        console.print("[dim]Press 's' at any prompt in 'hts play' to make one.[/dim]")
+        return EXIT_OK
+
+    table = Table(show_header=True, header_style="bold", highlight=False)
+    table.add_column("name", style="cyan", overflow="fold")
+    table.add_column("where", overflow="fold")
+    table.add_column("saved", style="dim", overflow="fold")
+    table.add_column("packs", style="dim", overflow="fold")
+    for game in games:
+        name = game.path.name[: -len(SAVE_SUFFIX)] if game.path else game.title
+        summary = game.summary
+        where = (
+            f"won by {summary.winner}"
+            if summary.winner
+            else f"turn {summary.turn_number} - {summary.decisions} decision(s)"
+        )
+        table.add_row(
+            name,
+            where + (f" - {', '.join(summary.players)}" if summary.players else ""),
+            game.saved_at.replace("T", " ")[:16],
+            ", ".join(game.packs),
+        )
+    console.print(table)
+    console.print(
+        f"[dim]{len(games)} save(s) in {folder}/  -  "
+        f"resume with: hts play --load <name>[/dim]"
+    )
+    return EXIT_OK
 
 
 # ---------------------------------------------------------------------------

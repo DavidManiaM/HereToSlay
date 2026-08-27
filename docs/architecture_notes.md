@@ -245,8 +245,13 @@ while isinstance(status, Awaiting):
 ```
 
 **Trade-off, accepted deliberately:** a suspended generator stack is not serialisable, so
-save-games are only permitted at *quiescent* points (between actions), never mid-decision. This
-is fine for a card game and buys enormous readability. Documented in `rules_engine.md §6`.
+save-games are only permitted where nothing is resolving — `Engine.savepoint` — never mid-step.
+This is fine for a card game and buys enormous readability. Documented in `rules_engine.md §6`.
+
+Phase 11 built save/load on that, and the implementation is one paragraph long because the
+equation above already did the work: **a save is the decision log plus a header**, and loading is
+replaying. `core/savegame.py`. The same file is what `hts gui --watch` steps through, and what
+`hts replay` prints — a save, a log and a bug report are one artefact.
 
 ---
 
@@ -433,8 +438,9 @@ Decided in Phase 3:
    composition means "challenging a challenge" needs no special case; `rules.max_reaction_depth`
    (default 8) stops a pathological card, raising `EngineInvariantError` with the frame stack
    rather than hanging.
-3. **Undo granularity** — *settled: per-action, at quiescent points only.* `DecisionLog.truncated(n)`
-   plus a replay is the whole implementation, so "undo" and "replay" are one mechanism.
+3. **Undo granularity** — *settled: per-action, at savepoints only.* `DecisionLog.truncated(n)`
+   plus a replay is the whole implementation, so "undo", "replay" and "save/load" are one
+   mechanism. Phase 11 shipped the third of those and changed nothing about the first two.
 
 Still open:
 

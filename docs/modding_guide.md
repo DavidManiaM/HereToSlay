@@ -43,7 +43,8 @@ data/variants/my_variant/
 ├── pack.yaml       identity, dependencies, patches
 ├── rules.yaml      merged OVER the packs you require
 ├── cards/*.yaml    your cards
-└── plugin.py       new ops (optional)
+├── plugin.py       new ops (optional)
+└── sounds.yaml     what your pack sounds like (optional, §5.5)
 ```
 
 `hts validate` is the fastest loop you have. It is the same load path the game uses, so a pack
@@ -295,6 +296,39 @@ way to drop a route, rather than overriding it into something unreachable.
 
 ---
 
+### 5.5 A new sound
+
+Optional, and pure presentation — the engine never opens this file and your pack plays
+identically without it. It is here because the seam it closes is the same one §5.1 opens: your
+new **zone** and your new band **tag** are strings the board has never heard of.
+
+```yaml
+# data/variants/my_variant/sounds.yaml
+cues:
+  zone.cache: cache_write                     # a voice you declare below
+  band.fail: { cue: failure, volume: 0.55 }   # or an existing cue, quieter
+
+voices:
+  cache_write:
+    layers:
+      - { duration: 0.13, frequency: [880, 1760, 0.6], wave: square,
+          decay: 0.07, gain: 0.16 }
+      - { duration: 0.22, frequency: 330, wave: triangle, decay: 0.14, gain: 0.18 }
+```
+
+Keys are `family.name`: `zone.<zone kind>`, `band.<band tag>`, `game.<moment>`, `ui.<moment>`.
+A family's `*` entry is its fallback, so a zone you invent already *makes a noise* — this file is
+for making it the right one. `wave` is `sine`, `triangle`, `square`, `saw` or `noise` (with a
+`seed`, so it sounds the same on every machine); `frequency` is a number or `[from, to]` for a
+glide, with an optional third value curving it.
+
+Nothing here is validated against your pack: a cue for a zone that does not exist is a harmless
+dead entry, and a typo in your audio must never be why your game will not start — a file that
+fails to parse is skipped, not raised. `data/variants/overclock/sounds.yaml` is the worked
+example, and `ui_guide.md §5a` is the long version.
+
+---
+
 ## 6. Editing somebody else's card
 
 Redefining another pack's card id is an error, not a silent override. To change one, patch it:
@@ -372,10 +406,17 @@ out of a pack, that is a bug in the loader worth reporting.
 | `hts new-pack <name> [--plugin] [--dir D] [--requires ...] [--force]` | Write a runnable skeleton pack |
 | `hts validate <pack> [--strict] [--no-art-check] [-q]` | Load, structurally validate, semantically validate. Imports the pack's plugin first, so its ops are known. CI-able: non-zero on error |
 | `hts diff-pack <base> <variant> [--cards]` | What the variant changes: rules, cards, and the ops its plugin adds |
-| `hts play <pack> [--players N] [--seed S] [--max-turns N] [--no-save]` | Terminal hot-seat |
-| `hts gui <pack> [--players N] [--ai N] [--seed S] [--reveal-all] …` | The PyGame client |
+| `hts play <pack> [--players N] [--seed S] [--max-turns N] [--load SAVE] [--no-save]` | Terminal hot-seat. `s` at any prompt saves |
+| `hts gui <pack> [--players N] [--ai N] [--seed S] [--load SAVE] [--watch LOG] [--reveal-all] …` | The PyGame client. `F2` saves, `F9` loads, `--watch` opens the replay viewer |
+| `hts saves [--save-dir D]` | List the games you can resume |
 | `hts sim <pack> [--games N] [--players N] [--agent random\|heuristic] [--strict]` | Headless fuzzing: errors, invariant violations, which win condition fired |
-| `hts replay <log.json> <pack> [--step]` | Re-run a saved decision log |
+| `hts replay <log.json> <pack> [--step]` | Re-run a saved decision log in the terminal |
+
+A **save game is a decision log** with a header, so every one of these speaks the same file: you
+can `--watch` a log written by `hts play`, and `hts replay` will happily step through a save.
+That also means a save refuses to load against edited content — including an edited `plugin.py`,
+which is part of the content hash (§4). Your pack's cards changing is a *feature* of that
+refusal, not a bug in it: the alternative is a plausible, wrong game.
 
 Every one of them loads content the same way (`cli.load_content`), which is why a variant with a
 `plugin.py` works everywhere the base game does.

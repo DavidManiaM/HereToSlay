@@ -17,14 +17,16 @@ Modules, bottom up:
 ``icons``            vector glyphs drawn with ``pygame.draw`` — no image files
 ``art``              finds card art under ``assets/``, invents it when missing
 ``atmosphere``       living table: felt grain, motes, class constellation
-``card_renderer``    a card face from a ``CardDef``, cached
+``card_renderer``    a card face from a ``CardDef``, cached (bounded LRU)
 ``animations``       the cosmetic effects, plus screen shake and flash
 ``widgets``          buttons, card sprites, zones, toasts, scrollers, fields
 ``layout``           every named screen region, rebuilt on resize
 ``panels``           the nine composite regions of the board
 ``tracker``          diffs two ``GameView``s into "what just happened"
 ``sound``            procedurally synthesised cues; no audio files
-``overlays``         rules, card detail, log, menu, handover, game over
+``cues``             which cue a *moment* plays — a table a pack may re-point
+``replay``           the transport and bar that watch a logged game
+``overlays``         rules, card detail, log, menu, settings, saves, handover, game over
 ``devconsole``       the Ctrl+Shift+D console (see :class:`~.devconsole.DevHost`)
 ``scenes``           the board scene: wires all of the above to requests
 ``presenter``        the engine-thread/GUI-thread bridge

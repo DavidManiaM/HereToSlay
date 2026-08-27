@@ -1619,5 +1619,17 @@
               - { op: move_card, card: $prize, to: { player: $self, zone: party } }
               # `use_ability` re-rolls the stolen Hero's own roll. It is free
               # here: the action point was already paid for Wiggles.
-              - { op: use_ability, card: $prize, user: $self }
+              #
+              # Guarded, because a Hero its owner had already used this turn is
+              # tapped, and `use_ability` refuses a tapped card - correctly, but
+              # from inside an effect that was already committed, which ended the
+              # game with an EffectError. The steal is the card's text either
+              # way; only the free use is conditional on the card being able to
+              # act. The `where:` above cannot carry this: it filters *offers*,
+              # and offering nothing would silently turn "STEAL a Hero" into
+              # "steal nothing".
+              - op: if
+                condition: { op: not, of: { op: card_tapped, card: $prize } }
+                then: { op: use_ability, card: $prize, user: $self }
+                else: { op: noop }
         - { max: 9, tag: failure, effect: { op: noop } }

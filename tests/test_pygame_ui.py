@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -1425,3 +1426,544 @@ def test_the_rules_screen_describes_the_loaded_pack(variant_registry) -> None:
     )
     assert "The 7 classes" in flat
     assert "Tine patru carti in cache" in flat  # the variant's own win condition
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 — settings, saves, cues, the replay viewer, and the caches
+# ---------------------------------------------------------------------------
+
+
+class TestTheSettingsScreen:
+    """Preferences are cosmetic, persisted, and applied the moment they change."""
+
+    def test_every_row_names_a_real_setting(self) -> None:
+        """The overlay knows no preference names; it reads them off the rows.
+
+        Which means a row naming a field that does not exist would silently do
+        nothing rather than fail — so the check belongs here.
+        """
+        from dataclasses import fields
+
+        from here_to_slay.ui.pygame.overlays import SETTING_ROWS
+        from here_to_slay.ui.settings import Settings
+
+        known = {field.name for field in fields(Settings)}
+        assert {row.key for row in SETTING_ROWS} <= known
+
+    def test_clicking_a_toggle_changes_one_setting_and_reports_it(self, screen) -> None:
+        from here_to_slay.ui.pygame.overlays import SettingsOverlay
+        from here_to_slay.ui.settings import Settings
+
+        layout = LayoutManager(1600, 900)
+        seen: list[Any] = []
+        overlay = SettingsOverlay(layout, Settings(), on_change=seen.append)
+
+        row, _kind, button = next(
+            entry for entry in overlay.buttons if entry[0].key == "sound"
+        )
+        assert row.key == "sound"
+        button.on_click()
+
+        assert seen and seen[-1].sound is False
+        assert overlay.settings.sound is False
+        assert overlay.settings.volume == Settings().volume, "one setting, not all of them"
+
+    def test_a_range_nudges_and_clamps(self, screen) -> None:
+        from here_to_slay.ui.pygame.overlays import SettingsOverlay
+        from here_to_slay.ui.settings import Settings
+
+        overlay = SettingsOverlay(LayoutManager(1600, 900), Settings(volume=0.98))
+        plus = next(
+            b for r, kind, b in overlay.buttons if r.key == "volume" and kind == "plus"
+        )
+        for _ in range(6):
+            plus.on_click()
+        assert overlay.settings.volume == 1.0
+
+    def test_it_draws_at_every_size(self, screen) -> None:
+        from here_to_slay.ui.pygame.overlays import SettingsOverlay
+        from here_to_slay.ui.settings import Settings
+
+        for size in SIZES:
+            overlay = SettingsOverlay(LayoutManager(*size), Settings())
+            overlay.update(0.05)
+            overlay.draw(screen)
+
+    def test_the_scene_applies_them(self, registry, screen) -> None:
+        from here_to_slay.ui.settings import Settings
+
+        _engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+        scene.apply_settings(
+            Settings(sound=False, animations=False, shake=False, reaction_timer=False)
+        )
+        assert scene.flags["sound"] is False
+        assert scene.flags["animations"] is False
+        assert scene.flags["shake"] is False
+        assert scene.fx.enabled is False
+        scene.apply_settings(Settings(volume=0.3))
+        assert scene.sound.volume == pytest.approx(0.3)
+        presenter.close()
+
+    def test_a_corrupt_file_loads_the_defaults(self, tmp_path: Path) -> None:
+        from here_to_slay.ui.settings import Settings
+
+        path = tmp_path / "settings.json"
+        path.write_text("{ this is not json", encoding="utf-8")
+        assert Settings.load(path) == Settings()
+
+    def test_one_bad_value_does_not_discard_the_good_ones(self, tmp_path: Path) -> None:
+        from here_to_slay.ui.settings import Settings
+
+        path = tmp_path / "settings.json"
+        path.write_text('{"volume": "loud", "animations": false}', encoding="utf-8")
+        loaded = Settings.load(path)
+        assert loaded.animations is False
+        assert loaded.volume == Settings().volume
+
+    def test_a_round_trip_is_lossless(self, tmp_path: Path) -> None:
+        from here_to_slay.ui.settings import Settings
+
+        original = Settings(sound=False, volume=0.25, ai_delay=1.5, ui_scale=0.8)
+        path = tmp_path / "settings.json"
+        original.save(path)
+        assert Settings.load(path) == original
+
+
+class TestSoundIsATable:
+    """A variant's zone must be audible, and its band tag must be able to cheer.
+
+    This is the Phase 10 class-tracker bug in another costume: the engine was
+    data-driven and the board's ``if change.to.zone == "party"`` ladder was not.
+    """
+
+    def test_an_unknown_zone_falls_back_rather_than_going_silent(self) -> None:
+        from here_to_slay.ui.pygame.cues import CueTable
+
+        table = CueTable()
+        assert table.zone("a_zone_nobody_has_written_yet")
+        assert table.zone("slain").name == "slay"
+
+    def test_an_unknown_band_tag_is_deliberately_silent(self) -> None:
+        from here_to_slay.ui.pygame.cues import CueTable
+
+        table = CueTable()
+        assert not table.band("wibble")
+        assert table.band("success").name == "success"
+
+    def test_a_pack_may_repoint_a_cue_and_declare_a_new_voice(
+        self, variant_registry
+    ) -> None:
+        from here_to_slay.ui.pygame.cues import CueTable
+        from here_to_slay.ui.pygame.sound import SoundBoard
+
+        table = CueTable.for_registry(variant_registry)
+        assert table.zone("cache").name == "cache_write", "the pack's own zone"
+        assert table.band("fail").name == "failure", "the pack's own band tag"
+
+        board = SoundBoard(enabled=False)
+        assert table.install(board) == 1
+        assert "cache_write" in board.cue_names
+
+    def test_the_base_pack_is_unchanged_by_that(self, registry) -> None:
+        from here_to_slay.ui.pygame.cues import CueTable
+
+        table = CueTable.for_registry(registry)
+        assert table.zone("cache").name == "card_play", "the generic fallback"
+        assert not table.band("fail")
+
+    def test_a_declared_voice_actually_synthesises(self) -> None:
+        from here_to_slay.ui.pygame.sound import recipe_from_spec
+
+        data = recipe_from_spec({
+            "layers": [
+                {"duration": 0.05, "frequency": [200, 800], "wave": "square"},
+                {"duration": 0.05, "frequency": 300, "wave": "noise", "seed": 3},
+            ]
+        })()
+        assert len(data) == pytest.approx(int(0.05 * 44100) * 4, rel=0.05)
+
+    def test_a_nonsense_spec_makes_silence_rather_than_an_exception(self) -> None:
+        """A typo in a pack's audio must never be why a game will not start."""
+        from here_to_slay.ui.pygame.sound import recipe_from_spec
+
+        assert recipe_from_spec({"duration": "banana", "wave": "kazoo"})()
+
+    def test_a_broken_sounds_file_is_skipped(self, tmp_path: Path) -> None:
+        from here_to_slay.ui.pygame.cues import CueTable
+
+        bad = tmp_path / "sounds.yaml"
+        bad.write_text("cues: [this is a list, not a mapping", encoding="utf-8")
+        table = CueTable()
+        assert table.load_file(bad) is False
+        assert table.zone("slain").name == "slay", "the base table survived"
+
+    def test_the_board_asks_for_moments_not_cues(self) -> None:
+        """Every sound the board plays goes through ``cue()``, so a pack can
+        re-point it. Anything left calling the board directly is a hole."""
+        import re
+
+        source = (
+            Path(__file__).resolve().parent.parent
+            / "src" / "here_to_slay" / "ui" / "pygame" / "scenes.py"
+        ).read_text(encoding="utf-8")
+        direct = re.findall(r"self\.sound\.play\(([^)]*)\)", source)
+        # Two lines legitimately name a cue rather than a moment: `cue()` itself,
+        # which is the table lookup, and `dev_play_sound`, where a developer
+        # picked the cue by name — the console is *for* naming cues.
+        allowed = {"resolved.name, volume=resolved.volume * volume", "name"}
+        assert set(direct) == allowed, f"un-tabled sound calls: {sorted(set(direct) - allowed)}"
+
+
+class TestTheReplayViewer:
+    """Watching a logged game is the same board with a different DecisionSource."""
+
+    def _log(self, registry, *, turns: int = 4):
+        engine = Engine.new(registry, ["Alice", "Bob"], seed="watch", max_turns=turns)
+        engine.run(RandomAgent(seed=11))
+        return engine.log
+
+    def test_it_answers_every_seat_from_the_log(self, registry, screen) -> None:
+        from here_to_slay.ui.pygame.replay import ReplayTransport
+
+        log = self._log(registry)
+        engine, source = Engine.replaying(registry, log)
+        transport = ReplayTransport(source, interval=0.0)
+        presenter = PygamePresenter(
+            engine, registry, human_seats=[], agent=transport, ai_delay=0.0
+        )
+        layout = LayoutManager(1600, 900)
+        scene = GameScene(
+            engine, presenter, registry, layout, hooks=SceneHooks(), replay=transport
+        )
+
+        thread = threading.Thread(target=_quietly, args=(engine, presenter), daemon=True)
+        thread.start()
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline and transport.position < transport.total:
+            scene.update(1 / 60)
+            scene.draw(screen)
+            time.sleep(0.002)
+
+        assert transport.position == transport.total == len(log)
+        transport.close()
+        presenter.close()
+        thread.join(timeout=3)
+
+    def test_pausing_stops_it_and_step_lets_exactly_one_through(self, registry) -> None:
+        from here_to_slay.ui.pygame.replay import ReplayTransport
+
+        log = self._log(registry)
+        engine, source = Engine.replaying(registry, log)
+        transport = ReplayTransport(source, interval=0.0, playing=False)
+        presenter = PygamePresenter(
+            engine, registry, human_seats=[], agent=transport, ai_delay=0.0
+        )
+        thread = threading.Thread(target=_quietly, args=(engine, presenter), daemon=True)
+        thread.start()
+        try:
+            time.sleep(0.3)
+            assert transport.position == 0, "paused means paused"
+
+            transport.step()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and transport.position < 1:
+                time.sleep(0.01)
+            assert transport.position == 1
+
+            time.sleep(0.3)
+            assert transport.position == 1, "one step is one decision"
+        finally:
+            transport.close()
+            presenter.close()
+            thread.join(timeout=3)
+
+    def test_speed_walks_the_ladder_and_stops_at_the_ends(self, registry) -> None:
+        from here_to_slay.ui.pygame.replay import SPEEDS, ReplayTransport
+
+        _engine, source = Engine.replaying(registry, self._log(registry))
+        transport = ReplayTransport(source)
+        for _ in range(len(SPEEDS) + 3):
+            transport.faster()
+        assert transport.speed == SPEEDS[-1]
+        for _ in range(len(SPEEDS) + 3):
+            transport.slower()
+        assert transport.speed == SPEEDS[0]
+
+    def test_the_bar_draws_and_its_buttons_drive_the_transport(
+        self, registry, screen
+    ) -> None:
+        from here_to_slay.ui.pygame.replay import ReplayBar, ReplayTransport
+
+        _engine, source = Engine.replaying(registry, self._log(registry))
+        transport = ReplayTransport(source, playing=False)
+        for size in SIZES:
+            bar = ReplayBar(transport)
+            bar.resize(LayoutManager(*size))
+            bar.draw(screen)
+            assert bar.rect.bottom <= size[1]
+
+        bar = ReplayBar(transport)
+        bar.resize(LayoutManager(1600, 900))
+        play_rect = next(r for k, r, _i, _t in bar._button_rects() if k == "play")
+        assert bar.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN, {"pos": play_rect.center, "button": 1}
+            )
+        )
+        assert transport.playing is True
+        assert bar.tooltip_at(play_rect.center)
+
+    def test_space_is_play_pause_only_in_a_replay(self, registry) -> None:
+        """Space is 'decline' during a game. A viewer has nothing to decline,
+        and would otherwise have no pause key at all."""
+        from here_to_slay.ui.pygame.replay import ReplayTransport
+
+        engine, source = Engine.replaying(registry, self._log(registry))
+        transport = ReplayTransport(source, playing=True)
+        presenter = PygamePresenter(
+            engine, registry, human_seats=[], agent=transport, ai_delay=0.0
+        )
+        scene = GameScene(
+            engine, presenter, registry, LayoutManager(1600, 900),
+            hooks=SceneHooks(), replay=transport,
+        )
+        assert _press(scene, pygame.K_SPACE)
+        assert transport.playing is False
+        assert _press(scene, pygame.K_PERIOD)
+        transport.close()
+        presenter.close()
+
+    def test_a_board_with_no_replay_ignores_the_transport_keys(self, registry) -> None:
+        _engine, presenter, scene = _build_scene(registry, ["Alice", "Bob"])
+        assert scene.replay is None
+        assert scene.replay_bar is None
+        assert not scene._replay_key(pygame.K_SPACE)
+        presenter.close()
+
+    def test_the_end_of_a_partial_log_is_reported_not_crashed(self, registry) -> None:
+        """A save is a partial log. Running out is the expected end of one."""
+        from here_to_slay.core.errors import ReplayExhausted
+        from here_to_slay.ui.pygame.replay import ReplayTransport
+
+        full = self._log(registry, turns=6)
+        partial = full.truncated(max(1, len(full) // 2))
+        engine, source = Engine.replaying(registry, partial)
+        transport = ReplayTransport(source, interval=0.0)
+
+        with pytest.raises(ReplayExhausted):
+            engine.run(transport)
+
+        assert transport.exhausted
+        assert not transport.playing
+        assert "end of log" in transport.status_line()
+
+
+class TestTheCachesAreBounded:
+    """An unbounded surface cache is a leak with a long fuse: it only shows up
+    after enough distinct card sizes, which is what a resize produces."""
+
+    def test_faces_evict_once_the_limit_is_passed(self, registry) -> None:
+        from here_to_slay.ui.pygame import card_renderer as CR
+
+        clear_card_cache()
+        card = next(iter(registry.cards.values()))
+        for width in range(20, 20 + CR.FACE_CACHE_LIMIT + 120):
+            render_card(card, width, int(width * 1.4))
+
+        assert len(CR._face_cache) <= CR.FACE_CACHE_LIMIT
+        assert len(CR._base_cache) <= CR.BASE_CACHE_LIMIT
+        clear_card_cache()
+
+    def test_the_plain_face_is_shared_by_every_flag_variant(self, registry) -> None:
+        from here_to_slay.ui.pygame import card_renderer as CR
+
+        clear_card_cache()
+        card = next(iter(registry.cards.values()))
+        render_card(card, 120, 168)
+        composed = len(CR._base_cache)
+        for flags in ({"dimmed": True}, {"highlighted": True}, {"selected": True},
+                      {"tapped": True}):
+            render_card(card, 120, 168, **flags)
+
+        assert len(CR._face_cache) == 5, "five distinct results"
+        assert len(CR._base_cache) == composed, "composed once"
+        clear_card_cache()
+
+    def test_glyphs_evict_too(self) -> None:
+        T.clear_font_cache()
+        fnt = T.ui(12)
+        surface = pygame.Surface((400, 60), pygame.SRCALPHA)
+        for i in range(T.GLYPH_CACHE_LIMIT + 200):
+            T.text(surface, f"line {i}", (0, 0), fnt, C.INK)
+        assert len(T._glyph_cache) <= T.GLYPH_CACHE_LIMIT
+
+    def test_a_repeated_label_renders_once(self) -> None:
+        """`pygame.font.Font.render` cannot be patched (its attributes are
+        read-only), so the claim is checked where it is observable: the same
+        string, font and colour is one cache entry and one surface object."""
+        T.clear_font_cache()
+        fnt = T.ui(12)
+        surface = pygame.Surface((400, 60), pygame.SRCALPHA)
+
+        first = T.render_text("Turn 4", fnt, C.INK)
+        for _ in range(20):
+            T.text(surface, "Turn 4", (0, 0), fnt, C.INK, shadow=None)
+
+        assert len(T._glyph_cache) == 1
+        assert T.render_text("Turn 4", fnt, C.INK) is first
+
+    def test_an_uncacheable_font_still_renders(self) -> None:
+        """A `Font` built outside `T.font` is not in the id table, and must fall
+        straight through rather than being cached under somebody else's key."""
+        T.clear_font_cache()
+        stranger = pygame.font.SysFont("dejavusans", 14)
+        assert T.render_text("hello", stranger, C.INK).get_width() > 0
+        assert not T._glyph_cache
+
+    def test_dragging_a_resize_repaints_the_felt_once_not_once_per_frame(
+        self, registry
+    ) -> None:
+        """The 139 ms-a-frame defect.
+
+        The table oval is a fraction of the window, so a window being dragged
+        asks the size-keyed cache for a size it has never seen on every single
+        frame — and painting one is a 2x-supersampled ellipse stack with a tiled
+        grain layer, about 58 ms. `_Layer` stretches the art it has until the
+        drag stops.
+        """
+        from here_to_slay.ui.pygame import atmosphere as A
+
+        _engine, presenter, scene = _build_scene(
+            registry, ["Alice", "Bob"], size=(1500, 844)
+        )
+        for _ in range(4):  # settle, and let the first felt be built
+            scene.update(1 / 60)
+            scene.draw(pygame.Surface((1500, 844)))
+
+        widths = list(range(1520, 1760, 12))
+        before = A._table.cache_info().misses
+        for width in widths:  # what dragging a window edge looks like
+            height = int(width * 9 / 16)
+            scene.resize(width, height)
+            scene.update(1 / 60)
+            scene.draw(pygame.Surface((width, height)))
+
+        rebuilds = A._table.cache_info().misses - before
+        assert rebuilds <= 2, (
+            f"the felt was repainted {rebuilds} times over {len(widths)} frames of "
+            f"drag - _Layer is not holding"
+        )
+        presenter.close()
+
+
+def _quietly(engine, presenter) -> None:
+    """Run the engine and swallow the shutdown exceptions a viewer causes."""
+    import contextlib
+
+    with contextlib.suppress(BaseException):
+        engine.run(presenter)
+
+
+class TestTheWindowsHalfOfSaveAndLoad:
+    """`PygameApp` owns the engine, so saving and loading are its job.
+
+    Driven without `run()`: the frame loop is opened, stepped by hand and shut
+    down, which is what lets the whole save/load path be exercised headlessly.
+    """
+
+    @pytest.fixture
+    def app(self, registry, tmp_path, monkeypatch):
+        from here_to_slay.ui.pygame.app import GameSetup, PygameApp
+
+        # Never write to the developer's real profile from a test.
+        monkeypatch.setenv("HTS_CONFIG_DIR", str(tmp_path / "config"))
+        built = PygameApp(
+            registry,
+            GameSetup(names=("Alice", "Bob"), seed="appsave"),
+            width=MIN_W, height=MIN_H, sound=False,
+            save_dir=tmp_path / "saves",
+        )
+        built._open_window()
+        built._begin(built.setup)
+        for _ in range(300):  # let the engine thread reach its first question
+            built._advance(1 / 60)
+            if built.engine is not None and built.engine.pending is not None:
+                break
+            time.sleep(0.01)
+        yield built
+        built._end_game()
+        built._shutdown()
+
+    def test_it_saves_at_an_open_question(self, app, tmp_path) -> None:
+        assert app.engine.pending is not None
+        assert app.engine.savepoint
+
+        message = app.save_game()
+
+        assert "Saved" in message
+        assert len(list((tmp_path / "saves").glob("*.hts.json"))) == 1
+        assert len(app.list_saves()) == 1
+
+    def test_loading_queues_a_restart_carrying_the_restored_engine(self, app) -> None:
+        """The replay happens before the running game is torn down.
+
+        A restore can fail — edited cards, a missing plugin — and a failure that
+        had already destroyed the game in progress would be unforgivable.
+        """
+        app.save_game()
+        before = app.engine.state.snapshot()
+        game = app.list_saves()[0]
+
+        app.load_game(game)
+
+        assert app._restart is not None
+        setup, engine = app._restart
+        assert engine is not None
+        assert engine.state.snapshot() == before
+        assert setup.names == ("Alice", "Bob")
+
+    def test_a_save_it_cannot_read_reports_instead_of_restarting(self, app) -> None:
+        class Broken:
+            def restore(self, _content):
+                raise RuntimeError("nope")
+
+        app.load_game(Broken())
+
+        assert app._restart is None, "the running game must survive a failed load"
+
+    def test_settings_reach_both_the_window_and_the_board(self, app, tmp_path) -> None:
+        from here_to_slay.ui.settings import Settings
+
+        app.save_settings(Settings(sound=False, volume=0.2, animations=False, ai_delay=1.2))
+
+        assert app.sound.enabled is False
+        assert app.sound.volume == pytest.approx(0.2)
+        assert app.presenter.ai_delay == pytest.approx(1.2)
+        assert app.scene.flags["animations"] is False
+        assert (tmp_path / "config" / "settings.json").is_file()
+        assert Settings.load().volume == pytest.approx(0.2)
+
+    def test_a_playing_window_offers_save_and_load(self, app) -> None:
+        hooks = app._hooks()
+        assert hooks.save_game is not None
+        assert hooks.load_game is not None
+        assert hooks.new_game is not None
+
+    def test_a_replay_window_offers_neither(self, registry, tmp_path) -> None:
+        """There is no live game to write down and nothing to re-deal, and a
+        menu row that cannot do anything is worse than a missing one."""
+        from here_to_slay.ui.pygame.app import GameSetup, PygameApp
+        from here_to_slay.ui.pygame.replay import ReplayTransport
+
+        engine = Engine.new(registry, ["Alice", "Bob"], seed="watched", max_turns=3)
+        engine.run(RandomAgent(seed=4))
+        _replaying, source = Engine.replaying(registry, engine.log)
+        app = PygameApp(
+            registry, GameSetup(names=("Alice", "Bob")),
+            sound=False, save_dir=tmp_path, replay=ReplayTransport(source),
+        )
+        hooks = app._hooks()
+        assert hooks.save_game is None
+        assert hooks.load_game is None
+        assert hooks.new_game is None
+        assert hooks.settings is not None, "preferences still apply while watching"

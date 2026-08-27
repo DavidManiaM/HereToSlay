@@ -19,19 +19,24 @@ import contextlib
 import threading
 import traceback
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pygame
 
+from here_to_slay.ui import lexicon as L
 from here_to_slay.ui.pygame import materials
 from here_to_slay.ui.pygame import theme as T
 from here_to_slay.ui.pygame.card_renderer import clear_card_cache
+from here_to_slay.ui.pygame.cues import CueTable
 from here_to_slay.ui.pygame.icons import draw_icon
 from here_to_slay.ui.pygame.layout import MIN_H, MIN_W, LayoutManager
 from here_to_slay.ui.pygame.presenter import DEFAULT_AI_DELAY, PygamePresenter
+from here_to_slay.ui.pygame.replay import ReplayTransport
 from here_to_slay.ui.pygame.scenes import GameScene, SceneHooks
 from here_to_slay.ui.pygame.sound import SoundBoard
 from here_to_slay.ui.pygame.theme import C, clear_surface_caches
+from here_to_slay.ui.settings import Settings
 
 if TYPE_CHECKING:
     from here_to_slay.content.registry import ContentRegistry
@@ -93,6 +98,9 @@ class PygameApp:
         ai_delay: float = DEFAULT_AI_DELAY,
         agent: DecisionSource | None = None,
         engine: Engine | None = None,
+        settings: Settings | None = None,
+        save_dir: Path | str = "hts_saves",
+        replay: ReplayTransport | None = None,
     ) -> None:
         self.registry = registry
         self.setup = setup or GameSetup()
@@ -103,20 +111,31 @@ class PygameApp:
         self.ui_scale = ui_scale
         self.ai_delay = ai_delay
         self._agent_override = agent
+        self.settings = settings if settings is not None else Settings()
+        self.save_dir = Path(save_dir)
+        #: Set when the window is watching a log instead of playing a game. It
+        #: answers every seat, so there is no player to save for and no restart.
+        self.replay = replay
 
         self.running = False
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self._apply_ui_scale()
         self.layout = LayoutManager(self.width, self.height)
-        self.sound = SoundBoard(enabled=sound)
+        self.sound = SoundBoard(enabled=sound, volume=self.settings.volume)
+        # One table for the window, so a pack's `sounds.yaml` is read once
+        # rather than per restart.
+        self.cues = CueTable.for_registry(registry)
+        self.cues.install(self.sound)
 
         self.engine: Engine | None = engine
         self.presenter: PygamePresenter | None = None
         self.scene: GameScene | None = None
         self._thread: threading.Thread | None = None
         self._engine_error: BaseException | None = None
-        self._restart: GameSetup | None = None
+        #: Queued restart: a setup, and optionally the engine to start it with
+        #: (a loaded save arrives already replayed to the position it was at).
+        self._restart: tuple[GameSetup, Engine | None] | None = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -137,8 +156,8 @@ class PygameApp:
                 self._advance(dt)
                 self._paint()
                 if self._restart is not None:
-                    pending, self._restart = self._restart, None
-                    self._begin(pending)
+                    (pending, engine), self._restart = self._restart, None
+                    self._begin(pending, engine=engine)
         finally:
             self._shutdown()
         return 0 if self._engine_error is None else 1
@@ -168,7 +187,81 @@ class PygameApp:
             )
         else:
             setup = replace(setup, seed=_fresh_seed())
-        self._restart = setup
+        self._restart = (setup, None)
+
+    # -- saves -------------------------------------------------------------
+
+    def save_game(self) -> str:
+        """Capture the running game to :attr:`save_dir`. Raises on refusal.
+
+        Called from the frame loop while the engine thread is blocked on a
+        request, which is exactly an ``Engine.savepoint``. If an AI seat happens
+        to be deliberating the engine *is* mid-step, ``SaveGame.capture`` says
+        so, and the board shows that rather than writing a position nobody was
+        in — see ``GameScene.save_game``.
+        """
+        from here_to_slay.core.savegame import SaveError, SaveGame, autosave_name, save_path
+
+        engine = self.engine
+        if engine is None:
+            raise SaveError("there is no game to save")
+        game = SaveGame.capture(engine)
+        path = game.save(save_path(
+            self.save_dir, autosave_name(game.summary.players, game.summary.turn_number)
+        ))
+        return L.SAVED_TO.format(name=path.name)
+
+    def list_saves(self) -> tuple[Any, ...]:
+        from here_to_slay.core.savegame import list_saves
+
+        return list_saves(self.save_dir)
+
+    def load_game(self, game: Any) -> None:
+        """Queue a restart from a save. Applied at the end of the frame.
+
+        The replay happens *here*, on the frame loop, before the scene is torn
+        down: restoring can fail (edited cards, a missing plugin), and a failure
+        that has already destroyed the running game would be unforgivable.
+        """
+        try:
+            engine = game.restore(self.registry)
+        except Exception as exc:
+            if self.scene is not None:
+                self.scene.toast.show(
+                    L.LOAD_FAILED.format(why=exc), colour=C.BAD, icon="close", duration=6.0,
+                )
+            return
+        names = tuple(engine.state.player(pid).name for pid in engine.state.turn_order)
+        setup = replace(
+            self.setup,
+            names=names,
+            seed=engine.state.rng.seed,
+            ai_seats=min(self.setup.ai_seats, max(0, len(names) - 1)),
+        )
+        self._restart = (setup, engine)
+
+    # -- settings ----------------------------------------------------------
+
+    def apply_settings(self, settings: Settings) -> None:
+        """Adopt preferences: the window's half here, the board's in the scene."""
+        self.settings = settings
+        self.sound.enabled = settings.sound
+        self.sound.set_volume(settings.volume)
+        self.ai_delay = settings.ai_delay
+        if self.presenter is not None:
+            self.presenter.ai_delay = settings.ai_delay
+        if abs(settings.ui_scale - self.ui_scale) > 1e-6:
+            self.ui_scale = settings.ui_scale
+            self._sync_size()
+        if settings.fullscreen != self.fullscreen:
+            self.toggle_fullscreen()
+        if self.scene is not None:
+            self.scene.apply_settings(settings)
+
+    def save_settings(self, settings: Settings) -> None:
+        """Persist what the settings screen ended on. Failure is not fatal."""
+        self.apply_settings(settings)
+        settings.save()
 
     # -- window ------------------------------------------------------------
 
@@ -249,28 +342,65 @@ class PygameApp:
             self.registry, list(setup.names), seed=setup.seed, max_turns=setup.max_turns,
         )
         order = list(self.engine.state.turn_order)
-        human_seats = order[: len(order) - setup.ai_seats] if setup.ai_seats else None
+        if self.replay is not None:
+            # A replay answers every seat from the log, which is precisely what
+            # "no seat is human" already means to the presenter. No branch in
+            # the scene, the tracker or the panels: the board cannot tell.
+            human_seats: list[str] | None = []
+            agent: DecisionSource | None = self.replay
+        else:
+            human_seats = order[: len(order) - setup.ai_seats] if setup.ai_seats else None
+            agent = (
+                self._make_agent(setup)
+                if setup.ai_seats or self._agent_override
+                else None
+            )
         self.presenter = PygamePresenter(
             self.engine, self.registry,
             human_seats=human_seats,
-            agent=self._make_agent(setup) if setup.ai_seats or self._agent_override else None,
-            ai_delay=self.ai_delay,
+            agent=agent,
+            # The transport paces itself; a second delay on top would fight it.
+            ai_delay=0.0 if self.replay is not None else self.ai_delay,
         )
         self.scene = GameScene(
             self.engine, self.presenter, self.registry, self.layout,
             sound=self.sound,
+            cues=self.cues,
             reveal_all=self.reveal_all,
-            hooks=SceneHooks(
-                new_game=self.new_game,
-                quit=self.stop,
-                toggle_fullscreen=self.toggle_fullscreen,
-            ),
+            replay=self.replay,
+            hooks=self._hooks(),
         )
+        self.scene.apply_settings(self.settings)
         self._engine_error = None
         self._thread = threading.Thread(target=self._drive_engine, name="hts-engine", daemon=True)
         self._thread.start()
         pygame.display.set_caption(
             f"{WINDOW_TITLE}  \u2014  {len(setup.names)} players  \u00b7  seed {setup.seed}"
+        )
+
+    def _hooks(self) -> SceneHooks:
+        """What this window lets the board ask for.
+
+        A replay viewer gets neither *save* nor *new game*: there is no live
+        game to write down and nothing to re-deal. The scene hides the rows it
+        was not given rather than showing dead ones.
+        """
+        if self.replay is not None:
+            return SceneHooks(
+                quit=self.stop,
+                toggle_fullscreen=self.toggle_fullscreen,
+                settings=lambda: self.settings,
+                save_settings=self.save_settings,
+            )
+        return SceneHooks(
+            new_game=self.new_game,
+            quit=self.stop,
+            toggle_fullscreen=self.toggle_fullscreen,
+            save_game=self.save_game,
+            list_saves=self.list_saves,
+            load_game=self.load_game,
+            settings=lambda: self.settings,
+            save_settings=self.save_settings,
         )
 
     def _make_agent(self, setup: GameSetup) -> DecisionSource:
@@ -300,6 +430,11 @@ class PygameApp:
     def _end_game(self) -> None:
         if self.presenter is not None:
             self.presenter.close()
+        if self.replay is not None:
+            # The transport can be parked between decisions with the engine
+            # thread asleep inside it; closing the presenter alone would leave
+            # that thread waiting for a step that is never coming.
+            self.replay.close()
         if self._thread is not None and self._thread.is_alive():
             self._thread.join(timeout=1.0)
         self._thread = None
@@ -415,23 +550,38 @@ def launch(
     seed: int | str = 0,
     max_turns: int = 0,
     ai_seats: int = 0,
-    width: int = DEFAULT_WIDTH,
-    height: int = DEFAULT_HEIGHT,
-    fullscreen: bool = False,
+    width: int | None = None,
+    height: int | None = None,
+    fullscreen: bool | None = None,
     reveal_all: bool = False,
-    sound: bool = True,
-    ui_scale: float = DEFAULT_UI_SCALE,
+    sound: bool | None = None,
+    ui_scale: float | None = None,
+    settings: Settings | None = None,
     **kwargs: Any,
 ) -> int:
-    """One call for the CLI: build the setup, open the window, play."""
+    """One call for the CLI: build the setup, open the window, play.
+
+    Stored preferences supply the window size, scale, sound and fullscreen; an
+    explicit argument overrides one, because a flag typed just now is a more
+    recent instruction than a file written last week. ``None`` means "the CLI
+    did not say", which is why these defaults are not the literals.
+    """
+    prefs = settings if settings is not None else Settings.load()
     app = PygameApp(
         registry,
         GameSetup(
             names=tuple(names), seed=seed, max_turns=max_turns,
             ai_seats=max(0, min(ai_seats, len(names) - 1)),
         ),
-        width=width, height=height, fullscreen=fullscreen,
-        reveal_all=reveal_all, sound=sound, ui_scale=ui_scale, **kwargs,
+        width=prefs.window_width if width is None else width,
+        height=prefs.window_height if height is None else height,
+        fullscreen=prefs.fullscreen if fullscreen is None else fullscreen,
+        reveal_all=reveal_all,
+        sound=prefs.sound if sound is None else sound,
+        ui_scale=prefs.ui_scale if ui_scale is None else ui_scale,
+        ai_delay=kwargs.pop("ai_delay", prefs.ai_delay),
+        settings=prefs,
+        **kwargs,
     )
     return app.run()
 

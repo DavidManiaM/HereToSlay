@@ -701,16 +701,152 @@ fixed with regression tests that fail on the old code.
 
 ---
 
-## Phase 11 — Polish
+## Phase 11 — Polish `[x]`
 
-- [ ] Save/load at quiescent points
-- [ ] Replay viewer (step through a logged game in the UI) — `hts replay` does this in the
-      terminal already, and the log now carries everything a faithful replay needs (Phase 10)
-- [ ] Sound hooks, settings screen
-- [ ] Performance pass (view construction, sprite caching)
+**Deliverable:** the things a finished client has and a proven engine does not need. Two of the
+four turned out to be the same feature wearing different clothes, and the fourth was mostly a
+matter of measuring before changing anything.
+
+- [x] Save/load at quiescent points — `core/savegame.py`, `Engine.savepoint`
+- [x] Replay viewer (step through a logged game in the UI) — `ui/pygame/replay.py`,
+      `hts gui --watch`
+- [x] Sound hooks, settings screen — `ui/pygame/cues.py`, `ui/settings.py`,
+      `SettingsOverlay`, and a `sounds.yaml` in the sample variant
+- [x] Performance pass (view construction, sprite caching) — steady frame 15.2 ms → 5.8 ms,
+      dragged resize 139 ms → 43 ms, and both surface caches bounded
 - [x] `README.md` with real instructions — quick start, play, mod, status
 - [x] `ruff check .` clean across the whole repository, `assets/ref/` scripts included
       (33 findings the Phase 9 UI rework left, plus Phase 5's gap 7, closed in Phase 10)
+
+**Acceptance:** ✅
+* `uv run pytest` → **1031 tests**, all green, and again under `HTS_STRICT=1`.
+* `uv run hts validate data/base --strict` → OK, 88 card definitions, 136 physical cards;
+  `data/variants/overclock` → OK, 95 definitions, 146 physical cards, 2 packs.
+* `uv run hts sim data/base --games 400 --players 2 --strict` and
+  `hts sim data/variants/overclock --games 30 --strict` → 0 errors, 0 invariant violations.
+* Save, quit, resume, and the state matches **exactly** — `GameState.snapshot()` equality, the
+  same oracle the determinism tests use — through the terminal (`s` at a prompt, `--load`) and
+  through the window (`F2`, `F9`).
+* `ruff check .` clean.
+
+### Decisions taken during Phase 11
+
+1. **A save game *is* a decision log, so loading is replaying.** `Game = f(content_hash, seed,
+   max_turns, decisions)` was already the claim; a save that stored a *board* instead would need
+   every flag a mod invents and every subscription the bus holds, and would silently load a
+   different game the day one of them was forgotten. Loading is therefore O(decisions) rather
+   than O(1) — milliseconds at a few hundred decisions — and buys a file that cannot lie. The
+   whole feature is `SaveGame.restore` calling `Engine.replaying` and swallowing the
+   `ReplayExhausted` that marks the end of the log.
+
+2. **`quiescent` was true at the one moment it must not be.** It read
+   `pending is None and not over`, which is *also* true in the middle of a step — no request is
+   open while an effect is resolving. Under the terminal client nobody could observe the
+   difference; under pygame the engine runs on its own thread and the frame loop asks exactly
+   that question. `Engine` now counts how many `start`/`submit` calls are on the stack:
+   `running` is the honest answer, `quiescent` means what its docstring always said, and
+   `savepoint` — "safe to save now" — is `not running`. `tests/test_core_savegame.py` asserts
+   the old formula would have said yes where the new one says no.
+
+3. **The savepoint a UI actually gets is an open question, not a gap between actions.**
+   `engine.run()` never surfaces a quiescent moment: it drives straight from one request to the
+   next. But while a `DecisionSource` is being asked, nothing is mutating and the log holds
+   every answer so far — and a restore lands on the same question. So `s` lives on the CLI
+   prompt and `F2` on the board, and an AI seat deliberating is the one case that refuses
+   ("cannot save mid-action"), because that genuinely *is* mid-step.
+
+4. **The replay viewer needed no branch anywhere on the board.** A replay is a `DecisionSource`
+   that reads a file, and the presenter already has a word for "no seat here is human". So
+   `human_seats=[]` plus a `ReplayTransport` as the agent turns the whole client into a viewer,
+   and the scene's only addition is a transport bar and four keys. The bar had to take `Space`
+   before the camera keys, because `Space` means "decline" during a game and a viewer has
+   nothing to decline — it would otherwise have had no pause key at all.
+
+5. **Which cue a moment plays is content.** The board chose sounds with a ladder of comparisons
+   against zone names (`slain` roared, `discard` rustled) and band tags (`success`, `failure`).
+   Every one of those strings belongs to a pack. `data/variants/overclock` adds a `cache` zone
+   and spells its failure band `fail`, so under the old code a card entering the cache made a
+   generic thump and a blown roll made *no sound at all*. `cues.py` is the table, the board only
+   ever names moments (`self.cue("zone.slain")`), a family's `*` entry catches anything
+   unheard-of, and a pack's `sounds.yaml` may re-point any key — or declare a whole new voice as
+   data, since the cues are synthesised anyway. **This is the Phase 10 class-tracker bug in
+   another costume**, found the same way: by playing the variant.
+
+6. **Settings are cosmetic, and the file proves it.** `ui/settings.py` holds nothing that can
+   change what a card does, who wins or what a seed deals — the determinism claim holds with the
+   file deleted, corrupt, or set to anything at all, which is why it lives in `ui/` and no part
+   of `core/` may read it. It loads field by field rather than `cls(**data)`, because one unknown
+   key would otherwise throw away every good setting beside it. The GUI's window flags default to
+   `None` rather than a number so "not given" is distinguishable from "given the stored value":
+   a flag typed today beats a file written last week, and nothing else can express that.
+
+7. **Measure, then change; and record what did not work.** Two of the four things the
+   performance item names turned out to be real, one was already fine, and one idea was
+   measured and thrown away.
+   * *Real:* the backdrop did per-frame work it never needed — two full-screen **alpha** blits
+     over a board that covered them, and a `.copy()` of a table-sized surface every frame to set
+     one alpha. Steady frame 15.2 ms → 5.8 ms (66 → 171 fps ceiling).
+   * *Real:* size-keyed art was rebuilt on every frame of a **window resize**. The felt oval is a
+     fraction of the window, so dragging an edge asks for a never-seen size sixty times a second,
+     and painting one is a 2x-supersampled ellipse stack with a tiled grain layer — about 58 ms.
+     Dragging ran at 139 ms a frame. `atmosphere._Layer` stretches the art it has while the
+     geometry is moving and builds once when it stops: 43 ms, and one repaint instead of twenty.
+   * *Real:* the card and glyph caches were **unbounded**. Six camera cycles took the card cache
+     from 49 surfaces to 608 and nothing ever came out. Both are LRUs now, and the plain face is
+     cached apart from its dimmed/highlighted/selected/tapped variants so a card on screen twice
+     composes once.
+   * *Rejected:* composing faces at a rounded size and rescaling to the exact one. Card widths
+     move by more than any tolerable rounding step, so nearly every frame still missed the cache
+     **and** paid a rescale of forty cards: 35 ms exact, 51 ms rounded to ~2%, 49 ms rounded to a
+     visibly soft ~8%. A comment in `card_renderer.py` records it so nobody tries it twice.
+   * *Not a bottleneck:* `build_view` — the item on the list — costs **0.05 ms**, 0.3% of a
+     frame. The measurement said leave it alone, so it was left alone.
+
+8. **A first claim about the performance work was wrong, and was corrected rather than kept.**
+   The rebuild storm was first attributed to camera blends, which lerp `table_rect` every frame.
+   They do — but between this project's cameras the table is the same size, so the caches never
+   missed, and a test written against that claim passed on the *unfixed* code too. Dragging a
+   window edge is the case that actually reaches it. The test now drags, and fails on the old
+   code with 20 repaints over 20 frames.
+
+### A crash in the base pack, found by a test that needed a longer game
+
+`Wiggles` reads *"STEAL a Hero card and roll to use its effect immediately"*, and its effect
+committed the steal and then called `use_ability` on the stolen card. A Hero its owner had
+already used this turn is **tapped**, `use_ability` refuses a tapped card — correctly — and the
+refusal arrived from inside an effect that had already moved it. The result was an `EffectError`
+that ended the game: a crash, not a rules message, and one no player could have avoided.
+
+It survived Phase 8's thousand simulated games and does not appear in 400 more, because it needs
+an opponent to have used a Hero *and* Wiggles to roll 10+ *and* that Hero to be the one chosen. A
+six-turn fixture game for the replay-viewer tests hit it on the first seed tried.
+
+Fixed in the card, not the engine: the free use is now guarded by `card_tapped`, so the steal
+always happens and only the bonus is conditional. The `where:` filter on the choice could not
+carry this — it filters *offers*, and offering nothing would have silently turned "STEAL a Hero"
+into "steal nothing". `tests/test_base_content.py` has a regression test that fails on the old
+card. The base pack's `content_hash` changes as a result, so decision logs recorded against the
+previous version now refuse to replay — which is exactly what `check_content` is for.
+
+### Two smaller things the same audit turned up
+
+* **`hts gui --watch <any .json>` dealt a game before it complained.** Every field of a
+  `DecisionLog` has a default, so *any* JSON object loads as an empty one; opening the wrong file
+  got as far as `new_game` and failed with `'base' needs at least 2 players, got 0` — a true
+  message about the wrong thing. A log that names no players is not a log, and now says so.
+* **The GUI's window flags could not lose to a stored preference.** `--width`, `--height`,
+  `--ui-scale` and `--fullscreen` had argparse defaults, so the settings screen could remember a
+  window size that the CLI then silently overwrote with 1920x1080 on every launch. They default
+  to `None`, which is the only way "not given" is distinguishable from "given the same value".
+
+### One test that could not have caught a regression
+
+`tests/test_cli_play.py` built `argparse.Namespace` objects by hand. That keeps passing after the
+command grows a flag it then *reads*, because the test hands it an object the real CLI can never
+produce — and `cmd_play` grew three. They are built by `build_parser().parse_args(...)` now, so a
+new option is either given a value in the test or the test says so loudly.
+
+---
 
 ### Already done in Phase 10, out of order
 
@@ -741,24 +877,33 @@ Two items on this list were pulled forward because Phase 10 needed them:
 
 ## Current Status
 
-**Phases 0–10 complete.** `uv run hts validate data/base --strict` is green on 88 card
-definitions and 136 physical cards; `uv run pytest` runs **957 tests**, and the whole suite also
-passes under `HTS_STRICT=1` (invariants checked after every mutation).
+**Phases 0–11 complete.** `uv run hts validate data/base --strict` is green on 88 card
+definitions and 136 physical cards; `uv run pytest` runs **1031 tests**, and the whole suite also
+passes under `HTS_STRICT=1` (invariants checked after every mutation). `ruff check .` is clean
+across the repository.
 
 **The PyGame graphical client is complete and tested.** `hts gui data/base` launches the graphical
 client with a living tabletop (felt, motes, class constellation), hover-to-enlarge opponent
-parties in play order, tumbling pip-dice, action menus, hot-seat transitions and a
-`Ctrl+Shift+D` developer console. See `docs/ui_guide.md`.
+parties in play order, tumbling pip-dice, action menus, hot-seat transitions, a settings screen,
+save and load, a replay viewer, and a `Ctrl+Shift+D` developer console. See `docs/ui_guide.md`.
 
-**The architecture's central claim is now tested, not asserted.**
+**The architecture's central claim is tested, not asserted.**
 `data/variants/overclock` adds a class, a zone, three actions, a reaction window on its own
-event, a replaced win condition and one op in each of the five registries — with zero edits to
-`core/`, proven by a test that greps the engine and by a subprocess that asks a fresh interpreter
-what it has registered. `hts new-pack` scaffolds a runnable pack, `hts diff-pack` says what one
-changes, and `docs/modding_guide.md` is the tour.
+event, a replaced win condition, one op in each of the five registries, and — since Phase 11 —
+its own sounds, with zero edits to `core/`, proven by a test that greps the engine and by a
+subprocess that asks a fresh interpreter what it has registered. `hts new-pack` scaffolds a
+runnable pack, `hts diff-pack` says what one changes, and `docs/modding_guide.md` is the tour.
 
-`ruff check .` is clean across the whole repository — the 33 findings the Phase 9 UI rework left
-behind, and Phase 5's gap 7, are closed.
+**A save game is a decision log.** `Game = f(content_hash, seed, max_turns, decisions)` is now
+load-bearing rather than aspirational: saving writes the inputs, loading replays them, and a
+restored game is bit-identical by `GameState.snapshot()` or refuses to load. `hts saves`,
+`hts play --load`, `hts gui --load` and `hts gui --watch` all speak the same file, and so does
+`hts replay`.
 
-Next up is **Phase 11 — Polish**: save/load at quiescent points, a replay viewer in the UI, sound
-hooks and a settings screen, and the rest of the performance pass. Not started.
+**The client runs about 2.6x faster per frame** than it did at the end of Phase 10 (15.2 ms →
+5.8 ms at 1920x1080 with four seats), and both surface caches are bounded rather than growing
+for the life of the process. `docs/ui_guide.md` records the before/after numbers, including the
+one optimisation that measured worse and was dropped.
+
+Every item on the build plan is done. What remains is content and variants — which is what the
+architecture was for.

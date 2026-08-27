@@ -1,0 +1,40 @@
+# What this pack sounds like. Read by the pygame client
+# (`ui/pygame/cues.py`); the engine never opens this file, and a game plays
+# identically with it deleted.
+#
+# Two problems it exists to solve, both found the same way the class tracker was
+# in Phase 10 — by playing the variant and noticing the UI was quietly
+# hard-coded where the engine was not:
+#
+#   * `cache` is this pack's zone. The board's cue table has no entry for it, so
+#     a card landing there fell through to `zone.*` and thumped like any other
+#     play. Audible, but not *this* zone.
+#   * `fail` is this pack's band tag. The base pack spells it `failure`, so a
+#     blown Hacker roll fell through to `band.*`, which is silence.
+#
+# Neither needed a line of Python or a byte of audio.
+
+cues:
+  # A cache write gets its own voice, declared below.
+  zone.cache: cache_write
+  # A blown roll borrows the base pack's cue, quietly.
+  band.fail: { cue: failure, volume: 0.55 }
+  # Uploading is this pack's signature move; make the reaction window on it
+  # read as an interrupt rather than as an ordinary card play.
+  game.steal: { cue: challenge, volume: 0.7 }
+
+# New cues, synthesised from a description. Each layer is a waveform under an
+# attack/decay envelope; `frequency` may be a number or `[from, to]` for a
+# glide, with an optional third value curving it. `wave: noise` is deterministic
+# per `seed`, so the pack sounds the same on every machine and every run.
+voices:
+  cache_write:
+    layers:
+      # The write itself: a short bright chirp sliding upward.
+      - { duration: 0.13, frequency: [880, 1760, 0.6], wave: square,
+          decay: 0.07, gain: 0.16 }
+      # …over a soft body so it does not read as an error beep.
+      - { duration: 0.22, frequency: 330, wave: triangle, decay: 0.14, gain: 0.18 }
+      # …and a grain of head noise, panned slightly right of the felt.
+      - { duration: 0.09, frequency: [2400, 600], wave: noise, seed: 17,
+          decay: 0.05, gain: 0.12, pan: 0.25 }

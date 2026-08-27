@@ -12,7 +12,9 @@ Three things make it fast enough to call from a draw loop:
 * **Level of detail.** A 44px mini in the opponent rail draws art and a rim; a
   132px board card draws the full face; the detail overlay draws everything
   plus flavour. Nobody wraps text nobody can read.
-* **Everything is cached** by ``(def_id, size, flags)``. A board of forty cards
+* **Everything is cached** by ``(def_id, size, flags)``, in *bounded* LRUs, and
+  the plain face is cached separately from the flagged variants — so a card that
+  is on screen both dimmed and highlighted composes once. A board of forty cards
   is forty dict lookups per frame after the first.
 * **Frames are separate from faces.** Selection glow, hover lift and the
   "tapped" rotation are applied to a cached face, so hovering a card does not
@@ -22,6 +24,7 @@ Three things make it fast enough to call from a draw loop:
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any
 
@@ -151,17 +154,57 @@ def card_facts(card_def: Any) -> CardFacts:
 # Cache
 # ---------------------------------------------------------------------------
 
-_face_cache: dict[tuple, pygame.Surface] = {}
-_back_cache: dict[tuple[int, int, int], pygame.Surface] = {}
+#: How many finished faces to keep. A busy four-player board draws forty-odd
+#: cards at three or four sizes, so this holds a whole screen several times over
+#: — but it is a *bound*, which the plain dict this replaced was not: every
+#: distinct pixel size ever asked for stayed resident for the life of the
+#: process, and dragging a window edge asks for a new set of sizes on every
+#: frame of the drag. Six camera cycles alone took the cache from 49 surfaces
+#: to 608, and nothing ever came out again.
+FACE_CACHE_LIMIT = 384
+#: Composed faces before flags and exact sizing. Fewer, because they are shared
+#: by every flag combination of the same card.
+BASE_CACHE_LIMIT = 192
+BACK_CACHE_LIMIT = 64
+
+_face_cache: OrderedDict[tuple, pygame.Surface] = OrderedDict()
+_base_cache: OrderedDict[tuple, pygame.Surface] = OrderedDict()
+_back_cache: OrderedDict[tuple[int, int, int], pygame.Surface] = OrderedDict()
 
 
 def clear_card_cache() -> None:
     _face_cache.clear()
+    _base_cache.clear()
     _back_cache.clear()
 
 
 def cache_size() -> int:
-    return len(_face_cache) + len(_back_cache)
+    return len(_face_cache) + len(_base_cache) + len(_back_cache)
+
+
+def _remember(
+    cache: OrderedDict[Any, pygame.Surface], key: Any, surf: pygame.Surface, limit: int
+) -> pygame.Surface:
+    """Store, evicting the least recently used once ``limit`` is passed."""
+    cache[key] = surf
+    while len(cache) > limit:
+        cache.popitem(last=False)
+    return surf
+
+
+def _recall(cache: OrderedDict[Any, pygame.Surface], key: Any) -> pygame.Surface | None:
+    surf = cache.get(key)
+    if surf is not None:
+        cache.move_to_end(key)
+    return surf
+
+
+# Composing at a *rounded* size and rescaling to the exact one was tried here
+# and measured worse, so it is not in the code: card widths move by more than
+# any tolerable rounding step, so nearly every frame still missed — and now paid
+# a rescale of forty cards on top. Exact composition, over a camera change:
+# 35 ms/frame. Rounded to ~2%: 51 ms. Rounded to ~8%, which is already visibly
+# soft: 49 ms. The saving never covers the rescale.
 
 
 # ---------------------------------------------------------------------------
@@ -191,18 +234,14 @@ def render_card(
         getattr(card_def, "id", None) if card_def is not None else "__back__",
         width, height, tapped, highlighted, face_down, dimmed, selected, detail,
     )
-    hit = _face_cache.get(key)
+    hit = _recall(_face_cache, key)
     if hit is not None:
         return hit
 
     if face_down or card_def is None:
         surf = render_card_back(width, height)
-    elif width >= LOD_TINY and _SUPERSAMPLE > 1:
-        hi_w, hi_h = width * _SUPERSAMPLE, height * _SUPERSAMPLE
-        hi = _face(card_def, hi_w, hi_h, detail=detail)
-        surf = pygame.transform.smoothscale(hi, (width, height))
     else:
-        surf = _face(card_def, width, height, detail=detail)
+        surf = _sized_face(card_def, width, height, detail=detail)
 
     if dimmed:
         surf = _dim(surf)
@@ -211,15 +250,34 @@ def render_card(
     if tapped:
         surf = _tapped(surf)
 
-    _face_cache[key] = surf
-    return surf
+    return _remember(_face_cache, key, surf, FACE_CACHE_LIMIT)
+
+
+def _sized_face(card_def: Any, width: int, height: int, *, detail: bool) -> pygame.Surface:
+    """The plain face, before any flag is applied. Cached in its own right.
+
+    Separate from :data:`_face_cache` because ``dimmed``, ``highlighted``,
+    ``selected`` and ``tapped`` all derive from this one surface: a Monster that
+    is on screen dimmed in one panel and highlighted in another used to compose
+    its whole face twice.
+    """
+    key = (getattr(card_def, "id", None), width, height, detail)
+    base = _recall(_base_cache, key)
+    if base is not None:
+        return base
+    if width >= LOD_TINY and _SUPERSAMPLE > 1:
+        hi = _face(card_def, width * _SUPERSAMPLE, height * _SUPERSAMPLE, detail=detail)
+        base = pygame.transform.smoothscale(hi, (width, height))
+    else:
+        base = _face(card_def, width, height, detail=detail)
+    return _remember(_base_cache, key, base, BASE_CACHE_LIMIT)
 
 
 def render_card_back(width: int = CARD_W, height: int = CARD_H, *, tone: int = 0) -> pygame.Surface:
     """The reverse of a card. ``tone`` picks a hue so decks read apart."""
     width, height = max(6, int(width)), max(8, int(height))
     key = (width, height, tone)
-    hit = _back_cache.get(key)
+    hit = _recall(_back_cache, key)
     if hit is not None:
         return hit
 
@@ -229,8 +287,7 @@ def render_card_back(width: int = CARD_W, height: int = CARD_H, *, tone: int = 0
     else:
         surf = _paint_card_back(width, height, tone=tone)
 
-    _back_cache[key] = surf
-    return surf
+    return _remember(_back_cache, key, surf, BACK_CACHE_LIMIT)
 
 
 def _paint_card_back(width: int, height: int, *, tone: int = 0) -> pygame.Surface:

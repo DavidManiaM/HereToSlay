@@ -73,6 +73,12 @@ class Engine:
         self.interpreter = Interpreter(state, log=self.log)
         self.machine = TurnMachine(state, max_turns=max_turns)
         self._started = False
+        # How many `start`/`submit`/`_pump` calls are on the stack. Zero means
+        # nothing is mid-flight, which is what `quiescent` and `savepoint` mean
+        # and what "no pending request" alone cannot tell you: while a step is
+        # resolving there is no pending request *either*, and a GUI thread
+        # asking "may I save?" would have been told yes (Phase 11).
+        self._depth = 0
         # Rolls live on the `Execution` of whichever step is running, and an
         # `Execution` dies with its step. The engine holds the current context
         # so it can harvest them before that happens — which is what keeps the
@@ -130,9 +136,32 @@ class Engine:
         return self.interpreter.pending
 
     @property
+    def running(self) -> bool:
+        """True while a step is resolving — i.e. inside ``start``/``submit``.
+
+        The engine runs on its own thread under the pygame client, so "is the
+        state being mutated right now?" is a question another thread genuinely
+        has to ask, and ``pending is None`` answers it wrong: a step in the
+        middle of an effect has no pending request either.
+        """
+        return self._depth > 0
+
+    @property
     def quiescent(self) -> bool:
-        """Between actions — the only point at which a save is legal."""
-        return self.pending is None and not self.over
+        """Between actions, with nothing open and nothing resolving."""
+        return not self.running and self.pending is None and not self.over
+
+    @property
+    def savepoint(self) -> bool:
+        """Whether a save taken *now* would describe a game that exists.
+
+        Legal wherever the engine is not resolving a step: between actions, on
+        an open question (the log holds every answer given so far, and a restore
+        lands on the same question), and after the game has ended. Illegal in
+        the middle of a step, because a suspended generator stack is not
+        serialisable — ``docs/architecture_notes.md §4``.
+        """
+        return not self.running
 
     @property
     def over(self) -> bool:
@@ -155,7 +184,11 @@ class Engine:
         if self._started:
             raise EngineError("this game has already started")
         self._started = True
-        return self._pump()
+        self._depth += 1
+        try:
+            return self._pump()
+        finally:
+            self._depth -= 1
 
     def submit(self, decision: Decision) -> Status:
         """Answer the pending question and carry on.
@@ -165,10 +198,14 @@ class Engine:
         """
         if not self._started:
             raise EngineError("call start() before submitting a decision")
-        status = self.interpreter.submit(decision)
-        if isinstance(status, Awaiting):
-            return status
-        return self._pump()
+        self._depth += 1
+        try:
+            status = self.interpreter.submit(decision)
+            if isinstance(status, Awaiting):
+                return status
+            return self._pump()
+        finally:
+            self._depth -= 1
 
     def run(self, source: DecisionSource) -> Status:
         """Play the whole game, taking every answer from ``source``.

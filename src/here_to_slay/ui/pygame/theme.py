@@ -20,7 +20,9 @@ Nothing here touches the engine, and every helper is a pure
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from functools import lru_cache
+from typing import Any
 
 import pygame
 
@@ -243,6 +245,12 @@ FONT_SERIF = "georgia,constantia,palatinolinotype,timesnewroman,dejavuserif"
 FONT_MONO = "cascadiamono,consolas,couriernew,dejavusansmono,monospace"
 
 _font_cache: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
+#: ``id(font) -> its cache key``. Only fonts built by :func:`font` appear here,
+#: and this dict is what keeps them alive, so an id in it can never have been
+#: recycled by a later object — which is what makes it safe to key the glyph
+#: cache on. A ``Font`` built anywhere else simply is not in here and renders
+#: uncached, which is correct rather than merely tolerable.
+_font_ids: dict[int, tuple[str, int, bool, bool]] = {}
 
 
 def font(
@@ -254,6 +262,7 @@ def font(
     if hit is None:
         hit = pygame.font.SysFont(family, max(6, size), bold=bold, italic=italic)
         _font_cache[key] = hit
+        _font_ids[id(hit)] = key
     return hit
 
 
@@ -279,6 +288,42 @@ def mono(size: int, *, bold: bool = False) -> pygame.font.Font:
 
 def clear_font_cache() -> None:
     _font_cache.clear()
+    _font_ids.clear()
+    _glyph_cache.clear()
+
+
+# ---------------------------------------------------------------------------
+# Rendered text
+# ---------------------------------------------------------------------------
+
+#: How many rendered strings to keep. The board redraws the same two or three
+#: hundred short labels every frame — names, counts, costs, hints — and each was
+#: two ``Font.render`` calls (the string and its shadow ghost). Bounded, because
+#: a log feed and a card inspector can name any string at all.
+GLYPH_CACHE_LIMIT = 1024
+
+_glyph_cache: OrderedDict[tuple[Any, ...], pygame.Surface] = OrderedDict()
+
+
+def render_text(value: str, fnt: pygame.font.Font, colour: Colour) -> pygame.Surface:
+    """``fnt.render`` with a bounded cache in front of it.
+
+    Uncacheable fonts (anything not from :func:`font`) fall straight through, so
+    this is never wrong — only sometimes not faster.
+    """
+    font_key = _font_ids.get(id(fnt))
+    if font_key is None:
+        return fnt.render(value, True, colour[:3])
+    key = (font_key, value, colour[:3])
+    hit = _glyph_cache.get(key)
+    if hit is not None:
+        _glyph_cache.move_to_end(key)
+        return hit
+    surf = fnt.render(value, True, colour[:3])
+    _glyph_cache[key] = surf
+    while len(_glyph_cache) > GLYPH_CACHE_LIMIT:
+        _glyph_cache.popitem(last=False)
+    return surf
 
 
 # ---------------------------------------------------------------------------
@@ -610,15 +655,15 @@ def text(
     """Draw one line, optionally ellipsised, with an optional soft shadow."""
     if max_width is not None:
         value = ellipsise(value, fnt, max_width)
-    surf = fnt.render(value, True, colour[:3])
+    surf = render_text(value, fnt, colour)
     rect = surf.get_rect(**{anchor: pos})
     if shadow is not None:
-        ghost = fnt.render(value, True, shadow[:3])
-        if len(shadow) == 4:
-            ghost.set_alpha(shadow[3])
+        ghost = render_text(value, fnt, shadow)
+        # `set_alpha` on a cached surface is fine: it is a property of the
+        # surface, re-set on every use, and nothing reads it between the two.
+        ghost.set_alpha(shadow[3] if len(shadow) == 4 else 255)
         dest.blit(ghost, (rect.left + 1, rect.top + 1))
-    if len(colour) == 4 and colour[3] < 255:
-        surf.set_alpha(colour[3])
+    surf.set_alpha(colour[3] if len(colour) == 4 else 255)
     dest.blit(surf, rect.topleft)
     return rect
 
@@ -837,6 +882,7 @@ def progress_bar(
 
 
 def clear_surface_caches() -> None:
+    _glyph_cache.clear()
     vgradient.cache_clear()
     hgradient.cache_clear()
     radial_glow.cache_clear()
@@ -888,6 +934,7 @@ __all__ = [
     "pulse",
     "radial_glow",
     "readable_ink",
+    "render_text",
     "round_rect",
     "s",
     "seat_colour",

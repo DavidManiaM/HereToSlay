@@ -1,9 +1,10 @@
 """Modal surfaces that sit above the board.
 
-Six of them: the rules reference behind the *i* button, a card inspector, the
-full log, a pause menu, the hot-seat "pass the device" screen, and the game-over
-banner. They share :class:`Overlay` — a fade, a backdrop, a framed panel, and a
-close affordance — so a new one is a content list rather than a new widget.
+Eight of them: the rules reference behind the *i* button, a card inspector, the
+full log, a pause menu, the settings screen, the list of saved games, the
+hot-seat "pass the device" screen, and the game-over banner. They share
+:class:`Overlay` — a fade, a backdrop, a framed panel, and a close affordance —
+so a new one is a content list rather than a new widget.
 
 Two decisions worth naming:
 
@@ -884,6 +885,199 @@ class MenuOverlay(Overlay):
             button.draw(screen)
 
 
+class SaveListOverlay(MenuOverlay):
+    """Pick a saved game to load. A menu whose rows come from a directory.
+
+    Its own type rather than a flag on :class:`MenuOverlay`, so the scene can
+    tell "the player picked *Quit*" from "the player picked a file" by asking
+    what closed rather than by parsing the string that came back.
+    """
+
+    title = L.SAVES_TITLE
+    icon = "scroll"
+
+    #: More than this and the panel would run off the bottom of a small window.
+    #: Saves are listed newest first, so the cut is always the stalest ones.
+    MAX_ROWS = 8
+
+    def __init__(self, layout: Any, saves: Sequence[Any]) -> None:
+        self.saves = list(saves)[: self.MAX_ROWS]
+        items = [
+            MenuItem(
+                str(index), game.title, icon="deck", subtitle=game.describe(),
+                accent=C.GOOD if not game.summary.finished else C.INK_DIM,
+            )
+            for index, game in enumerate(self.saves)
+        ] or [MenuItem("", L.SAVES_EMPTY, icon="close", accent=C.INK_DIM)]
+        super().__init__(layout, items, subtitle=L.MENU_RESUME_HINT)
+
+    def chosen(self) -> Any | None:
+        """The :class:`SaveGame` the player picked, if they picked one."""
+        try:
+            return self.saves[int(str(self.result))]
+        except (TypeError, ValueError, IndexError):
+            return None
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SettingRow:
+    """One editable preference. ``kind`` is ``toggle`` or ``range``."""
+
+    key: str
+    label: str
+    kind: str = "toggle"
+    icon: str = "gear"
+    low: float = 0.0
+    high: float = 1.0
+    step: float = 0.05
+    suffix: str = ""
+
+
+#: The screen, in order. Every row names a field of
+#: :class:`~here_to_slay.ui.settings.Settings`, so adding a preference is one
+#: entry here and one field there — the overlay itself knows no preference names.
+SETTING_ROWS: tuple[SettingRow, ...] = (
+    SettingRow("sound", L.SET_SOUND, "toggle", "bard"),
+    SettingRow("volume", L.SET_VOLUME, "range", "bard", 0.0, 1.0, 0.05),
+    SettingRow("animations", L.SET_ANIMATIONS, "toggle", "bolt"),
+    SettingRow("shake", L.SET_SHAKE, "toggle", "bolt"),
+    SettingRow("reaction_timer", L.SET_REACTION_TIMER, "toggle", "challenge"),
+    SettingRow("ai_delay", L.SET_AI_SPEED, "range", "flask", 0.0, 2.0, 0.1, "s"),
+    SettingRow("ui_scale", L.SET_UI_SCALE, "range", "eye", 0.6, 1.6, 0.05, "x"),
+    SettingRow("fullscreen", L.SET_FULLSCREEN, "toggle", "eye"),
+)
+
+
+class SettingsOverlay(Overlay):
+    """The settings screen. Applies as you click; persists when it closes.
+
+    It holds a :class:`~here_to_slay.ui.settings.Settings` value and replaces it
+    on every change — the dataclass is frozen, so there is no way to half-apply
+    one. ``on_change`` lets the board hear each edit immediately (the volume
+    slider is useless if you cannot hear it move); the closing ``result`` is the
+    final value, which is what the app writes to disk.
+    """
+
+    title = L.SETTINGS_TITLE
+    subtitle = L.SETTINGS_HINT
+    icon = "gear"
+
+    ROW_H = 44
+
+    def __init__(
+        self,
+        layout: Any,
+        settings: Any,
+        *,
+        on_change: Callable[[Any], None] | None = None,
+        rows: Sequence[SettingRow] = SETTING_ROWS,
+    ) -> None:
+        self.rows = list(rows)
+        width = min(500, max(360, int(layout.width * 0.4)))
+        height = 96 + len(self.rows) * self.ROW_H + 16
+        super().__init__(pygame.Rect(
+            (layout.width - width) // 2, (layout.height - height) // 2, width, height
+        ))
+        self.settings = settings
+        self.on_change = on_change
+        self.result = settings
+        self.buttons: list[tuple[SettingRow, str, Button]] = []
+        self._build()
+
+    def _build(self) -> None:
+        body = self.body_rect
+        size = 26
+        for i, row in enumerate(self.rows):
+            top = body.top + i * self.ROW_H
+            if row.kind == "toggle":
+                rect = pygame.Rect(body.right - 82, top + 4, 78, 28)
+                self.buttons.append((row, "toggle", Button(
+                    rect, "", self._make_toggle(row), align="center",
+                )))
+            else:
+                minus = pygame.Rect(body.right - 100, top + 5, size, size)
+                plus = pygame.Rect(body.right - size - 4, top + 5, size, size)
+                self.buttons.append((row, "minus", IconButton(
+                    minus, "minus", self._make_nudge(row, -1), accent=C.FROST,
+                )))
+                self.buttons.append((row, "plus", IconButton(
+                    plus, "plus", self._make_nudge(row, +1), accent=C.FROST,
+                )))
+
+    # -- editing -----------------------------------------------------------
+
+    def _apply(self, settings: Any) -> None:
+        self.settings = settings
+        self.result = settings
+        if self.on_change is not None:
+            self.on_change(settings)
+
+    def _make_toggle(self, row: SettingRow) -> Callable[[], None]:
+        def toggle() -> None:
+            self._apply(self.settings.toggled(row.key))
+        return toggle
+
+    def _make_nudge(self, row: SettingRow, direction: int) -> Callable[[], None]:
+        def nudge() -> None:
+            current = float(getattr(self.settings, row.key, row.low))
+            value = min(row.high, max(row.low, current + direction * row.step))
+            self._apply(self.settings.with_change(row.key, round(value, 3)))
+        return nudge
+
+    def _value_text(self, row: SettingRow) -> str:
+        value = getattr(self.settings, row.key, None)
+        if isinstance(value, bool):
+            return L.ON if value else L.OFF
+        if isinstance(value, float):
+            if row.key == "volume":
+                return f"{round(value * 100)}%"
+            return f"{value:g}{row.suffix}"
+        return str(value)
+
+    # -- events ------------------------------------------------------------
+
+    def on_event(self, event: pygame.event.Event) -> bool:
+        return any(button.handle_event(event) for _row, _kind, button in self.buttons)
+
+    def tick(self, dt: float) -> None:
+        for row, kind, button in self.buttons:
+            button.update(dt)
+            if kind == "toggle":
+                on = bool(getattr(self.settings, row.key, False))
+                button.label = L.ON if on else L.OFF
+                button.accent = C.GOOD if on else C.INK_DIM
+                button.text_colour = C.INK_BRIGHT if on else C.INK_DIM
+
+    # -- drawing -----------------------------------------------------------
+
+    def draw_body(self, screen: pygame.Surface) -> None:
+        body = self.body_rect
+        for i, row in enumerate(self.rows):
+            top = body.top + i * self.ROW_H
+            centre_y = top + self.ROW_H // 2 - 4
+            draw_icon(screen, row.icon, (body.left + 12, centre_y), 18, C.INK_DIM)
+            T.text(screen, row.label, (body.left + 30, centre_y), T.ui(14), C.INK,
+                   anchor="midleft", shadow=None)
+            if row.kind == "range":
+                T.text(
+                    screen, self._value_text(row),
+                    (body.right - 116, centre_y), T.ui(13, bold=True), C.GOLD,
+                    anchor="midright", shadow=None,
+                )
+            if i:
+                T.hairline(
+                    screen, (body.left + 8, top), (body.right - 8, top), (255, 255, 255, 16)
+                )
+
+        for _row, _kind, button in self.buttons:
+            button.draw(screen)
+
+
 # ---------------------------------------------------------------------------
 # Hot-seat handover
 # ---------------------------------------------------------------------------
@@ -1078,6 +1272,7 @@ class GameOverOverlay(Overlay):
 
 
 __all__ = [
+    "SETTING_ROWS",
     "CardOverlay",
     "GameOverOverlay",
     "HandoverOverlay",
@@ -1088,6 +1283,9 @@ __all__ = [
     "Overlay",
     "OverlayStack",
     "RulesOverlay",
+    "SaveListOverlay",
     "ScoreRow",
+    "SettingRow",
+    "SettingsOverlay",
     "rules_pages",
 ]

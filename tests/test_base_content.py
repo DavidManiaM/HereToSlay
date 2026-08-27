@@ -318,3 +318,34 @@ def test_every_leader_is_dealable_and_its_triggers_are_live(
     for trigger in definition.triggers:
         assert trigger.while_in == "leader", f"{card_id} subscribes from '{trigger.while_in}'"
     assert find_violations(state) == []
+
+
+# ---------------------------------------------------------------------------
+# Found in Phase 11: a card whose effect could commit and then refuse itself
+# ---------------------------------------------------------------------------
+
+
+def test_wiggles_can_steal_a_hero_that_has_already_been_used(
+    base: ContentRegistry, place
+) -> None:
+    """"STEAL a Hero and use its effect" must survive stealing a *tapped* Hero.
+
+    The golden test above places an untouched Hero to steal, so it never met
+    this: a Hero its owner had already used this turn is tapped, ``use_ability``
+    refuses a tapped card, and the refusal arrives from inside an effect that
+    had already moved the card. The result was an ``EffectError`` that ended the
+    game — a crash, not a rules message, and one no player could have avoided.
+
+    It is rare enough that 400 random games do not find it (Phase 8's thousand
+    did not either), which is exactly why it gets a test that aims at it.
+    """
+    state = _dealt(base)
+    wiggles = place(state, "base.hero.wiggles", "party", "p1")
+    victim = place(state, "base.hero.napping_nibbles", "party", "p2")
+    state.card(victim).tapped = True  # p2 used it earlier this turn
+
+    success = base.cards["base.hero.wiggles"].ability.roll.outcomes[0]
+    _drive(state, success.effect, wiggles)
+
+    assert state.card(victim).zone == zone_id("party", P1), "the steal still happens"
+    assert find_violations(state) == []

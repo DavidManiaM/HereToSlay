@@ -79,6 +79,13 @@ from here_to_slay.core.registry import (
 )
 from here_to_slay.core.rng import DeterministicRng
 from here_to_slay.core.rolls import Modifier, Roll, perform_roll
+from here_to_slay.core.savegame import (
+    SaveError,
+    SaveGame,
+    SaveSummary,
+    list_saves,
+    save_path,
+)
 from here_to_slay.core.setup import new_game
 from here_to_slay.core.state import CardInstance, GameState, PlayerState, diff_snapshots
 from here_to_slay.core.turn_machine import TurnMachine
@@ -139,6 +146,9 @@ __all__ = [
     "ReplayExhausted",
     "Request",
     "Roll",
+    "SaveError",
+    "SaveGame",
+    "SaveSummary",
     "ScriptedSource",
     "SetupError",
     "Status",
@@ -163,6 +173,7 @@ __all__ = [
     "find_violations",
     "find_winner",
     "legal_intents",
+    "list_saves",
     "mutator",
     "new_game",
     "open_window",
@@ -172,6 +183,7 @@ __all__ = [
     "player_id",
     "registered_ops",
     "replay",
+    "save_path",
     "selector",
     "subscriptions_for",
     "zone_id",

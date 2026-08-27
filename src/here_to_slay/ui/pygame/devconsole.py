@@ -52,6 +52,7 @@ KIND_ORDER = ("hero", "monster", "item", "magic", "modifier", "challenge", "part
 FLAGS: dict[str, tuple[str, str]] = {
     "reveal_all": ("Reveal all hands", "show every seat's cards"),
     "animations": ("Animations", "cosmetic effects on or off"),
+    "shake": ("Screen shake", "the table lurch on a slay"),
     "sound": ("Sound", "procedural cues"),
     "autoplay": ("Autoplay all seats", "let the agent answer for everyone"),
     "layout_debug": ("Layout overlay", "outline every named region"),

@@ -48,6 +48,32 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 # ---------------------------------------------------------------------------
 
 
+def _play_args(fixtures: Path, **overrides: Any) -> Any:
+    """A ``hts play`` namespace built by the *real* parser.
+
+    Hand-rolling ``argparse.Namespace`` in a test keeps it green after the
+    command grows a flag it then reads: the test passes an object the CLI can
+    never produce. Going through ``build_parser`` means a new option is either
+    given a default here or the test says so loudly.
+    """
+    from here_to_slay.cli import build_parser
+
+    argv = [
+        "play", str(fixtures / "cardless"),
+        "--search-path", str(PROJECT_ROOT / "data"),
+        "--names", "Alice", "Bob",
+        "--seed", str(overrides.pop("seed", "cli_test")),
+        "--max-turns", str(overrides.pop("max_turns", 0)),
+    ]
+    if overrides.pop("no_save", False):
+        argv.append("--no-save")
+    save_dir = overrides.pop("save_dir", None)
+    if save_dir is not None:
+        argv += ["--save-dir", str(save_dir)]
+    assert not overrides, f"unhandled overrides: {sorted(overrides)}"
+    return build_parser().parse_args(argv)
+
+
 class AutoSource(DecisionSource):
     """Always takes the first legal answer — same policy as FirstChoice in
     ``test_core_engine.py``, reproduced here so tests are self-contained."""
@@ -241,24 +267,25 @@ class TestCmdPlay:
         auto_source: bool = True,
     ) -> tuple[int, str]:
         """Run main() and return (exit_code, console_output)."""
-        import argparse
         from io import StringIO
 
         from rich.console import Console
 
-        from here_to_slay.cli import cmd_play
+        from here_to_slay.cli import build_parser, cmd_play
 
         buf = StringIO()
 
-        parser_ns = argparse.Namespace(
-            packs=args,
-            search_path=[str(PROJECT_ROOT / "data")],
-            names=["Alice", "Bob"],
-            players=2,
-            seed="cli_test",
-            max_turns=3,
-            no_save=True,
-        )
+        # Built by the real parser rather than by hand: a hand-rolled Namespace
+        # keeps passing after `play` grows a flag the command then reads, and
+        # the test would be green against a CLI nobody can actually run.
+        parser_ns = build_parser().parse_args([
+            "play", *args,
+            "--search-path", str(PROJECT_ROOT / "data"),
+            "--names", "Alice", "Bob",
+            "--seed", "cli_test",
+            "--max-turns", "3",
+            "--no-save",
+        ])
 
         console = Console(file=buf, no_color=True, width=120)
 
@@ -309,14 +336,8 @@ class TestLogRoundTrip:
         log_dir = tmp_path / "logs"
         log_dir.mkdir()
 
-        play_ns = argparse.Namespace(
-            packs=[str(fixtures / "cardless")],
-            search_path=[str(PROJECT_ROOT / "data")],
-            names=["Alice", "Bob"],
-            players=2,
-            seed="roundtrip42",
-            max_turns=2,
-            no_save=False,
+        play_ns = _play_args(
+            fixtures, seed="roundtrip42", max_turns=2, save_dir=tmp_path / "saves"
         )
 
         play_buf = StringIO()
@@ -523,7 +544,6 @@ class TestAnInterruptedGameIsStillAGame:
     """
 
     def _play(self, fixtures: Path, tmp_path: Path, *, raises: BaseException):
-        import argparse
         from io import StringIO
 
         from rich.console import Console
@@ -539,14 +559,8 @@ class TestAnInterruptedGameIsStillAGame:
                 raise raises
             return answers.answer(request)
 
-        namespace = argparse.Namespace(
-            packs=[str(fixtures / "cardless")],
-            search_path=[str(PROJECT_ROOT / "data")],
-            names=["Alice", "Bob"],
-            players=2,
-            seed="interrupted",
-            max_turns=0,
-            no_save=False,
+        namespace = _play_args(
+            fixtures, seed="interrupted", save_dir=tmp_path / "saves"
         )
         buf = StringIO()
         with (
@@ -605,22 +619,13 @@ class TestAnInterruptedGameIsStillAGame:
         self, fixtures: Path, tmp_path: Path
     ) -> None:
         """An empty log is not worth a file."""
-        import argparse
         from io import StringIO
 
         from rich.console import Console
 
         from here_to_slay.cli import cmd_play
 
-        namespace = argparse.Namespace(
-            packs=[str(fixtures / "cardless")],
-            search_path=[str(PROJECT_ROOT / "data")],
-            names=["Alice", "Bob"],
-            players=2,
-            seed="empty",
-            max_turns=0,
-            no_save=False,
-        )
+        namespace = _play_args(fixtures, seed="empty", save_dir=tmp_path / "saves")
         buf = StringIO()
         with (
             patch(
@@ -631,3 +636,277 @@ class TestAnInterruptedGameIsStillAGame:
         ):
             cmd_play(namespace, Console(file=buf, no_color=True, width=120))
         assert not (tmp_path / "hts_logs").exists()
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 — saving and resuming from the terminal
+# ---------------------------------------------------------------------------
+
+
+class TestSavingFromTheTerminal:
+    """`s` at a prompt, `--load` to come back, `hts saves` to see what there is.
+
+    The prompt is the only moment a terminal client is at an ``Engine.savepoint``
+    — the engine is blocked waiting for this answer — which is why the save
+    command lives there rather than on a menu.
+    """
+
+    def _play(self, fixtures: Path, tmp_path: Path, inputs: list[str], **overrides: Any):
+        from rich.console import Console
+
+        from here_to_slay.cli import cmd_play
+
+        args = _play_args(fixtures, save_dir=tmp_path / "saves", **overrides)
+        buf = StringIO()
+        supply = iter(inputs)
+
+        def fake_input(*_a: Any) -> str:
+            return next(supply)
+
+        with patch("builtins.input", fake_input):
+            code = cmd_play(args, Console(file=buf, no_color=True, width=120))
+        return code, buf.getvalue()
+
+    def test_typing_s_writes_a_save_and_asks_again(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        # "s" saves; the same question then has to be answered for real.
+        code, output = self._play(
+            fixtures, tmp_path, ["s", "1", "1", "1", "1", "1", "1", "1", "1"],
+            seed="cli_save", max_turns=1,
+        )
+        assert code == 0
+        assert "Saved ->" in output
+        saves = list((tmp_path / "saves").glob("*.hts.json"))
+        assert len(saves) == 1
+
+    def test_the_prompt_advertises_it(self, fixtures: Path, tmp_path: Path) -> None:
+        _code, output = self._play(
+            fixtures, tmp_path, ["1"] * 12, seed="advert", max_turns=1
+        )
+        assert "s=save" in output
+
+    def test_no_save_removes_the_offer(self, fixtures: Path, tmp_path: Path) -> None:
+        _code, output = self._play(
+            fixtures, tmp_path, ["1"] * 12, seed="nosave", max_turns=1, no_save=True
+        )
+        assert "s=save" not in output
+
+    def test_a_saved_game_resumes_where_it_stopped(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        """The round trip that matters: save, quit, come back to the same board."""
+        from here_to_slay.core.savegame import SaveGame
+
+        self._play(
+            fixtures, tmp_path, ["1", "1", "s", "1", "1", "1", "1", "1", "1"],
+            seed="resume", max_turns=1,
+        )
+        saved = next((tmp_path / "saves").glob("*.hts.json"))
+        game = SaveGame.load(saved)
+        assert game.summary.decisions >= 1
+
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_play
+
+        args = build_parser().parse_args([
+            "play", str(fixtures / "cardless"),
+            "--search-path", str(PROJECT_ROOT / "data"),
+            "--load", str(saved),
+            "--save-dir", str(tmp_path / "saves"),
+            "--no-save",
+        ])
+        buf = StringIO()
+        with patch(
+            "here_to_slay.ui.cli.presenter.CliPresenter.answer",
+            side_effect=AutoSource().answer,
+        ):
+            code = cmd_play(args, Console(file=buf, no_color=True, width=120))
+
+        output = buf.getvalue()
+        assert code == 0
+        assert "Loaded" in output
+        assert f"{game.summary.decisions} decision(s) replayed" in output
+
+    def test_loading_a_name_that_is_not_there_is_a_usage_error(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_play
+
+        args = build_parser().parse_args([
+            "play", str(fixtures / "cardless"),
+            "--search-path", str(PROJECT_ROOT / "data"),
+            "--load", "no_such_game",
+            "--save-dir", str(tmp_path / "saves"),
+        ])
+        buf = StringIO()
+        code = cmd_play(args, Console(file=buf, no_color=True, width=120))
+        assert code != 0
+        assert "Could not load" in buf.getvalue()
+
+
+class TestHtsSaves:
+    def test_an_empty_folder_says_so_rather_than_erroring(self, tmp_path: Path) -> None:
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_saves
+
+        args = build_parser().parse_args(["saves", "--save-dir", str(tmp_path)])
+        buf = StringIO()
+        assert cmd_saves(args, Console(file=buf, no_color=True, width=120)) == 0
+        assert "No saves" in buf.getvalue()
+
+    def test_it_lists_what_is_there(
+        self, tmp_path: Path, cardless_content: ContentRegistry
+    ) -> None:
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_saves
+        from here_to_slay.core.savegame import SaveGame, save_path
+
+        engine = Engine.new(cardless_content, ["Alice", "Bob"], seed="listme")
+        engine.start()
+        SaveGame.capture(engine, label="my_game").save(save_path(tmp_path, "my_game"))
+
+        args = build_parser().parse_args(["saves", "--save-dir", str(tmp_path)])
+        buf = StringIO()
+        assert cmd_saves(args, Console(file=buf, no_color=True, width=120)) == 0
+        output = buf.getvalue()
+        assert "my_game" in output
+        assert "Alice" in output
+
+
+class TestTheGuiFlags:
+    """Parsed here because the window cannot be opened in CI, and a flag the
+    command reads but the parser does not define is the failure mode."""
+
+    def test_load_and_watch_are_both_defined(self) -> None:
+        from here_to_slay.cli import build_parser
+
+        args = build_parser().parse_args(["gui", "--load", "x", "--save-dir", "d"])
+        assert args.load == "x" and args.watch is None and args.save_dir == "d"
+        args = build_parser().parse_args(["gui", "--watch", "y"])
+        assert args.watch == "y" and args.load is None
+
+    def test_the_window_flags_default_to_unset(self) -> None:
+        """So a stored setting can win over a default nobody typed."""
+        from here_to_slay.cli import build_parser
+
+        args = build_parser().parse_args(["gui"])
+        assert args.width is None
+        assert args.height is None
+        assert args.ui_scale is None
+        assert args.fullscreen is None
+
+    def test_load_and_watch_together_are_refused(self, fixtures: Path) -> None:
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_gui
+
+        args = build_parser().parse_args([
+            "gui", str(fixtures / "cardless"),
+            "--search-path", str(PROJECT_ROOT / "data"),
+            "--load", "a", "--watch", "b",
+        ])
+        buf = StringIO()
+        assert cmd_gui(args, Console(file=buf, no_color=True, width=120)) != 0
+        assert "pick one" in buf.getvalue()
+
+
+class TestTheWatchCommand:
+    """`--watch` opens either a save or a plain decision log.
+
+    They are the same file with a different wrapper — a save is a log plus a
+    header — so the command accepts both rather than making the player know
+    which one they have. The window itself is stubbed: opening one in CI is not
+    the thing under test, wiring is.
+    """
+
+    def _watch(self, target: Path, fixtures: Path, tmp_path: Path):
+        from rich.console import Console
+
+        from here_to_slay.cli import build_parser, cmd_gui
+
+        args = build_parser().parse_args([
+            "gui", str(fixtures / "cardless"),
+            "--search-path", str(PROJECT_ROOT / "data"),
+            "--watch", str(target),
+            "--save-dir", str(tmp_path / "saves"),
+        ])
+        seen: dict[str, Any] = {}
+
+        def fake_launch(registry, names, **kwargs):
+            seen.update(kwargs)
+            seen["names"] = names
+            return 0
+
+        buf = StringIO()
+        with patch("here_to_slay.ui.pygame.launch", fake_launch):
+            code = cmd_gui(args, Console(file=buf, no_color=True, width=120))
+        return code, buf.getvalue(), seen
+
+    def _game(self, fixtures: Path, tmp_path: Path):
+        from here_to_slay.content import load_pack
+
+        registry = load_pack(
+            fixtures / "cardless", search_paths=[PROJECT_ROOT / "data"]
+        )
+        engine = Engine.new(registry, ["Alice", "Bob"], seed="watched", max_turns=2)
+        engine.run(AutoSource())
+        return engine
+
+    def test_it_opens_a_plain_decision_log(self, fixtures: Path, tmp_path: Path) -> None:
+        engine = self._game(fixtures, tmp_path)
+        log_path = engine.log.save(tmp_path / "game.json")
+
+        code, output, seen = self._watch(log_path, fixtures, tmp_path)
+
+        assert code == 0
+        assert "Replaying" in output
+        assert seen["replay"] is not None
+        assert seen["replay"].total == len(engine.log)
+        assert seen["engine"] is not None, "the engine is built here, not in the window"
+
+    def test_it_opens_a_save_game_too(self, fixtures: Path, tmp_path: Path) -> None:
+        from here_to_slay.core.savegame import SaveGame, save_path
+
+        engine = self._game(fixtures, tmp_path)
+        saved = SaveGame.capture(engine).save(save_path(tmp_path / "saves", "watched"))
+
+        code, output, seen = self._watch(saved, fixtures, tmp_path)
+
+        assert code == 0
+        assert "Replaying" in output
+        assert seen["replay"].total == len(engine.log)
+
+    def test_a_save_can_be_named_without_its_path_or_suffix(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        from here_to_slay.core.savegame import SaveGame, save_path
+
+        engine = self._game(fixtures, tmp_path)
+        SaveGame.capture(engine).save(save_path(tmp_path / "saves", "byname"))
+
+        code, _output, seen = self._watch(Path("byname"), fixtures, tmp_path)
+
+        assert code == 0
+        assert seen["replay"].total == len(engine.log)
+
+    def test_a_file_that_is_neither_says_which_it_is_not(
+        self, fixtures: Path, tmp_path: Path
+    ) -> None:
+        rubbish = tmp_path / "shopping.json"
+        rubbish.write_text('{"milk": true}', encoding="utf-8")
+
+        code, output, _seen = self._watch(rubbish, fixtures, tmp_path)
+
+        assert code != 0
+        assert "neither a save nor a decision log" in output
+
+    def test_a_missing_file_is_a_usage_error(self, fixtures: Path, tmp_path: Path) -> None:
+        code, output, _seen = self._watch(tmp_path / "nope.json", fixtures, tmp_path)
+        assert code != 0
+        assert "no such log or save" in output

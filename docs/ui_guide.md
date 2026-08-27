@@ -34,6 +34,12 @@ uv run hts gui data/base --players 3 --ai 2 --fullscreen --reveal-all
 
 # Mute the procedural cues
 uv run hts gui data/base --no-sound
+
+# Resume the game you saved (F2 in game, or 's' at any prompt in `hts play`)
+uv run hts gui data/base --load 20260827_1153_AB_t4
+
+# Watch a saved game or a decision log play out on the real board
+uv run hts gui data/base --watch hts_logs/20260827_120000_dragons.json
 ```
 
 Useful flags:
@@ -50,6 +56,13 @@ Useful flags:
 | `--reveal-all` | Spectator: show every hand |
 | `--no-sound` | Start muted (`M` toggles) |
 | `--max-turns N` | Stop after N turns (useful for demos) |
+| `--load SAVE` | Resume a saved game (a path, or a name in the save folder) |
+| `--watch LOG` | Replay viewer: step through a save or a decision log |
+| `--save-dir DIR` | Where saves are written and looked for (default `hts_saves/`) |
+
+`--width`, `--height`, `--ui-scale` and `--fullscreen` default to whatever the
+settings screen last remembered. A flag typed today wins over a file written
+last week, which is why they have no numeric default of their own.
 
 The same pack the CLI uses (`data/base`, or any variant directory) is what the
 GUI loads. A card added to YAML this afternoon is on the table this afternoon.
@@ -134,6 +147,9 @@ highlights those widgets. You cannot play an illegal card by clicking it.
 | `L` | Log |
 | `Esc` | Menu (or close the top overlay) |
 | `M` | Mute / unmute |
+| `O` | Settings |
+| `F2` | Save the game |
+| `F9` | Load a game |
 | `F3` | FPS readout |
 | `F4` | Layout debug overlay |
 | `F5` | New game, same seats |
@@ -144,6 +160,66 @@ highlights those widgets. You cannot play an illegal card by clicking it.
 Hot-seat: when control passes between two humans a "pass the device" screen
 blocks the next hand until someone hits Enter. Passing to an AI never
 interrupts.
+
+In the replay viewer (`--watch`) the transport bar takes over four keys, because
+a recorded game has nothing to confirm or decline:
+
+| Input | Effect |
+|---|---|
+| `Space` | Play / pause |
+| `.` | Step one decision |
+| `+` / `-` | Faster / slower (0.25x … 8x) |
+| `Q` / `E` | Cameras, as in a live game |
+
+---
+
+## 3a. Saving, loading, and watching
+
+**A save game is a decision log.** `Game = f(content_hash, seed, max_turns,
+decisions)` (`rules_engine.md §6`), so a save stores the *inputs* rather than a
+board, and loading replays them. That is not a shortcut — a snapshot of
+`GameState` would need every flag a mod invents and every subscription the bus
+holds, and would silently load a *different* game the day one of them was
+forgotten. A restore either reproduces the game exactly or refuses to load.
+
+* **`F2` saves.** The engine is blocked on your question when you press it,
+  which is exactly an `Engine.savepoint`: nothing is mid-effect, and the log
+  holds every decision so far. If an AI seat happens to be deliberating the
+  engine *is* mid-step, and the board says "cannot save mid-action" rather than
+  writing a position nobody was in.
+* **`F9` lists what you can resume**, newest first. The list is drawn from each
+  file's header — no game is replayed to describe one.
+* **`--watch` opens the same board as a viewer.** It needed no branch in the
+  scene, the panels or the tracker: a replay is a `DecisionSource` that reads
+  its answers from a file, so as far as the board is concerned every seat is
+  simply being played by somebody else.
+* **The end of a partial log is not an error.** A save is a partial log by
+  definition; the bar turns red and says "end of log" rather than pretending the
+  game finished, which is how a real divergence would otherwise hide.
+
+The terminal client speaks the same files: `s` at any prompt in `hts play`
+saves, `hts play --load <name>` resumes, and `hts saves` lists.
+
+## 3b. Settings — `O`
+
+Everything on this screen is cosmetic. Nothing here can change what a card does,
+who wins or what a seed deals, which is why it lives in `ui/settings.py` and no
+part of `core/` may read it: the determinism claim holds with the file deleted.
+
+| Setting | Notes |
+|---|---|
+| Sound, Volume | Master level for the procedural cues |
+| Animations | All cosmetic effects |
+| Screen shake | Separately, because it is the one people turn off first |
+| Reaction countdown | The 10-second auto-pass on reaction windows |
+| AI pace | How long an agent "thinks" before its move lands |
+| HUD scale | Below 1.0 shrinks the chrome so the board grows |
+| Fullscreen | Same as `F11` |
+
+Changes apply as you click (a volume slider you cannot hear is useless) and are
+written to `~/.here_to_slay/settings.json` when the screen closes. A corrupt,
+unreadable or hand-mangled file loads the defaults and carries on; one bad value
+does not discard the good ones next to it. `$HTS_CONFIG_DIR` moves the file.
 
 ---
 
@@ -193,9 +269,46 @@ many Heroes, several Monsters and Items). Missing art is a generated
 **sigil** — a coloured field plus a geometric emblem seeded from the card
 id — so nothing on screen ever says "missing". `art.py` is the resolver.
 
-Sound is synthesised at runtime (`sound.py`). There are no audio files.
+Sound is synthesised at runtime (`sound.py`). There are no audio files, and a
+pack can add cues without shipping any — see §5a.
 Accent materials live in `materials.py` (foil + emissive); the dev console can
 force the CPU path with **CPU materials**.
+
+### 5a. Sound is a table, not an `if` chain
+
+Which cue a moment plays lives in `cues.py`, keyed `family.name`
+(`zone.party`, `band.success`, `ui.close`, `game.turn`), with a `*` fallback per
+family. The board only ever asks for *moments*: `self.cue("zone.slain")`, never
+`self.sound.play("slay")`. A test greps `scenes.py` to keep it that way.
+
+This is the class-tracker bug in another costume. The ladder it replaced
+compared zone names — `slain` roared, `discard` rustled, `party` thumped — and
+every one of those strings is *content*. The sample variant adds a `cache` zone
+and spells its failure band `fail` rather than `failure`, so under the old code
+a card entering the cache made a generic thump and a blown roll made no sound
+at all.
+
+A pack drops a `sounds.yaml` beside its `pack.yaml` to re-point any key, and may
+declare **new voices** as data — layers of waveform, envelope and pitch glide,
+the same parameters the built-in cues use:
+
+```yaml
+cues:
+  zone.cache: cache_write
+  band.fail: { cue: failure, volume: 0.55 }
+
+voices:
+  cache_write:
+    layers:
+      - { duration: 0.13, frequency: [880, 1760, 0.6], wave: square,
+          decay: 0.07, gain: 0.16 }
+      - { duration: 0.22, frequency: 330, wave: triangle, decay: 0.14, gain: 0.18 }
+```
+
+`data/variants/overclock/sounds.yaml` is the worked example. Nothing validates
+it against the pack vocabulary: a cue for a zone that does not exist is a
+harmless dead entry, and a typo in a pack's audio must never be the reason a
+game will not start — a broken file is skipped, not raised.
 
 ---
 
@@ -251,6 +364,45 @@ Action-point costs, the class list, player bounds and the victory conditions
 are read from content, so a variant that makes attacking cost three points
 gets a rules screen that says three.
 
+### The performance pass (Phase 11), measured
+
+Numbers from `tests/`-shaped scripts at 1920x1080, four seats, base pack. Two
+were real, one hypothesis was measured and rejected.
+
+| | before | after |
+|---|---|---|
+| Steady frame | 15.2 ms (66 fps ceiling) | **5.8 ms (171 fps)** |
+| Frame while dragging a window edge | 139 ms | **43 ms** |
+| Felt repaints over 20 frames of drag | 20 | **1** |
+| Card surfaces after six camera cycles | 608, still growing | bounded at 640 |
+
+* **The backdrop was doing per-frame work it never needed to.** The room and
+  the vignette were two full-screen *alpha* blits over a board that then covered
+  them (an opaque composite is a straight copy), and the active seat's arc was
+  `.copy()`-ing a table-sized surface every frame just to set an alpha on it.
+  Motes now come out of the sprite cache pre-faded instead of being copied.
+* **Size-keyed art was rebuilt on every frame of a resize.** The felt oval is a
+  fraction of the window, so dragging an edge asks for a size never seen before
+  sixty times a second — and painting one is a 2x-supersampled ellipse stack
+  with a tiled grain layer, about 58 ms. `atmosphere._Layer` stretches the art
+  it already has while the geometry is moving and builds the real thing once,
+  on the first frame that asks for the same size twice.
+* **The card and glyph caches were unbounded.** Every distinct pixel size ever
+  drawn stayed resident for the life of the process — six camera cycles took the
+  card cache from 49 surfaces to 608 and nothing ever came out. Both are LRUs
+  now, and the plain card face is cached separately from its dimmed / highlighted
+  / selected / tapped variants, so a card on screen twice composes once.
+* **Rejected:** composing faces at a rounded size and rescaling to the exact one.
+  Card widths move by more than any tolerable rounding step, so nearly every
+  frame still missed the cache *and* paid a rescale of forty cards on top:
+  35 ms/frame exact, 51 ms rounded to ~2%, 49 ms rounded to a visibly soft ~8%.
+  The comment in `card_renderer.py` records it so nobody tries it twice.
+* **Not a bottleneck, checked:** `build_view` costs 0.05 ms — 0.3% of a frame.
+  The item on the Phase 11 list said "view construction", and the measurement
+  says leave it alone.
+
+---
+
 ### The class tracker reads the rule set, not the palette (fixed in Phase 10)
 
 The party row and every opponent strip show a dot per class and an *n*/*m* bar
@@ -288,6 +440,10 @@ surfaces, real layout arithmetic, real event dispatch. It covers 2-, 4- and
 presenter contract (AI seats, pause, stale-answer rejection), and a whole
 game played end-to-end with synthesised mouse clicks.
 
+Phase 11 added the settings screen, the cue table (including the variant's own
+`sounds.yaml`), the replay transport and bar, the window's half of save/load,
+and four cache tests — two of which fail on the code before the fix.
+
 ---
 
 ## 8. Adding something new
@@ -301,3 +457,8 @@ game played end-to-end with synthesised mouse clicks.
   `_DEV_FX` entry in `scenes.py`. It appears on the FX tab automatically.
 - **A new panel** — give it a rect in `layout.py` and a class in
   `panels.py`. The scene owns *when* it draws and *what a click means*.
+- **A new sound** — add a `sounds.yaml` to your pack (§5a). No Python, no
+  audio files.
+- **A new preference** — one field on `ui/settings.py:Settings` and one row in
+  `overlays.py:SETTING_ROWS`. The screen itself knows no preference names; a
+  test asserts every row names a real field.
