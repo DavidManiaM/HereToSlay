@@ -1186,8 +1186,8 @@ class GameOverOverlay(Overlay):
         winner_colour: tuple[int, int, int] = C.GOLD,
         turns: int = 0,
     ) -> None:
-        width = min(720, int(layout.width * 0.64))
-        height = min(720, int(layout.height * 0.88))
+        width = min(880, int(layout.width * 0.74))
+        height = min(760, int(layout.height * 0.90))
         super().__init__(pygame.Rect(
             (layout.width - width) // 2, (layout.height - height) // 2, width, height
         ))
@@ -1196,14 +1196,24 @@ class GameOverOverlay(Overlay):
         self.winner_colour = winner_colour
         self.rows = list(rows)
         self.turns = turns
-        card_w = min(210, int(width * 0.30))
-        card_h = int(card_w * 1.42)
+        body = self.body_rect
+        n_rows = max(1, len(self.rows))
+        # Slogan above, flavor + score rows + buttons below — leftover is the
+        # badge. Landscape ~8:5 so the gold frame and laurels stay in view.
+        reserved = 70 + 74 + 38 * n_rows + 56
+        avail_h = max(140, body.height - reserved)
+        avail_w = max(160, body.width - 24)
+        aspect = 1.6
+        card_w = min(avail_w, int(avail_h * aspect))
+        card_h = min(avail_h, max(90, int(card_w / aspect)))
+        if int(card_h * aspect) > avail_w:
+            card_w = avail_w
+            card_h = max(90, int(card_w / aspect))
         self.trophy_size = (card_w, card_h)
         self.trophy = trophy_card((card_w, card_h))
         self.fx = AnimationManager(cap=60)
         self.fx.add(ConfettiAnimation((layout.width, layout.height), 5.5, count=180))
 
-        body = self.body_rect
         self.buttons = [
             Button(pygame.Rect(body.left, body.bottom - 46, body.width // 2 - 6, 42),
                    L.PLAY_AGAIN, lambda: self.finish("restart"), primary=True,
@@ -1246,7 +1256,8 @@ class GameOverOverlay(Overlay):
                anchor="midtop", shadow=None, max_width=body.width - 16)
 
         pop = min(1.0, self.elapsed / 0.7)
-        scale = 0.42 + 0.58 * T.ease_out_back(pop, 1.4)
+        # Clamp the back-ease overshoot so the badge never leaves its box.
+        scale = min(1.0, 0.50 + 0.50 * T.ease_out_back(pop, 1.15))
         tw, th = self.trophy_size
         sw, sh = max(12, int(tw * scale)), max(16, int(th * scale))
         try:

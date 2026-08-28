@@ -336,10 +336,21 @@ class ArtLibrary:
                             return candidate
         return None
 
-    def named_art(self, *relative: str, size: tuple[int, int]) -> pygame.Surface | None:
-        """Load pack-relative artwork that is not a playable card (trophy, UI)."""
+    def named_art(
+        self,
+        *relative: str,
+        size: tuple[int, int],
+        fit: bool = False,
+    ) -> pygame.Surface | None:
+        """Load pack-relative artwork that is not a playable card (trophy, UI).
+
+        ``fit=True`` scales the image to sit entirely inside ``size``
+        (letterbox). The default still cover-crops, which is what playable
+        card faces want.
+        """
         width, height = max(4, size[0]), max(4, size[1])
         self._scan()
+        loader = self._load_fitted if fit else self._load_cropped
         for rel in relative:
             key = Path(rel).stem.lower()
             candidates: list[Path] = []
@@ -350,7 +361,7 @@ class ArtLibrary:
                 candidates.append(pack / rel)
             for path in candidates:
                 if path.is_file():
-                    loaded = self._load_cropped(path, width, height)
+                    loaded = loader(path, width, height)
                     if loaded is not None:
                         return loaded
         return None
@@ -414,6 +425,30 @@ class ArtLibrary:
         out.blit(scaled, (-(tw - width) // 2, -int((th - height) * 0.38)))
         return out
 
+    def _load_fitted(self, path: Path, width: int, height: int) -> pygame.Surface | None:
+        """Load and scale to fit entirely inside ``(width, height)``. Never crops."""
+        try:
+            raw = pygame.image.load(str(path))
+        except (pygame.error, OSError):
+            return None
+        if pygame.display.get_surface() is not None:
+            with contextlib.suppress(pygame.error):
+                raw = raw.convert_alpha()
+
+        sw, sh = raw.get_size()
+        if sw <= 0 or sh <= 0:
+            return None
+        scale = min(width / sw, height / sh)
+        tw, th = max(1, int(sw * scale)), max(1, int(sh * scale))
+        try:
+            scaled = pygame.transform.smoothscale(raw, (tw, th))
+        except (pygame.error, ValueError):
+            scaled = pygame.transform.scale(raw, (tw, th))
+
+        out = T.surface((width, height))
+        out.blit(scaled, ((width - tw) // 2, (height - th) // 2))
+        return out
+
     # -- housekeeping -----------------------------------------------------
 
     def preload(self, card_defs: Any, size: tuple[int, int]) -> int:
@@ -449,11 +484,16 @@ def library() -> ArtLibrary:
 
 
 def trophy_card(size: tuple[int, int]) -> pygame.Surface:
-    """Legitimația lui Andrei — the win trophy, not a playable card."""
+    """Legitimația lui Andrei — the win trophy, not a playable card.
+
+    Fitted, not cropped: the badge is landscape, and cover-cropping it into a
+    portrait box slices the gold frame and laurels off.
+    """
     surf = library().named_art(
         "images/cards/Legitimatia_lui_Andrei_Here_to_Vibe.png",
         "images/by_type/misc/legitimatia_andrei.png",
         size=size,
+        fit=True,
     )
     if surf is not None:
         return surf

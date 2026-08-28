@@ -382,14 +382,15 @@
   kind: monster
   name: "Bloodwing"
   copies: 1
-  text: "Each time another player CHALLENGEs you, that player must DISCARD a card."
+  art: ref/here_to_vibe/images/by_type/monsters/bloodwing.png
+  text: "De fiecare dată când cineva te provoacă, acel jucător trebuie să arunce o barfă."
   requirement:
     op: has_card
     player: $self
     zone: party
     filter: { op: card_kind_is, kind: hero }
     min: 2
-  requirement_text: "2 Heroes of any class"
+  requirement_text: "2 Persoane de orice clasă"
   roll:
     dice: "2d6"
     kind: monster_attack

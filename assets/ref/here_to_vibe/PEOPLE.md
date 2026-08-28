@@ -15,7 +15,7 @@ Locked from Matei (2026-08-27):
 |-----------------|--------|-------|
 | Mihai „RNG-esus” | **Mihai** | Bestie, Titan Wyvern; art generated |
 | Cupi-Dan | **Dan** | Bestie, Crowned Serpent; art generated |
-| E-DIE | **Edi** | Bestie, Bloodwing; **needs-redo** (Vlad photo used by mistake) |
+| E-DIE | **Edi** | Bestie, Bloodwing; art generated |
 | Vl-ADD | **Vlad** | Bestie, Dark Dragon King; art generated |
 | Cristina „Insta-Cast” | **Cristina** | Bestie, Orthus; art generated |
 | Silviu „Gamemode 1” | **Silviu** | Bestie, Malamammoth; art generated |
@@ -59,7 +59,7 @@ Locked from Matei (2026-08-27):
 
 ## Distinct people — photos later
 
-Cupi-Dan (done), E-DIE (needs Edi photo), Cristina „Insta-Cast” (done), Silviu „Gamemode 1” (done),
+Cupi-Dan (done), E-DIE (done), Cristina „Insta-Cast” (done), Silviu „Gamemode 1” (done),
 and anyone else not listed as merged.
 
 ## Nickname clusters — do not merge yet

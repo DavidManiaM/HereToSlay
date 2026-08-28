@@ -4,7 +4,7 @@ Source of truth for names, classes, and which original card each maps to.
 Decisions: [`QUESTIONS.md`](QUESTIONS.md). Glossary: [`GLOSSARY.md`](GLOSSARY.md).
 People: [`PEOPLE.md`](PEOPLE.md).
 
-**Status:** mapping locked 2026-08-27. Art started (5 besties + 6 persoane; E-DIE needs redo).
+**Status:** mapping locked 2026-08-27. Art started (E-DIE redone with Edi photo).
 
 Legend: `ok` = same mechanic as original · `changed` = different effect · `new` = not in base · `1×` = one copy (not the original 2×)
 
@@ -42,7 +42,7 @@ Legend: `ok` = same mechanic as original · `changed` = different effect · `new
 | Abyss Queen | `base.monster.abyss_queen` | **Paul-tergeist** | 3 persoane | 8+ / 6–7 / 5− sacrifici | +1 MB/s când un oponent aplică download/upload **pe aruncarea ta** | ok — art generated |
 | Anuran Cauldron | `base.monster.anuran_cauldron` | **Evelina „Perma-Buff”** | 3 persoane | 7+ / (no safe) / 6− sacrifici | +1 la fiecare np.random() | ok — art generated |
 | Corrupted Sabretooth | `base.monster.corrupted_sabretooth` | **Cristi Iri-MAI-ia** | 3 persoane | 9+ / 7–8 / 6− sacrifici | La o împrietenire reușită, mai tragi o barfă | ok — art generated |
-| Bloodwing | `base.monster.bloodwing` | **E-DIE** | 2 persoane | 9+ / 7–8 / 6− sacrifici | Cine te provoacă trebuie să arunce o barfă | needs-redo — last photo was Vlad |
+| Bloodwing | `base.monster.bloodwing` | **E-DIE** | 2 persoane | 9+ / 7–8 / 6− sacrifici | Cine te provoacă trebuie să arunce o barfă | ok — art generated |
 | Arctic Aries | `base.monster.arctic_aries` | **Alexan-DRAW** | 1 persoană | 10+ / 7–9 / 6− sacrifici | La activare reușită, tragi o barfă | ok — art generated |
 | Terratuga | `base.monster.terratuga` | **Andrei Dictator** | 2 persoane | 11+ / 7–10 / 6− sacrifici | Persoanele tale nu mai pot fi distruse | ok — art generated |
 | Malamammoth | `base.monster.malamammoth` | **Silviu „Gamemode 1”** | 2 persoane | 9+ / 6–8 / 5− discard 2 | Când joci un cheat sau hack, mai tragi o barfă | ok — art generated |

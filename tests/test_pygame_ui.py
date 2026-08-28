@@ -66,7 +66,7 @@ from here_to_slay.ui.pygame.animations import (
     die_face,
 )
 from here_to_slay.ui.pygame.app import GameSetup
-from here_to_slay.ui.pygame.art import library, procedural_art
+from here_to_slay.ui.pygame.art import library, procedural_art, trophy_card
 from here_to_slay.ui.pygame.atmosphere import Atmosphere, blit_card_sheen
 from here_to_slay.ui.pygame.card_renderer import (
     CARD_H,
@@ -293,6 +293,13 @@ def test_table_faces_are_full_art_and_hover_text_is_romanian(registry) -> None:
     mask = registry["base.item.mask_0"]
     assert L.card_name(mask) == "/0"
     assert library().has_art(mask)
+
+    bloodwing = registry["base.monster.bloodwing"]
+    assert L.card_name(bloodwing) == "E-DIE"
+    assert bloodwing.art and "bloodwing.png" in bloodwing.art
+    assert library().has_art(bloodwing)
+    path = library().path_for(bloodwing)
+    assert path is not None and path.name == "bloodwing.png"
 
     clear_card_cache()
     surf = render_card(hero, CARD_W, CARD_H)
@@ -637,6 +644,29 @@ def test_rules_pages_come_from_content(registry) -> None:
         assert victory.text in text, f"{victory.id} is missing from the rules page"
     assert str(registry.rules.turn.action_points_per_turn) in text
     assert str(registry.rules.setup.starting_hand) in text
+
+
+def test_trophy_card_fits_the_whole_badge(screen) -> None:
+    """Win trophy is a landscape badge; cover-crop would slice the gold frame."""
+    tall = trophy_card((90, 240))
+    assert tall.get_size() == (90, 240)
+    # Fitted letterbox: top/bottom of a tall box stay empty.
+    assert tall.get_at((45, 2))[3] == 0
+    assert tall.get_at((45, 237))[3] == 0
+    # The badge itself occupies the middle band.
+    mid = tall.get_at((45, 120))
+    assert mid[3] > 0
+
+
+def test_game_over_trophy_is_landscape(registry, screen) -> None:
+    layout = LayoutManager(1600, 900)
+    rows = [ScoreRow("Alice", "3 slain", colour=C.GOLD, winner=True)]
+    overlay = GameOverOverlay(layout, "Alice", rows, turns=4)
+    overlay.update(1.0)
+    overlay.draw(screen)
+    tw, th = overlay.trophy_size
+    assert tw > th
+    assert tw >= 360
 
 
 def test_every_overlay_draws(registry, screen) -> None:
